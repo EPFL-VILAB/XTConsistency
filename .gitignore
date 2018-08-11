@@ -1,0 +1,10 @@
+raw
+__pycache__/*
+sftp-config.json
+models
+processed
+*.tar
+data
+output
+*.png
+jobinfo.txt
