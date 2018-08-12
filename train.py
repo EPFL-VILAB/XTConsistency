@@ -34,8 +34,8 @@ class ConvBlock(nn.Module):
         #x = F.dropout(x, 0.04, self.training)
         x = self.bn(x)
         if self.transpose:
-            x = F.leaky_relu(self.convt(x), 0.2)
-        x = F.leaky_relu(self.conv(x), 0.2)
+            x = F.relu(self.convt(x))
+        x = F.relu(self.conv(x))
         return x
 
 
