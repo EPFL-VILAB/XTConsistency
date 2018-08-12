@@ -24,7 +24,7 @@ def dry_run(cmd, config="job", sync_code=True):
 	subprocess.run(["nvidia-docker", "run", "nvcr.io/stanfordsvl00/task_discovery:latest", "/bin/bash",
 					"-c", cmd])
 
-def run(cmd, config="job", sync_code=True, dataset=11319, return_command=False):
+def run(cmd, config="job", sync_code=True, dataset=11449, return_command=False):
 	if sync_code: sync()
 
 	cmd = "cd scaling && git pull && echo \'" + config + '\' > jobinfo.txt && ' + cmd
