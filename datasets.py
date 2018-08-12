@@ -45,13 +45,18 @@ class ImageTaskDataset(Dataset):
 
 	def __getitem__(self, idx):
 		
-		image = Image.open(self.image_files[idx])
-		image = self.image_transforms(image)
+		try:
+			image = Image.open(self.image_files[idx])
+			image = self.image_transforms(image)
 
-		task = Image.open(self.task_files[idx])
-		task = self.task_transforms(task)
+			task = Image.open(self.task_files[idx])
+			task = self.task_transforms(task)
+			return image, task
+		
+		except:
+			return self.__getitem__(random.randrange(0, len(self.image_files)))
 
-		return image, task
+		
 
 
 if __name__ == "__main__":
