@@ -40,3 +40,9 @@ def batched(datagen, batch_size=32):
 def elapsed(times=[time.time()]):
 	times.append(time.time())
 	return times[-1] - times[-2]
+
+# Cycles through iterable without making extra copies
+def cycle(iterable):
+    while True:
+        for i in iterable:
+            yield i
