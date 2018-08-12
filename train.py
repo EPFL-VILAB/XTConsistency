@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
-    # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
+    scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
 
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
@@ -102,15 +102,15 @@ if __name__ == "__main__":
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
 
     # TRAINING
-    for epochs in range(0, 400):
+    for epochs in range(0, 800):
         
         logger.update('epoch', epochs)
         
-        train_set = itertools.islice(train_loader, 800)
+        train_set = itertools.islice(train_loader, 400)
         losses = model.fit_with_losses(train_set, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
-        val_set = itertools.islice(val_loader, 800)
+        val_set = itertools.islice(val_loader, 400)
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
@@ -119,5 +119,5 @@ if __name__ == "__main__":
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
 
-        # scheduler.step()
+        scheduler.step()
 
