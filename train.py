@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
 
     # LOGGING
