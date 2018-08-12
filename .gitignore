@@ -8,3 +8,5 @@ data
 output
 *.png
 jobinfo.txt
+*.gz
+.DS_Store/*
