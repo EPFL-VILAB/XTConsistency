@@ -43,6 +43,6 @@ def result(job_id, show_index=False):
 
 
 if __name__ == "__main__":
-	Fire()
+	Fire({"run": run, "sync": sync, "update": update, "dry_run": dry_run, "result": result})
 
 
