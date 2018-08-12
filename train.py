@@ -92,14 +92,14 @@ if __name__ == "__main__":
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
     train_loader = torch.utils.data.DataLoader(ImageTaskDataset(buildings=train_buildings),
-                        batch_size=80, num_workers=64, pin_memory=False, shuffle=True)
+                        batch_size=64, num_workers=16, pin_memory=False, shuffle=True)
     val_loader = torch.utils.data.DataLoader(ImageTaskDataset(buildings=test_buildings),
-                        batch_size=80, num_workers=64, pin_memory=False, shuffle=True)
+                        batch_size=64, num_workers=16, pin_memory=False, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
-    train_loader, val_loader = itertools.cycle(train_loader), itertools.cycle(val_loader)
+    #train_loader, val_loader = itertools.cycle(train_loader), itertools.cycle(val_loader)
 
     # TRAINING
     for epochs in range(0, 400):
