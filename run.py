@@ -35,7 +35,7 @@ def run(cmd, config="job", sync_code=True, dataset=11319, return_command=False):
 	if not return_command: 
 		subprocess.call(cmd)
 
-def results(job_id, show_index=False):
+def result(job_id, show_index=False):
 	if show_index: subprocess.run(["ngc", "result", "get", str(job_id)])
 	subprocess.run(["ngc", "result", "download", str(job_id), "-f", "joblog.log"], stdout=subprocess.DEVNULL)
 	subprocess.run(["cat", str(job_id) + "/joblog.log"])
