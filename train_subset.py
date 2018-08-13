@@ -91,7 +91,7 @@ if __name__ == "__main__":
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
     train_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=train_buildings),
+                            ImageTaskDataset(buildings=["ackermanville", "adairsville", "adrian", "airport"]),
                         batch_size=80, num_workers=64, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=["akiak"]),
