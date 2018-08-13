@@ -114,7 +114,7 @@ if __name__ == "__main__":
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
-        test_set = itertools.islice(val_loader, 1)
+        test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses = model.predict_with_data(test_set)
         logger.images(test_images, "images")
