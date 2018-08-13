@@ -91,6 +91,9 @@ if __name__ == "__main__":
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
     train_buildings, test_buildings = train_buildings[:-4], test_buildings[:-1]
 
+    logger.text("Train buildings: " + str(train_buildings))
+    logger.text("Test buildings: " + str(test_buildings))
+
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings),
                         batch_size=80, num_workers=16, shuffle=True)
@@ -115,7 +118,8 @@ if __name__ == "__main__":
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
-        test_set = itertools.islice(val_loader, 1)
+        test_set = list(tertools.islice(val_loader, 1))
+        images = [x for x, y in train_set]
         preds, targets, losses = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
