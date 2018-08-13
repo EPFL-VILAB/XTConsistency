@@ -101,15 +101,18 @@ if __name__ == "__main__":
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
+    train_loader, val_loader = itertools.cycle(train_loader), itertools.cycle(val_loader)
     # TRAINING
     for epochs in range(0, 800):
         
         logger.update('epoch', epochs)
         
-        losses = model.fit_with_losses(train_loader, logger=logger)
+        train_set = itertools.islice(train_loader, 200)
+        losses = model.fit_with_losses(train_set, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
-        losses = model.predict_with_losses(val_loader)
+        val_set = itertools.islice(val_loader, 200)
+        losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
         test_set = itertools.islice(val_loader, 1)
