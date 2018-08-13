@@ -89,22 +89,17 @@ if __name__ == "__main__":
      # DATA LOADING
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
-    train_buildings, test_buildings = train_buildings[:4], test_buildings[:1]
-
-    logger.text("Train buildings: " + str(train_buildings))
-    logger.text("Test buildings: " + str(test_buildings))
 
     train_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=train_buildings),
-                        batch_size=80, num_workers=16, shuffle=True)
+                            ImageTaskDataset(buildings=["ackermanville", "adairsville", "adrian", "airport"]),
+                        batch_size=80, num_workers=64, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=test_buildings),
-                        batch_size=80, num_workers=16, shuffle=True)
+                            ImageTaskDataset(buildings=["akiak"]),
+                        batch_size=80, num_workers=64, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
-    train_loader, val_loader = itertools.cycle(train_loader), itertools.cycle(val_loader)
     # TRAINING
     for epochs in range(0, 800):
         
@@ -118,7 +113,7 @@ if __name__ == "__main__":
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
-        test_set = list(tertools.islice(val_loader, 1))
+        test_set = itertools.islice(val_loader, 1)
         preds, targets, losses = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
