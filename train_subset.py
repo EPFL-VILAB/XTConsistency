@@ -103,7 +103,7 @@ if __name__ == "__main__":
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
     # TRAINING
-    for epochs in range(0, 800):
+    for epochs in range(0, 1):
         
         logger.update('epoch', epochs)
         

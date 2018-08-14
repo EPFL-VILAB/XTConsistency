@@ -46,6 +46,7 @@ class ImageTaskDataset(Dataset):
 	def __getitem__(self, idx):
 		
 		try:
+			print ("Image-task pair: ", self.image_files[idx], self.task_files[idx], flush=True)
 			image = Image.open(self.image_files[idx])
 			image = self.image_transforms(image)
 
