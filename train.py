@@ -92,10 +92,10 @@ if __name__ == "__main__":
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
     train_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=train_buildings),
+                            ImageTaskDataset(buildings=train_buildings, source_task='normal', dest_task='principal_curvature'),
                         batch_size=80, num_workers=16, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=test_buildings),
+                            ImageTaskDataset(buildings=test_buildings, source_task='normal', dest_task='principal_curvature'),
                         batch_size=80, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
