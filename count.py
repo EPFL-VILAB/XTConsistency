@@ -8,13 +8,10 @@ from collections import Counter
 
 logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
 
-def count(task):
-	counts = []
-	for directory in glob.glob(f"/data/*_{task}/{task}"):
-		counts.append(len(glob.glob(f"{directory}/*")))
-	return Counter(counts)
+buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
+tasks = ['rgb', 'normal', 'depth_zbuffer', 'principal_curvature']
 
-logger.text (f"Num rgb: {count('rgb')}")
-logger.text (f"Num normal: {count('normal')}")
-logger.text (f"Num zdepth: {count('depth_zbuffer')}")
-logger.text (f"Num curvature: {count('principal_curvature')}")
+for building in buildings:
+	logger.text (f"\nBuilding {building}: ", end="")
+	for task in tasks:
+		logger.text (f"{task}={len(glob.glob(f"/data/{building}_{task}/{task}/*.png"))}", end="")
