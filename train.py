@@ -74,12 +74,12 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
-    scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
+    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
 
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
-    logger.add_hook(lambda x: logger.step(), feature='loss', freq=80)
+    logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
     def jointplot(data):
         data = np.stack([logger.data["train_loss"], logger.data["val_loss"]], axis=1)
@@ -87,14 +87,16 @@ if __name__ == "__main__":
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
 
-    # DATA LOADING
+     # DATA LOADING
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
-    train_loader = torch.utils.data.DataLoader(ImageTaskDataset(buildings=train_buildings),
-                        batch_size=80, num_workers=16, pin_memory=False, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(ImageTaskDataset(buildings=test_buildings),
-                        batch_size=80, num_workers=16, pin_memory=False, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(
+                            ImageTaskDataset(buildings=train_buildings),
+                        batch_size=80, num_workers=64, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(
+                            ImageTaskDataset(buildings=test_buildings),
+                        batch_size=80, num_workers=64, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
@@ -106,11 +108,11 @@ if __name__ == "__main__":
         
         logger.update('epoch', epochs)
         
-        train_set = itertools.islice(train_loader, 400)
+        train_set = itertools.islice(train_loader, 200)
         losses = model.fit_with_losses(train_set, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
-        val_set = itertools.islice(val_loader, 400)
+        val_set = itertools.islice(val_loader, 200)
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
@@ -120,6 +122,3 @@ if __name__ == "__main__":
         logger.images(test_images, "images")
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
-
-        scheduler.step()
-

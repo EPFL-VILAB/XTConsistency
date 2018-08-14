@@ -49,8 +49,6 @@ class ImageTaskDataset(Dataset):
 		building, task, view = result["building"], result["task"], result["view"]
 		dest_file = f"/data/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
 
-		print ("Image-task pair: ", source_file, dest_file)
-
 		try:
 			image = Image.open(source_file)
 			image = self.source_transforms(image)
