@@ -4,6 +4,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import os, sys, math, random, tarfile, glob, time
+import parse
 
 import torch
 import torch.nn as nn
@@ -20,7 +21,7 @@ import IPython
 class ImageTaskDataset(Dataset):
 	"""Face Landmarks dataset."""
 
-	def __init__(self, buildings, task='normal'):
+	def __init__(self, buildings, source_task='rgb', dest_task='normal'):
 		"""
 		Args:
 			csv_file (string): Path to the csv file with annotations.
@@ -28,34 +29,37 @@ class ImageTaskDataset(Dataset):
 			transform (callable, optional): Optional transform to be applied
 				on a sample.
 		"""
-		self.task, self.buildings = task, buildings
-		self.image_files = [sorted(glob.glob(f"/data/{building}_rgb/rgb/*.png"))
+		self.source_task, self.dest_task, self.buildings = source_task, dest_task, buildings
+		self.source_files = [sorted(glob.glob(f"/data/{building}_{source_task}/{source_task}/*.png"))
 							 for building in buildings]
-		self.task_files = [sorted(glob.glob(f"/data/{building}_{task}/{task}/*.png"))
-							 for building in buildings]
-		self.image_files = [y for x in self.image_files for y in x]
-		self.task_files = [y for x in self.task_files for y in x]
-		self.image_transforms = transforms.Compose([
+		self.source_files = [y for x in self.source_files for y in x]
+		self.source_transforms = transforms.Compose([
 									transforms.ToTensor()])
-		self.task_transforms = transforms.Compose([
+		self.dest_transforms = transforms.Compose([
 									transforms.ToTensor()])
 
 	def __len__(self):
-		return len(self.image_files)
+		return len(self.source_files)
 
 	def __getitem__(self, idx):
 		
-		try:
-			print ("Image-task pair: ", self.image_files[idx], self.task_files[idx], flush=True)
-			image = Image.open(self.image_files[idx])
-			image = self.image_transforms(image)
+		source_file = self.source_files[idx]
 
-			task = Image.open(self.task_files[idx])
-			task = self.task_transforms(task)
+		result = parse.parse("/data/{building}_{task}/{task}/{view}_domain_{task}.png", source_file)
+		building, task, view = result["building"], result["task"], result["view"]
+		dest_file = f"/data/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
+
+		print ("Image-task pair: ", source_file, dest_file)
+
+		try:
+			image = Image.open(source_file)
+			image = self.source_transforms(image)
+
+			task = Image.open(dest_file)
+			task = self.dest_transforms(task)
 			return image, task
-		
 		except:
-			return self.__getitem__(random.randrange(0, len(self.image_files)))
+			return self.__getitem__(random.randrange(0, len(self.source_files)))
 
 		
 
