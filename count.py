@@ -22,4 +22,4 @@ for building in buildings:
 		print (logger.text("All equal"))
 	else:
 		for task in tasks:
-			logger.text (f"{task}={task_dict[tasks]}", end=", ")
+			logger.text (f"{task}={task_dict[task]}", end=", ")
