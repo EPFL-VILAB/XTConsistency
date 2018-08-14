@@ -13,6 +13,13 @@ tasks = ['rgb', 'normal', 'depth_zbuffer', 'principal_curvature']
 
 for building in buildings:
 	logger.text (f"\nBuilding {building}: ", end="")
+	task_dict = {}
 	for task in tasks:
 		files = glob.glob(f"/data/{building}_{task}/{task}/*.png")
-		logger.text (f"{task}={len(files)}", end="")
+		task_dict[task] = len(files)
+
+	if len(set(task_dict.values())) == 1:
+		print (logger.text("All equal"))
+	else:
+		for task in tasks:
+			logger.text (f"{task}={task_dict[tasks]}", end=", ")
