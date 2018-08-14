@@ -57,6 +57,8 @@ class ImageTaskDataset(Dataset):
 			task = self.dest_transforms(task)
 			return image, task
 		except:
+			print ("Error in file pair: ", source_file, dest_file)
+			time.sleep(0.1)
 			return self.__getitem__(random.randrange(0, len(self.source_files)))
 
 		

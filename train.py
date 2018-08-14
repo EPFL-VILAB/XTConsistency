@@ -93,10 +93,10 @@ if __name__ == "__main__":
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings),
-                        batch_size=80, num_workers=64, shuffle=True)
+                        batch_size=80, num_workers=16, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=test_buildings),
-                        batch_size=80, num_workers=64, shuffle=True)
+                        batch_size=80, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
