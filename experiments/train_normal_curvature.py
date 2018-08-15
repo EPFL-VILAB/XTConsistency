@@ -43,29 +43,36 @@ class Network(TrainableModel):
 
     def __init__(self):
         super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
+        # self.resnet = models.resnet50()
+        # self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
 
-        self.decoder = nn.Sequential(ConvBlock(8, 128),
+        # self.decoder = nn.Sequential(ConvBlock(8, 128),
+        #                     ConvBlock(128, 128), ConvBlock(128, 128),
+        #                     ConvBlock(128, 128), ConvBlock(128, 128),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 3, transpose=True)
+        #                 )
+
+        self.decoder = nn.Sequential(ConvBlock(3, 128),
                             ConvBlock(128, 128), ConvBlock(128, 128),
                             ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 3, transpose=True)
+                            ConvBlock(128, 3)
                         )
 
     def forward(self, x):
         
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
+        # for layer in list(self.resnet._modules.values())[:-2]:
+        #     x = layer(x)
+        # x = self.final_conv(x)
         x = self.decoder(x)
         
         return x
 
     def loss(self, pred, target):
+        print ("Means: ", pred.mean().cpu().data.numpy(), target.mean().cpu().data.numpy())
         return F.mse_loss(pred, target)
 
 
@@ -76,7 +83,8 @@ if __name__ == "__main__":
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
-
+    # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
+    
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
