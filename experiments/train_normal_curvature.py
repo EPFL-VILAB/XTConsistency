@@ -56,10 +56,10 @@ class Network(TrainableModel):
         #                     ConvBlock(128, 3, transpose=True)
         #                 )
 
-        self.decoder = nn.Sequential(ConvBlock(3, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 3)
+        self.decoder = nn.Sequential(ConvBlock(3, 32),
+                            ConvBlock(32, 32), ConvBlock(32, 32),
+                            ConvBlock(32, 32), ConvBlock(32, 32),
+                            ConvBlock(32, 3)
                         )
 
     def forward(self, x):
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
-    
+
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
