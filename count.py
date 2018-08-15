@@ -23,3 +23,4 @@ for building in buildings:
 	else:
 		for task in tasks:
 			logger.text (f"{task}={task_dict[task]}", end=", ")
+
