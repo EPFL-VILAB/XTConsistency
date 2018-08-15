@@ -51,17 +51,13 @@ class ImageTaskDataset(Dataset):
 
 		try:
 			image = Image.open(source_file)
-			print (image.shape)
-			image = self.source_transforms(image)
-			print (image.dtype)
+			image = self.source_transforms(image).float()
 
 			task = Image.open(dest_file)
-			print (task.shape)
-			task = self.dest_transforms(task)
-			print (task.dtype)
+			task = self.dest_transforms(task).float()
 			return image, task
 		except:
-			print ("Error in file pair: ", source_file, dest_file)
+			#print ("Error in file pair: ", source_file, dest_file)
 			time.sleep(0.1)
 			return self.__getitem__(random.randrange(0, len(self.source_files)))
 
