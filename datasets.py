@@ -51,10 +51,12 @@ class ImageTaskDataset(Dataset):
 
 		try:
 			image = Image.open(source_file)
+			print (image.shape)
 			image = self.source_transforms(image)
 			print (image.dtype)
 
 			task = Image.open(dest_file)
+			print (task.shape)
 			task = self.dest_transforms(task)
 			print (task.dtype)
 			return image, task
