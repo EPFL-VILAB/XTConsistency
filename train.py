@@ -53,7 +53,7 @@ class Network(TrainableModel):
                             ConvBlock(128, 128, transpose=True),
                             ConvBlock(128, 128, transpose=True),
                             ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 3, transpose=True)
+                            ConvBlock(128, 1, transpose=True)
                         )
 
     def forward(self, x):
