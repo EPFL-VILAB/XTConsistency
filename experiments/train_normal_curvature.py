@@ -66,6 +66,7 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
+        print (pred.shape, target.shape)
         return F.mse_loss(pred, target)
 
 
