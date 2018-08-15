@@ -53,7 +53,7 @@ class Network(TrainableModel):
                             ConvBlock(128, 128, transpose=True),
                             ConvBlock(128, 128, transpose=True),
                             ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 1, transpose=True)
+                            ConvBlock(128, 3, transpose=True)
                         )
 
     def forward(self, x):
@@ -66,7 +66,6 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        print (pred.shape, target.shape)
         return F.mse_loss(pred, target)
 
 
