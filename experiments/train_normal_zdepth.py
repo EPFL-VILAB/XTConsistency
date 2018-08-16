@@ -72,7 +72,6 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        print ("Means: ", pred.mean().cpu().data.numpy(), target.mean().cpu().data.numpy())
         return F.mse_loss(pred, target)
 
 
