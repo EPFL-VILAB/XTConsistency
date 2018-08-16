@@ -81,6 +81,7 @@ if __name__ == "__main__":
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    IPython.embed()
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
@@ -93,9 +94,9 @@ if __name__ == "__main__":
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
-    logger.add_hook(lambda: 
-        [print (f"Saving model to /result/model.pth"),
-        model.module.save("/result/model.pth")],
+    logger.add_hook(lambda x: 
+        [print ("Saving model to /result/model.pth"),
+        model.save("/result/model.pth")],
         feature='loss', freq=400,
     )
 

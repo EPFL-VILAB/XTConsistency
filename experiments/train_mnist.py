@@ -49,6 +49,11 @@ if __name__ == "__main__":
     logger.add_hook(jointplot, feature='val_loss', freq=1)
     logger.add_hook(lambda data: logger.plot(data, "train_acc"), feature='accuracy', freq=2)
     logger.add_hook(lambda data: logger.plot(data, "test_acc"), feature='test_accuracy', freq=2)
+    logger.add_hook(lambda x: 
+        [print ("Saving model to /result/model.pth"),
+        model.save("result/model.pth")],
+        feature='loss', freq=400,
+    )
 
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=True, download=True,

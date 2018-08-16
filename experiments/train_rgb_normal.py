@@ -86,9 +86,9 @@ if __name__ == "__main__":
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
-    logger.add_hook(lambda: 
-        [print (f"Saving model to /result/model.pth"),
-        model.module.save("/result/model.pth")],
+    logger.add_hook(lambda x: 
+        [print ("Saving model to /result/model.pth"),
+        model.save("/result/model.pth")],
         feature='loss', freq=400,
     )
 
