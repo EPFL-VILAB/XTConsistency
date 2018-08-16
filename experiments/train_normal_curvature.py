@@ -94,6 +94,11 @@ if __name__ == "__main__":
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
+    logger.add_hook(lambda: 
+        [print (f"Saving model to /result/model.pth"),
+        model.module.save("/result/model.pth")],
+        freq=400,
+    )
 
      # DATA LOADING
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
@@ -112,7 +117,7 @@ if __name__ == "__main__":
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
 
     # TRAINING
-    for epochs in range(0, 800):
+    for epochs in range(0, 100):
         
         logger.update('epoch', epochs)
         
