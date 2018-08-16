@@ -99,18 +99,18 @@ if __name__ == "__main__":
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
     to_tensor = transforms.ToTensor()
-    dest_transform = lambda x: to_tensor(x).float()/256**2
+    dest_transforms = lambda x: to_tensor(x).float()/256**2
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
-                                dest_transform=dest_transform),
+                                dest_transforms=dest_transforms),
                         batch_size=80, num_workers=16, shuffle=True)
 
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=test_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
-                                dest_transform=dest_transform),
+                                dest_transforms=dest_transforms),
                         batch_size=80, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
