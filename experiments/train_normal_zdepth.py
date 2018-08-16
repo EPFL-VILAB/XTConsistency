@@ -43,29 +43,36 @@ class Network(TrainableModel):
 
     def __init__(self):
         super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
+        # self.resnet = models.resnet50()
+        # self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
 
-        self.decoder = nn.Sequential(ConvBlock(8, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 1, transpose=True)
+        # self.decoder = nn.Sequential(ConvBlock(8, 128),
+        #                     ConvBlock(128, 128), ConvBlock(128, 128),
+        #                     ConvBlock(128, 128), ConvBlock(128, 128),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 128, transpose=True),
+        #                     ConvBlock(128, 3, transpose=True)
+        #                 )
+
+        self.decoder = nn.Sequential(ConvBlock(3, 32),
+                            ConvBlock(32, 32), ConvBlock(32, 32),
+                            ConvBlock(32, 32), ConvBlock(32, 32),
+                            ConvBlock(32, 1)
                         )
 
     def forward(self, x):
         
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
+        # for layer in list(self.resnet._modules.values())[:-2]:
+        #     x = layer(x)
+        # x = self.final_conv(x)
         x = self.decoder(x)
         
         return x
 
     def loss(self, pred, target):
+        print ("Means: ", pred.mean().cpu().data.numpy(), target.mean().cpu().data.numpy())
         return F.mse_loss(pred, target)
 
 
