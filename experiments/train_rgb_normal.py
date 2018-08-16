@@ -89,7 +89,7 @@ if __name__ == "__main__":
     logger.add_hook(lambda: 
         [print (f"Saving model to /result/model.pth"),
         model.module.save("/result/model.pth")],
-        freq=400,
+        feature='loss', freq=400,
     )
 
      # DATA LOADING
