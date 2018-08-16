@@ -21,7 +21,10 @@ import IPython
 class ImageTaskDataset(Dataset):
 	"""Face Landmarks dataset."""
 
-	def __init__(self, buildings, source_task='rgb', dest_task='normal'):
+	def __init__(self, buildings, data_dir='/data',
+					source_task='rgb', dest_task='normal',
+					source_transforms=transforms.ToTensor(),
+					dest_transforms=transforms.ToTensor()):
 		"""
 		Args:
 			csv_file (string): Path to the csv file with annotations.
@@ -30,14 +33,11 @@ class ImageTaskDataset(Dataset):
 				on a sample.
 		"""
 		self.source_task, self.dest_task, self.buildings = source_task, dest_task, buildings
-		self.source_files = [sorted(glob.glob(f"/data/{building}_{source_task}/{source_task}/*.png"))
+		self.source_transforms, self.dest_transforms = source_transforms, dest_transforms
+		self.source_files = [sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
 							 for building in buildings]
 		self.source_files = [y for x in self.source_files for y in x]
-		self.source_transforms = transforms.Compose([
-									transforms.ToTensor()])
-		self.dest_transforms = transforms.Compose([
-									transforms.ToTensor()])
-
+		
 	def __len__(self):
 		return len(self.source_files)
 
@@ -45,9 +45,10 @@ class ImageTaskDataset(Dataset):
 		
 		source_file = self.source_files[idx]
 
-		result = parse.parse("/data/{building}_{task}/{task}/{view}_domain_{task}.png", source_file)
-		building, task, view = result["building"], result["task"], result["view"]
-		dest_file = f"/data/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
+		result = parse.parse("{data_dir}/{building}_{task}/{task}/{view}_domain_{task}.png", source_file)
+		data_dir, building, task, view = \
+				result["data_dir"], result["building"], result["task"], result["view"]
+		dest_file = f"{data_dir}/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
 
 		try:
 			image = Image.open(source_file)
@@ -66,7 +67,8 @@ class ImageTaskDataset(Dataset):
 
 if __name__ == "__main__":
 
-	dataset = ImageTaskDataset(buildings=["ackermanville", "adairsville", "adrian", "airport", "akiak"])
+	dataset = ImageTaskDataset(buildings=["ackermanville", "adairsville", "adrian", "airport", "akiak"],
+								data_dir='result')
 	data_loader = torch.utils.data.DataLoader(dataset, num_workers=32, batch_size=32, shuffle=True)
 	logger = Logger("data")
 	logger.add_hook(lambda data: logger.step(), freq=16)
