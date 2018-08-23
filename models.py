@@ -43,7 +43,6 @@ class AbstractModel(nn.Module):
 
     # Predict scores from a batch of data
     def predict_on_batch(self, data):
-        
         self.eval()
         with torch.no_grad():
             return self.forward(data)
