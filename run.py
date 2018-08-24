@@ -27,8 +27,7 @@ def dry_run(cmd, config="job", sync_code=True):
 def run(cmd, config="job", sync_code=True, datasets={"data": 11449, "models": 11863}, return_command=False):
 	if sync_code: sync()
 
-	dataset_format = sum(["--dataset", str(dataset) + ":/" + mount] for mount, dataset in datasets.items())
-	print (dataset_format)
+	dataset_format = sum((["--dataset", str(dataset) + ":/" + mount] for mount, dataset in datasets.items()), [])
 	cmd = "cd scaling && git pull && echo \'" + config + '\' > jobinfo.txt && ' + cmd
 	cmd = ["ngc", "batch", "run", "--instance", "ngcv8", "--name", config, "--dataset", str(dataset) + ":/data",
 				"--image", "stanfordsvl00/task_discovery:latest", "--result", "/result",
