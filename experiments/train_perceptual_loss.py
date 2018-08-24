@@ -77,6 +77,13 @@ if __name__ == "__main__":
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.9)
 
+    # PERCEPTUAL LOSS
+    loss_model = DataParallelModel.load(Network(), "/models/results.pth")
+    def mixed_loss(preds, targets):
+        loss1 = F.mse_loss(pred, target)
+        loss2 = F.mse_loss(loss_model(pred), loss_model(target))
+        return loss1 + 5*loss2
+
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
@@ -107,6 +114,8 @@ if __name__ == "__main__":
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    train_loader = ((img, F.upsample_bilinear(F.avg_pool2d(target, 8), scale_factor=8)) \
+                        for img, target in train_loader)
 
     # TRAINING
     for epochs in range(0, 800):
@@ -114,18 +123,16 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, 200)
-        losses = model.fit_with_losses(train_set, logger=logger)
+        losses = model.fit_with_losses(train_set, loss_fn=mixed_loss, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
         val_set = itertools.islice(val_loader, 200)
         losses = model.predict_with_losses(val_set)
         logger.update('val_loss', np.mean(losses))
 
-        test_set = list(itertools.islice(val_loader, 1))
-        test_images = torch.cat([x for x, y in test_set], dim=0)
+        test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses = model.predict_with_data(test_set)
-        logger.images(test_images, "images")
-        logger.images(preds, "predictions")
-        logger.images(targets, "targets")
+        logger.images(preds, "train_predictions")
+        logger.images(targets, "train_targets")
 
         scheduler.step()
