@@ -29,7 +29,7 @@ def run(cmd, config="job", sync_code=True, datasets={"data": 11449, "models": 11
 
 	dataset_format = sum((["--dataset", str(dataset) + ":/" + mount] for mount, dataset in datasets.items()), [])
 	cmd = "cd scaling && git pull && echo \'" + config + '\' > jobinfo.txt && ' + cmd
-	cmd = ["ngc", "batch", "run", "--instance", "ngcv8", "--name", config, "--dataset", str(dataset) + ":/data",
+	cmd = ["ngc", "batch", "run", "--instance", "ngcv8", "--name", config, *dataset_format,
 				"--image", "stanfordsvl00/task_discovery:latest", "--result", "/result",
 				"--command", cmd]
 	print (" ".join(cmd))
