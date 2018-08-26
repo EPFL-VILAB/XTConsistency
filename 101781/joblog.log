@@ -1,0 +1,105 @@
+From https://github.com/nikcheerla/scaling
+   f299795..8f6d4be  master     -> origin/master
+Updating f299795..8f6d4be
+Fast-forward
+ .gitignore                            |   1 +
+ datasets.py                           |  24 +++---
+ experiments/train_mnist.py            |   5 ++
+ experiments/train_normal_curvature.py |  47 +++++++-----
+ experiments/train_normal_zdepth.py    |  53 ++++++++-----
+ experiments/train_perceptual_loss.py  | 140 ++++++++++++++++++++++++++++++++++
+ experiments/train_rgb_normal.py       |  15 +++-
+ models.py                             |  37 +++++----
+ run.py                                |   5 +-
+ count.py => scripts/count_files.py    |   0
+ scripts/untar_data.py                 |  36 +++++++++
+ untar_data.py                         |  33 --------
+ 12 files changed, 298 insertions(+), 98 deletions(-)
+ create mode 100644 experiments/train_perceptual_loss.py
+ rename count.py => scripts/count_files.py (100%)
+ create mode 100644 scripts/untar_data.py
+ delete mode 100644 untar_data.py
+Logging to environment train_perceptualloss
+Train files count: 3601974
+Val files count: 439455
+/workspace/scaling/logger.py:4: UserWarning: 
+This call to matplotlib.use() has no effect because the backend has already
+been chosen; matplotlib.use() must be called *before* pylab, matplotlib.pyplot,
+or matplotlib.backends is imported for the first time.
+
+The backend was *originally* set to 'TkAgg' by the following code:
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 12, in <module>
+    from models import TrainableModel, DataParallelModel
+  File "/workspace/scaling/models.py", line 9, in <module>
+    import matplotlib.pyplot as plt
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/pyplot.py", line 71, in <module>
+    from matplotlib.backends import pylab_setup
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/backends/__init__.py", line 16, in <module>
+    line for line in traceback.format_stack()
+
+
+  mpl.use('Agg')
+/workspace/scaling/datasets.py:4: UserWarning: 
+This call to matplotlib.use() has no effect because the backend has already
+been chosen; matplotlib.use() must be called *before* pylab, matplotlib.pyplot,
+or matplotlib.backends is imported for the first time.
+
+The backend was *originally* set to 'TkAgg' by the following code:
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 12, in <module>
+    from models import TrainableModel, DataParallelModel
+  File "/workspace/scaling/models.py", line 9, in <module>
+    import matplotlib.pyplot as plt
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/pyplot.py", line 71, in <module>
+    from matplotlib.backends import pylab_setup
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/backends/__init__.py", line 16, in <module>
+    line for line in traceback.format_stack()
+
+
+  mpl.use('Agg')
+THCudaCheck FAIL file=../aten/src/THC/THCStorage.cpp line=132 error=2 : out of memory
+/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/functional.py:1862: UserWarning: nn.functional.upsample_bilinear is deprecated. Use nn.functional.upsample instead.
+  warnings.warn("nn.functional.upsample_bilinear is deprecated. Use nn.functional.upsample instead.")
+Traceback (most recent call last):
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 128, in <module>
+    losses = model.fit_with_losses(train_set, loss_fn=mixed_loss, logger=logger)
+  File "/workspace/scaling/models.py", line 119, in fit_with_losses
+    losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
+  File "/workspace/scaling/models.py", line 119, in <listcomp>
+    losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
+  File "/workspace/scaling/models.py", line 105, in _process_data
+    y_pred, loss = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
+  File "/workspace/scaling/models.py", line 61, in fit_on_batch
+    loss = loss_fn(pred, target.to(pred.device))
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 86, in mixed_loss
+    loss2 = F.mse_loss(loss_model(pred), loss_model(target))
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/modules/module.py", line 468, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/workspace/scaling/models.py", line 142, in forward
+    return self.parallel_apply(x)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/modules/module.py", line 468, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/parallel/data_parallel.py", line 124, in forward
+    return self.gather(outputs, self.output_device)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/parallel/data_parallel.py", line 136, in gather
+    return gather(outputs, output_device, dim=self.dim)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/parallel/scatter_gather.py", line 67, in gather
+    return gather_map(outputs)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/parallel/scatter_gather.py", line 54, in gather_map
+    return Gather.apply(target_device, dim, *outputs)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/nn/parallel/_functions.py", line 65, in forward
+    return comm.gather(inputs, ctx.dim, ctx.target_device)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/torch/cuda/comm.py", line 195, in gather
+    result = tensors[0].new(expected_size, device=destination)
+RuntimeError: cuda runtime error (2) : out of memory at ../aten/src/THC/THCStorage.cpp:132
