@@ -13,6 +13,8 @@ from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
+from .train_normal_curvature import Network as CurvatureNetwork
+
 
 from sklearn.model_selection import train_test_split
 
@@ -78,7 +80,7 @@ if __name__ == "__main__":
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.9)
 
     # PERCEPTUAL LOSS
-    loss_model = DataParallelModel.load(Network(), "/models/normal2curvature.pth")
+    loss_model = DataParallelModel.load(CurvatureNetwork(), "/models/normal2curvature.pth")
     def mixed_loss(preds, targets):
         loss1 = F.mse_loss(pred, target)
         loss2 = F.mse_loss(loss_model(pred), loss_model(target))
