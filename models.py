@@ -119,13 +119,13 @@ class TrainableModel(AbstractModel):
         losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
         return losses
 
-    def predict_with_data(self, datagen, loss_fn=loss_fn, logger=None):
+    def predict_with_data(self, datagen, loss_fn=None, logger=None):
         with torch.no_grad():
             preds, targets, losses = zip(*self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger))
             preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
         return preds, targets, losses
 
-    def predict_with_losses(self, datagen, loss_fn=loss_fn, logger=None):
+    def predict_with_losses(self, datagen, loss_fn=None, logger=None):
         with torch.no_grad():
             losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)]
         return losses
