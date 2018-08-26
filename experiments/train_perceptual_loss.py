@@ -80,7 +80,7 @@ if __name__ == "__main__":
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.9)
 
     # PERCEPTUAL LOSS
-    loss_model = DataParallelModel.load(CurvatureNetwork(), "/models/normal2curvature.pth")
+    loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
     def mixed_loss(pred, target):
         loss1 = F.mse_loss(pred, target)
         loss2 = F.mse_loss(loss_model(pred), loss_model(target))
