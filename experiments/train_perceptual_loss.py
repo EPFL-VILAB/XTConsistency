@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork(), "/models/normal2curvature.pth")
-    def mixed_loss(preds, targets):
+    def mixed_loss(pred, target):
         loss1 = F.mse_loss(pred, target)
         loss2 = F.mse_loss(loss_model(pred), loss_model(target))
         return loss1 + 5*loss2
