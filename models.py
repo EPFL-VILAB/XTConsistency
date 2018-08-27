@@ -97,38 +97,41 @@ class TrainableModel(AbstractModel):
     
 
     # Fit on generator for one epoch
-    def _process_data(self, datagen, loss_fn=None, train=True, logger=None):
+    def _process_data(self, datagen, loss_fn=None, metrics=[], train=True, logger=None):
 
         self.train(train)
         out = []
         for batch, y in datagen:
-            y_pred, loss = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
+            y_pred, loss, metrics = self.fit_on_batch(batch, y, loss_fn=loss_fn, metrics=metrics, train=train)
             if logger is not None: logger.update('loss', loss)
-            yield ((y_pred.data, y.data, loss))
+            yield ((y_pred.data, y.data, metrics))
 
-    def fit(self, datagen, loss_fn=None, logger=None):
-        for x in self._process_data(datagen, loss_fn=loss_fn, train=train, logger=logger):
+    def fit(self, datagen, loss_fn=None, metrics=[], logger=None):
+        for x in self._process_data(datagen, loss_fn=loss_fn, metrics=metrics, train=train, logger=logger):
             pass
 
-    def fit_with_data(self, datagen, loss_fn=None, logger=None):
-        preds, targets, losses = zip(*self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger))
+    def fit_with_data(self, datagen, loss_fn=None, metrics=[], logger=None):
+        preds, targets, losses = zip(*self._process_data(datagen, \
+                loss_fn=loss_fn, metrics=metrics, train=True, logger=logger))
         preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
         return preds, targets, losses
 
-    def fit_with_losses(self, datagen, loss_fn=None, logger=None):
-        losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
-        return losses
+    def fit_with_metrics(self, datagen, loss_fn=None, metrics=[], logger=None):
+        metrics = [metrics for _, _, metrics in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
+        return zip(*metrics)
 
-    def predict_with_data(self, datagen, loss_fn=None, logger=None):
+    def predict_with_data(self, datagen, loss_fn=None, metrics=[], logger=None):
         with torch.no_grad():
-            preds, targets, losses = zip(*self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger))
+            preds, targets, metrics = zip(*self._process_data(datagen, \
+                    loss_fn=loss_fn, metrics=metrics, train=False, logger=logger))
             preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
-        return preds, targets, losses
+            metrics = zip(*metrics)
+        return preds, targets, metrics
 
-    def predict_with_losses(self, datagen, loss_fn=None, logger=None):
+    def predict_with_metrics(self, datagen, loss_fn=None, metrics=[], logger=None):
         with torch.no_grad():
-            losses = [loss for _, _, loss in self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)]
-        return losses
+            metrics = [metrics for _, _, metrics in self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)]
+        return zip(*metrics)
 
 
 

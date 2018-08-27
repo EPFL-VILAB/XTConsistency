@@ -77,15 +77,14 @@ if __name__ == "__main__":
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
-    scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.9)
 
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
-    def mixed_loss(pred, target):
-        loss1 = F.mse_loss(pred, target)
-        loss2 = F.mse_loss(loss_model(pred), loss_model(target))
-        return loss1# + 5*loss2
 
+    mse_loss = lambda pred, target: F.mse_loss(pred, target)
+    perceptual_loss = lambda pred, target: F.mse_loss(loss_model(pred), loss_model(target))
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss
+    
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
@@ -116,8 +115,10 @@ if __name__ == "__main__":
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
-    train_loader = ((img, F.upsample_bilinear(F.avg_pool2d(target, 8), scale_factor=8)) \
-                        for img, target in train_loader)
+
+    # Artificially reduce training set quality
+    # train_loader = ((img, F.upsample_bilinear(F.avg_pool2d(target, 8), scale_factor=8)) \
+    #                     for img, target in train_loader)
 
     # TRAINING
     for epochs in range(0, 800):
@@ -136,5 +137,3 @@ if __name__ == "__main__":
         preds, targets, losses = model.predict_with_data(test_set)
         logger.images(preds, "train_predictions")
         logger.images(targets, "train_targets")
-
-        scheduler.step()
