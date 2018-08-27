@@ -84,7 +84,7 @@ if __name__ == "__main__":
     def mixed_loss(pred, target):
         loss1 = F.mse_loss(pred, target)
         loss2 = F.mse_loss(loss_model(pred), loss_model(target))
-        return loss1 + 5*loss2
+        return loss1# + 5*loss2
 
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
