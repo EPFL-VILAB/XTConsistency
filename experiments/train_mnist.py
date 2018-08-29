@@ -52,7 +52,7 @@ if __name__ == "__main__":
     logger.add_hook(lambda x: 
         [print ("Saving model to /result/model.pth"),
         model.save("result/model.pth")],
-        feature='loss', freq=400,
+        feature='train_loss', freq=5,
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -71,22 +71,26 @@ if __name__ == "__main__":
                ])), 
             batch_size=32, shuffle=True)
 
+    def accuracy_score(pred, target):
+        return torch.sum(pred.argmax(dim=1) == target).float()/len(target)
+
     for epochs in range(0, 10):
 
-        test_set = itertools.islice(val_loader, 1)
-        test_images = torch.cat([x for x, y in test_set], dim=0)
-        logger.images(test_images, "predictions")
+        # test_set = itertools.islice(val_loader, 1)
+        # test_images = torch.cat([x for x, y in test_set], dim=0)
+        # logger.images(test_images, "predictions")
 
         logger.update('epoch', epochs)
 
-        preds, target, losses = model.fit_with_data(train_loader, logger=logger)
-        accuracy = torch.sum(preds.argmax(dim=1) == target).float()/len(target)
-        logger.update('train_loss', np.mean(losses))
-        logger.update('accuracy', accuracy)
+        (accuracy,) = model.fit_with_metrics(train_loader, \
+                metrics=[accuracy_score], logger=logger)
+        # logger.update('train_loss', np.mean(losses))
+        logger.update('accuracy', np.mean(accuracy))
 
-        preds, target, losses = model.predict_with_data(val_loader, logger=logger)
-        accuracy = torch.sum(preds.argmax(dim=1) == target).float()/len(target)
-        logger.update('val_loss', np.mean(losses))
-        logger.update('test_accuracy', accuracy)
+        (accuracy,) = model.predict_with_metrics(val_loader, \
+                metrics=[accuracy_score], logger=logger)
+        # logger.update('val_loss', np.mean(losses))
+        logger.update('test_accuracy', np.mean(accuracy))
 
         logger.step()
+

@@ -82,18 +82,22 @@ if __name__ == "__main__":
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target: F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss
+    perceptual_loss = lambda pred, target: 5*F.mse_loss(loss_model(pred), loss_model(target))
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss(pred, target)
     
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
     def jointplot(data):
-        data = np.stack([logger.data["train_loss"], logger.data["val_loss"]], axis=1)
-        logger.plot(data, "loss", opts={'legend': ['train', 'val']})
+        data = np.stack((logger.data["train_mse_loss"], 
+                            logger.data["train_perceptual_loss"],
+                            logger.data["val_mse_loss"],
+                            logger.data["val_perceptual_loss"]), axis=1)
+        logger.plot(data, "loss", opts={'legend': 
+            ['train_mse', 'train_perceptual', 'val_mse', 'val_perceptual']})
 
-    logger.add_hook(jointplot, feature='val_loss', freq=1)
+    logger.add_hook(jointplot, feature='val_perceptual_loss', freq=1)
     logger.add_hook(lambda x: 
         [print ("Saving model to /result/model.pth"),
         model.save("/result/model.pth")],
@@ -126,12 +130,17 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, 200)
-        losses = model.fit_with_losses(train_set, loss_fn=mixed_loss, logger=logger)
-        logger.update('train_loss', np.mean(losses))
+        (mse_data, perceptual_data,) = model.fit_with_metrics(train_set, loss_fn=mixed_loss,
+                        metrics=[mse_loss, perceptual_loss], logger=logger)
+        logger.update('train_mse_loss', np.mean(mse_data))
+        logger.update('train_perceptual_loss', np.mean(perceptual_data))
 
         val_set = itertools.islice(val_loader, 200)
-        losses = model.predict_with_losses(val_set)
-        logger.update('val_loss', np.mean(losses))
+        (mse_data, perceptual_data,) = model.fit_with_metrics(val_set, loss_fn=mixed_loss,
+                        metrics=[mse_loss, perceptual_loss], logger=logger)
+        logger.update('val_mse_loss', np.mean(mse_data))
+        logger.update('val_perceptual_loss', np.mean(perceptual_data))
+
 
         test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses = model.predict_with_data(test_set)

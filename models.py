@@ -49,7 +49,7 @@ class AbstractModel(nn.Module):
             return self.forward(data)
 
     # Fit (make one optimizer step) on a batch of data
-    def fit_on_batch(self, data, target, loss_fn=None, train=True):
+    def fit_on_batch(self, data, target, loss_fn=None, metrics=[], train=True):
         
         loss_fn = loss_fn or self.loss
 
@@ -60,11 +60,15 @@ class AbstractModel(nn.Module):
         pred = self.forward(data)
         loss = loss_fn(pred, target.to(pred.device))
 
+        with torch.no_grad():
+            metric_data = tuple(metric(pred, target.to(pred.device)).detach() \
+                        for metric in metrics)
+
         if train:
             loss.backward()
             self.optimizer.step()
 
-        return pred, float(loss)
+        return pred, float(loss), metric_data
 
     @classmethod
     def load(cls, weights_file=None):
@@ -102,35 +106,38 @@ class TrainableModel(AbstractModel):
         self.train(train)
         out = []
         for batch, y in datagen:
-            y_pred, loss, metrics = self.fit_on_batch(batch, y, loss_fn=loss_fn, metrics=metrics, train=train)
+            y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, metrics=metrics, train=train)
             if logger is not None: logger.update('loss', loss)
-            yield ((y_pred.data, y.data, metrics))
+            yield ((y_pred.data, y.data, loss, metric_data))
 
     def fit(self, datagen, loss_fn=None, metrics=[], logger=None):
         for x in self._process_data(datagen, loss_fn=loss_fn, metrics=metrics, train=train, logger=logger):
             pass
 
     def fit_with_data(self, datagen, loss_fn=None, metrics=[], logger=None):
-        preds, targets, losses = zip(*self._process_data(datagen, \
+        preds, targets, losses, metrics = zip(*self._process_data(datagen, \
                 loss_fn=loss_fn, metrics=metrics, train=True, logger=logger))
         preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
-        return preds, targets, losses
+        metrics = zip(*metrics)
+        return preds, targets, losses, metrics
 
     def fit_with_metrics(self, datagen, loss_fn=None, metrics=[], logger=None):
-        metrics = [metrics for _, _, metrics in self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)]
+        metrics = [metrics for _, _, _, metrics in self._process_data(datagen, \
+                loss_fn=loss_fn, metrics=metrics, train=True, logger=logger)]
         return zip(*metrics)
 
     def predict_with_data(self, datagen, loss_fn=None, metrics=[], logger=None):
         with torch.no_grad():
-            preds, targets, metrics = zip(*self._process_data(datagen, \
+            preds, targets, losses, metrics = zip(*self._process_data(datagen, \
                     loss_fn=loss_fn, metrics=metrics, train=False, logger=logger))
             preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
             metrics = zip(*metrics)
-        return preds, targets, metrics
+        return preds, targets, losses, metrics
 
     def predict_with_metrics(self, datagen, loss_fn=None, metrics=[], logger=None):
         with torch.no_grad():
-            metrics = [metrics for _, _, metrics in self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)]
+            metrics = [metrics for _, _, _, metrics in self._process_data(datagen, \
+                    loss_fn=loss_fn, metrics=metrics, train=False, logger=logger)]
         return zip(*metrics)
 
 
