@@ -77,6 +77,7 @@ if __name__ == "__main__":
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.95)
 
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
@@ -141,11 +142,13 @@ if __name__ == "__main__":
         logger.update('val_mse_loss', np.mean(mse_data))
         logger.update('val_perceptual_loss', np.mean(perceptual_data))
 
-        if epochs == 400:
-            logger.text ("Adding perceptual loss after convergence")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        # if epochs == 400:
+        #     logger.text ("Adding perceptual loss after convergence")
+        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "train_predictions")
         logger.images(targets, "train_targets")
+
+        scheduler.step()
