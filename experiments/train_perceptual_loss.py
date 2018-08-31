@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target: 5*F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target) + 0*perceptual_loss(pred, target)
+    mixed_loss = lambda pred, target: mse_loss(pred, target)# + 0*perceptual_loss(pred, target)
     
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
@@ -111,10 +111,10 @@ if __name__ == "__main__":
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=32, num_workers=16, shuffle=True)
+                        batch_size=64, num_workers=16, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=test_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=32, num_workers=16, shuffle=True)
+                        batch_size=64, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
