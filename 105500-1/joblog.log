@@ -1,0 +1,51 @@
+From https://github.com/nikcheerla/scaling
+   d65b3a0..d1c52d3  master     -> origin/master
+Updating d65b3a0..d1c52d3
+Fast-forward
+ experiments/train_perceptual_loss.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+Logging to environment train_perceptual
+Train files count: 3622480
+Val files count: 418949
+/workspace/scaling/logger.py:4: UserWarning: 
+This call to matplotlib.use() has no effect because the backend has already
+been chosen; matplotlib.use() must be called *before* pylab, matplotlib.pyplot,
+or matplotlib.backends is imported for the first time.
+
+The backend was *originally* set to 'TkAgg' by the following code:
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 12, in <module>
+    from models import TrainableModel, DataParallelModel
+  File "/workspace/scaling/models.py", line 9, in <module>
+    import matplotlib.pyplot as plt
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/pyplot.py", line 71, in <module>
+    from matplotlib.backends import pylab_setup
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/backends/__init__.py", line 16, in <module>
+    line for line in traceback.format_stack()
+
+
+  mpl.use('Agg')
+/workspace/scaling/datasets.py:4: UserWarning: 
+This call to matplotlib.use() has no effect because the backend has already
+been chosen; matplotlib.use() must be called *before* pylab, matplotlib.pyplot,
+or matplotlib.backends is imported for the first time.
+
+The backend was *originally* set to 'TkAgg' by the following code:
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/workspace/scaling/experiments/train_perceptual_loss.py", line 12, in <module>
+    from models import TrainableModel, DataParallelModel
+  File "/workspace/scaling/models.py", line 9, in <module>
+    import matplotlib.pyplot as plt
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/pyplot.py", line 71, in <module>
+    from matplotlib.backends import pylab_setup
+  File "/opt/conda/envs/pytorch-py3.6/lib/python3.6/site-packages/matplotlib/backends/__init__.py", line 16, in <module>
+    line for line in traceback.format_stack()
+
+
+  mpl.use('Agg')

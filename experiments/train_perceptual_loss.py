@@ -146,6 +146,6 @@ if __name__ == "__main__":
             mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         test_set = list(itertools.islice(train_loader, 1))
-        preds, targets, losses = model.predict_with_data(test_set)
+        preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "train_predictions")
         logger.images(targets, "train_targets")
