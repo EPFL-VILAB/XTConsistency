@@ -88,6 +88,7 @@ class VisdomLogger(BaseLogger):
         self.env = kwargs.pop('env', 'main')
         print (f"Logging to environment {self.env}")
         self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
+        self.visdom.delete_env(self.env)
         self.windows = {}
         super().__init__(*args, **kwargs)
 

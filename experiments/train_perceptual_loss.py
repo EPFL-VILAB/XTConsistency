@@ -141,10 +141,6 @@ if __name__ == "__main__":
         logger.update('val_mse_loss', np.mean(mse_data))
         logger.update('val_perceptual_loss', np.mean(perceptual_data))
 
-        if epochs == 400:
-            logger.text ("Updating to use perceptual loss")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
-
         test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "train_predictions")
