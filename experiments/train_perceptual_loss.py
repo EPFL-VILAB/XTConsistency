@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target: 5*F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target)# + 0*perceptual_loss(pred, target)
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss(pred, target)
     
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
