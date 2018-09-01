@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target: 5*F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: 0*mse_loss(pred, target) + perceptual_loss(pred, target)
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + 0*perceptual_loss(pred, target)
     
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
@@ -142,9 +142,9 @@ if __name__ == "__main__":
         logger.update('val_mse_loss', np.mean(mse_data))
         logger.update('val_perceptual_loss', np.mean(perceptual_data))
 
-        # if epochs == 200:
-        #     logger.text ("Adding perceptual loss after convergence")
-        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        if epochs == 200:
+            logger.text ("Adding perceptual loss after convergence")
+            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses, _ = model.predict_with_data(test_set)
