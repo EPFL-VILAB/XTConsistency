@@ -111,10 +111,10 @@ if __name__ == "__main__":
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=64, num_workers=16, shuffle=True)
+                        batch_size=48, num_workers=16, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=test_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=64, num_workers=16, shuffle=True)
+                        batch_size=48, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
@@ -142,9 +142,9 @@ if __name__ == "__main__":
         logger.update('val_mse_loss', np.mean(mse_data))
         logger.update('val_perceptual_loss', np.mean(perceptual_data))
 
-        if epochs == 200:
-            logger.text ("Adding perceptual loss after convergence")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        # if epochs == 200:
+        #     logger.text ("Adding perceptual loss after convergence")
+        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         test_set = list(itertools.islice(train_loader, 1))
         preds, targets, losses, _ = model.predict_with_data(test_set)
