@@ -28,8 +28,8 @@ class ConvBlock(nn.Module):
         self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
         if self.transpose:
             self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), stride=2, padding=1, output_padding=1)
-        # self.bn = nn.BatchNorm2d(f1)
-        self.bn = nn.GroupNorm(8, f1)
+        self.bn = nn.BatchNorm2d(f1)
+        # self.bn = nn.GroupNorm(8, f1)
 
     def forward(self, x):
         # x = F.dropout(x, 0.04, self.training)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target: 5 * F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target)# + perceptual_loss(pred, target)
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss(pred, target)
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
