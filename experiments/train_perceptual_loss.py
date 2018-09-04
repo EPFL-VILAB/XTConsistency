@@ -152,9 +152,9 @@ if __name__ == "__main__":
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
-        # if epochs == 200:
-        #     logger.text ("Adding perceptual loss after convergence")
-        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        if epochs == 200:
+            logger.text ("Adding perceptual loss after convergence")
+            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
