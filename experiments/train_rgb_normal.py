@@ -114,16 +114,16 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, 200)
-        losses = model.fit_with_losses(train_set, logger=logger)
+        (losses,) = model.fit_with_metrics(train_set, logger=logger, metrics=[model.loss])
         logger.update('train_loss', np.mean(losses))
 
         val_set = itertools.islice(val_loader, 200)
-        losses = model.predict_with_losses(val_set)
+        (losses,) = model.predict_with_metrics(val_set, metrics=[model.loss])
         logger.update('val_loss', np.mean(losses))
 
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
-        preds, targets, losses = model.predict_with_data(test_set)
+        preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(test_images, "images")
         logger.images(preds, "predictions")
         logger.images(targets, "targets")

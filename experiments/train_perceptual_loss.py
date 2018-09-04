@@ -30,7 +30,8 @@ class ConvBlock(nn.Module):
         if self.transpose:
             self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), 
                 stride=2, padding=1, output_padding=1)
-        self.bn = nn.BatchNorm2d(f1)
+        # self.bn = nn.BatchNorm2d(f1)
+        self.bn = nn.GroupNorm(8, f1)
         
     def forward(self, x):
         #x = F.dropout(x, 0.04, self.training)
@@ -79,6 +80,8 @@ if __name__ == "__main__":
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.95)
 
+    # print (model(torch.randn(1, 3, 512, 512)).shape)
+
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
@@ -91,7 +94,7 @@ if __name__ == "__main__":
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
     def jointplot(data):
-        data = np.stack((logger.data["train_mse_loss"], 
+        data = np.stack((logger.data["train_mse_loss"],
                             logger.data["train_perceptual_loss"],
                             logger.data["val_mse_loss"],
                             logger.data["val_perceptual_loss"]), axis=1)
@@ -147,7 +150,9 @@ if __name__ == "__main__":
             mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         test_set = list(itertools.islice(train_loader, 1))
+        test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
+        logger.images(test_images, "images")
         logger.images(preds, "train_predictions")
         logger.images(targets, "train_targets")
 
