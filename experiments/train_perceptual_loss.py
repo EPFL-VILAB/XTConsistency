@@ -98,7 +98,7 @@ if __name__ == "__main__":
         data = np.stack((logger.data["train_perceptual_loss"], logger.data["val_perceptual_loss"]), axis=1)
         logger.plot(data, "perceptual_loss", opts={"legend": ["train_perceptual", "val_perceptual"]})
 
-    logger.add_hook(jointplot1, feature="val_mse", freq=1)
+    logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_perceptual_loss", freq=1)
     logger.add_hook(lambda x: model.save("/result/model.pth"), feature="loss", freq=400)
 
@@ -152,9 +152,9 @@ if __name__ == "__main__":
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
-        if epochs == 200:
-            logger.text ("Adding perceptual loss after convergence")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        # if epochs == 200:
+        #     logger.text ("Adding perceptual loss after convergence")
+        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
