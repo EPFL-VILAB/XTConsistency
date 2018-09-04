@@ -79,14 +79,12 @@ if __name__ == "__main__":
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
-
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target: 5 * F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target) # + perceptual_loss(pred, target)
-
+    mixed_loss = lambda pred, target: mse_loss(pred, target)  # + perceptual_loss(pred, target)
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
@@ -94,11 +92,11 @@ if __name__ == "__main__":
 
     def jointplot1(data):
         data = np.stack((logger.data["train_mse_loss"], logger.data["val_mse_loss"]), axis=1)
-        logger.plot(data, "loss", opts={"legend": ["train_mse", "val_mse"]})
+        logger.plot(data, "mse_loss", opts={"legend": ["train_mse", "val_mse"]})
 
     def jointplot2(data):
         data = np.stack((logger.data["train_perceptual_loss"], logger.data["val_perceptual_loss"]), axis=1)
-        logger.plot(data, "loss", opts={"legend": ["train_perceptual", "val_perceptual"]})
+        logger.plot(data, "perceptual_loss", opts={"legend": ["train_perceptual", "val_perceptual"]})
 
     logger.add_hook(jointplot1, feature="val_mse", freq=1)
     logger.add_hook(jointplot2, feature="val_perceptual_loss", freq=1)
