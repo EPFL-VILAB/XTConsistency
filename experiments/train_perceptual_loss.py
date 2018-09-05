@@ -7,16 +7,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision import datasets, transforms, models
+from torch.optim.lr_scheduler import MultiStepLR
 
 from utils import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
-from torch.optim.lr_scheduler import MultiStepLR
 from .train_normal_curvature import Network as CurvatureNetwork
 
-
 from sklearn.model_selection import train_test_split
+from fire import Fire
 
 import IPython
 
@@ -72,7 +72,7 @@ class Network(TrainableModel):
         return F.mse_loss(pred, target)
 
 
-if __name__ == "__main__":
+def main(perceptual_weight=0.5, covergence_weight=None):
 
     # MODEL
     model = DataParallelModel(Network())
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target: 0.1 * F.mse_loss(loss_model(pred), loss_model(target))
+    perceptual_loss = lambda pred, target: perceptual_weight * F.mse_loss(loss_model(pred), loss_model(target))
     mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss(pred, target)
 
     # LOGGING
@@ -152,9 +152,9 @@ if __name__ == "__main__":
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
-        # if epochs == 200:
-        #     logger.text ("Adding perceptual loss after convergence")
-        #     mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+        if convergence_weight is not None and epochs == 200:
+            logger.text ("Adding perceptual loss after convergence")
+            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
@@ -167,3 +167,7 @@ if __name__ == "__main__":
             logger.images(curvature_targets, "curvature_targets")
 
         scheduler.step()
+
+
+if __name__ == "__main__":
+    Fire(main)
