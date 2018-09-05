@@ -83,7 +83,7 @@ if __name__ == "__main__":
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target: 5 * F.mse_loss(loss_model(pred), loss_model(target))
+    perceptual_loss = lambda pred, target: 0.1 * F.mse_loss(loss_model(pred), loss_model(target))
     mixed_loss = lambda pred, target: mse_loss(pred, target)# + perceptual_loss(pred, target)
 
     # LOGGING
