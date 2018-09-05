@@ -72,7 +72,7 @@ class Network(TrainableModel):
         return F.mse_loss(pred, target)
 
 
-def main(perceptual_weight=0.5, covergence_weight=None):
+def main(perceptual_weight=0, covergence_weight=None):
 
     # MODEL
     model = DataParallelModel(Network())
@@ -83,8 +83,8 @@ def main(perceptual_weight=0.5, covergence_weight=None):
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target: perceptual_weight * F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_loss(pred, target)
+    perceptual_loss = lambda pred, target:  F.mse_loss(loss_model(pred), loss_model(target))
+    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
@@ -154,7 +154,7 @@ def main(perceptual_weight=0.5, covergence_weight=None):
 
         if convergence_weight is not None and epochs == 200:
             logger.text ("Adding perceptual loss after convergence")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + 1*perceptual_loss(pred, target)
+            mixed_loss = lambda pred, target: mse_loss(pred, target) + convergence_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(preds, "predictions")
