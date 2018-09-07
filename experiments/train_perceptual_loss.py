@@ -72,7 +72,7 @@ class Network(TrainableModel):
         return F.mse_loss(pred, target)
 
 
-def main(perceptual_weight=0, covergence_weight=None):
+def main(perceptual_weight=0, convergence_weight=None):
 
     # MODEL
     model = DataParallelModel(Network())
