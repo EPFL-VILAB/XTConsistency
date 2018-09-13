@@ -21,13 +21,13 @@ import IPython
 
 class ConvBlock(nn.Module):
             
-    def __init__(self, f1, f2, transpose=False):
+    def __init__(self, f1, f2, dilation=1, transpose=False):
         super().__init__()
         self.transpose = transpose
         self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
         if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), 
-                stride=2, padding=1, output_padding=1)
+            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), dilation=dilation,
+                stride=2, padding=dilation, output_padding=1)
         self.bn = nn.BatchNorm2d(f1)
         
     def forward(self, x):
@@ -57,9 +57,8 @@ class Network(TrainableModel):
         #                 )
 
         self.decoder = nn.Sequential(ConvBlock(3, 32),
-                            ConvBlock(32, 32), ConvBlock(32, 32),
-                            ConvBlock(32, 32), ConvBlock(32, 32),
-                            ConvBlock(32, 3)
+                            ConvBlock(32, 32), ConvBlock(32, 32, dilation=2),
+                            ConvBlock(32, 3, dilation=4)
                         )
 
     def forward(self, x):
@@ -72,6 +71,17 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
+        mask1 = (target[:, 0, :, :] == 0)
+        print ("Mask1: ", mask1.sum()*1.0/len(mask1))
+        mask2 = (target[:, 1, :, :] == 0)
+        print ("Mask2: ", mask2.sum()*1.0/len(mask2))
+        mask3 = (target[:, 2, :, :] == 0)
+        print ("Mask3: ", mask3.sum()*1.0/len(mask3))
+
+        mask = mask1 and mask2 and mask3
+        print ("Mask: ", mask.sum()*1.0/len(mask))
+        
+
         return F.mse_loss(pred, target)
 
 
@@ -81,7 +91,6 @@ if __name__ == "__main__":
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
-    IPython.embed()
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
