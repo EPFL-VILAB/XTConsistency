@@ -19,6 +19,14 @@ from sklearn.model_selection import train_test_split
 import IPython
 
 
+def build_mask(target):
+    mask1 = (target[:, 0, :, :] != 0)
+    mask2 = (target[:, 1, :, :] != 0)
+    mask3 = (target[:, 2, :, :] != 0)
+    mask = (mask1.float() + mask2.float() + mask3.float()) > 0
+    mask = mask.unsqueeze(1).expand_as(target)
+    return mask
+
 class ConvBlock(nn.Module):
             
     def __init__(self, f1, f2, dilation=1, transpose=False):
@@ -71,16 +79,7 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask1 = (target[:, 0, :, :] != 0)
-        print ("Mask1: ", mask1.float().sum()*1.0/mask1.nelement())
-        mask2 = (target[:, 1, :, :] != 0)
-        print ("Mask2: ", mask2.float().sum()*1.0/mask2.nelement())
-        mask3 = (target[:, 2, :, :] != 0)
-        print ("Mask3: ", mask3.float().sum()*1.0/mask3.nelement())
-
-        mask = (mask1.float() + mask2.float() + mask3.float()) > 0
-        print ("Mask: ", mask.float().sum()*1.0/mask.nelement())
-        mask = mask.unsqueeze(1).expand_as(target)
+        mask = build_mask(target)
         return F.mse_loss(pred[mask], target[mask])
 
 
@@ -139,7 +138,9 @@ if __name__ == "__main__":
 
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
+        test_masks = build_mask(test_images)
         preds, targets, losses, _ = model.predict_with_data(test_set)
         logger.images(test_images, "images")
+        logger.images(test_masks, "masks")
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
