@@ -80,7 +80,7 @@ class Network(TrainableModel):
 
         mask = (mask1.float()*mask2.float()*mask3.float()) != 0
         print ("Mask: ", mask.float().sum()*1.0/mask.nelement())
-
+        mask = mask.unsqueeze(1).expand_as(target)
         return F.mse_loss(pred[mask], target[mask])
 
 
