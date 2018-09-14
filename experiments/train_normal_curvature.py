@@ -78,7 +78,7 @@ class Network(TrainableModel):
         mask3 = (target[:, 2, :, :] == 0)
         print ("Mask3: ", mask3.sum()*1.0/len(mask3))
 
-        mask = mask1 and mask2 and mask3
+        mask = (mask1 + mask2 + mask3) != 0
         print ("Mask: ", mask.sum()*1.0/len(mask))
         
 
