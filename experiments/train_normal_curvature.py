@@ -72,14 +72,14 @@ class Network(TrainableModel):
 
     def loss(self, pred, target):
         mask1 = (target[:, 0, :, :] == 0)
-        print ("Mask1: ", mask1.sum()*1.0/mask1.nelement())
+        print ("Mask1: ", mask1.float().sum()*1.0/mask1.nelement())
         mask2 = (target[:, 1, :, :] == 0)
-        print ("Mask2: ", mask2.sum()*1.0/mask2.nelement())
+        print ("Mask2: ", mask2.float().sum()*1.0/mask2.nelement())
         mask3 = (target[:, 2, :, :] == 0)
-        print ("Mask3: ", mask3.sum()*1.0/mask3.nelement())
+        print ("Mask3: ", mask3.float().sum()*1.0/mask3.nelement())
 
-        mask = (mask1 + mask2 + mask3) != 0
-        print ("Mask: ", mask.sum()*1.0/mask.nelement())
+        mask = (mask1.float() + mask2.float() + mask3.float()) > 0
+        print ("Mask: ", mask.float().sum()*1.0/mask.nelement())
         
 
         return F.mse_loss(pred, target)
