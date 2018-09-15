@@ -19,14 +19,6 @@ from sklearn.model_selection import train_test_split
 import IPython
 
 
-def build_mask(target):
-    mask1 = (target[:, 0, :, :] != 0)
-    mask2 = (target[:, 1, :, :] != 0)
-    mask3 = (target[:, 2, :, :] != 0)
-    mask = (mask1.float() + mask2.float() + mask3.float()) > 0
-    mask = mask.unsqueeze(1).expand_as(target)
-    return mask
-
 class ConvBlock(nn.Module):
             
     def __init__(self, f1, f2, dilation=1, transpose=False):
@@ -51,31 +43,13 @@ class Network(TrainableModel):
 
     def __init__(self):
         super(Network, self).__init__()
-        # self.resnet = models.resnet50()
-        # self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        # self.decoder = nn.Sequential(ConvBlock(8, 128),
-        #                     ConvBlock(128, 128), ConvBlock(128, 128),
-        #                     ConvBlock(128, 128), ConvBlock(128, 128),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 3, transpose=True)
-        #                 )
-
         self.decoder = nn.Sequential(ConvBlock(3, 32),
                             ConvBlock(32, 32), ConvBlock(32, 32, dilation=2),
                             ConvBlock(32, 3, dilation=4)
                         )
 
     def forward(self, x):
-        
-        # for layer in list(self.resnet._modules.values())[:-2]:
-        #     x = layer(x)
-        # x = self.final_conv(x)
         x = self.decoder(x)
-        
         return x
 
     def loss(self, pred, target):
@@ -88,7 +62,7 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
@@ -138,8 +112,9 @@ if __name__ == "__main__":
 
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
-        test_masks = build_mask(test_images)
         preds, targets, losses, _ = model.predict_with_data(test_set)
+        test_masks = build_mask(targets)
+
         logger.images(test_images, "images")
         logger.images(test_masks, "masks")
         logger.images(preds, "predictions")
