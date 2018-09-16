@@ -48,6 +48,9 @@ def cycle(iterable):
             yield i
 
 def build_mask(target):
+	if target.shape[1] == 1:
+		return target != 0
+	
     mask1 = (target[:, 0, :, :] != 0)
     mask2 = (target[:, 1, :, :] != 0)
     mask3 = (target[:, 2, :, :] != 0)
