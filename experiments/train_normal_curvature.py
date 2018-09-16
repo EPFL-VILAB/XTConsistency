@@ -54,7 +54,7 @@ class Network(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(target)
-        print ("Mask: ", mask.float().sum()/mask.nelements())
+        print ("Mask: ", mask.float().sum()/mask.nelement())
         return F.mse_loss(pred[mask], target[mask])
 
 
