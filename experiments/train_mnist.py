@@ -83,10 +83,11 @@ if __name__ == "__main__":
 
         logger.update('epoch', epochs)
 
-        (accuracy,) = model.fit_with_metrics(train_loader, \
+        preds, targets, losses, (accuracy,) = model.fit_with_data(train_loader, \
                 metrics=[accuracy_score], logger=logger)
         # logger.update('train_loss', np.mean(losses))
         logger.update('accuracy', np.mean(accuracy))
+        logger.histogram(targets.view(-1), "histogram", opts=dict(numbins=5))
 
         (accuracy,) = model.predict_with_metrics(val_loader, \
                 metrics=[accuracy_score], logger=logger)

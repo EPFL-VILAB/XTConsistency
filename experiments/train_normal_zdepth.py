@@ -122,10 +122,8 @@ if __name__ == "__main__":
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        print (targets.shape)
-        test_masks = build_mask(targets)
+        logger.histogram(targets.view(-1), "preds_hist", opts=dict(numbins=30))
 
         logger.images(test_images, "images")
-        logger.images(test_masks, "masks")
         logger.images(preds, "predictions")
         logger.images(targets, "targets")

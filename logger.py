@@ -116,6 +116,17 @@ class VisdomLogger(BaseLogger):
         
         self.windows[plot_name] = window
 
+    def histogram(self, data, plot_name, opts={}):
+        window = self.windows.get(plot_name, None)
+        options = {'title': plot_name}
+        options.update(opts)
+        if window is not None:
+            window = self.visdom.histogram(np.array(data), opts=options, win=window)
+        else:
+            window = self.visdom.histogram(np.array(data), opts=options)
+        
+        self.windows[plot_name] = window
+
     def images(self, data, image_name, opts={}, nrow=2, resize=64):
 
         transform = transforms.Compose([
