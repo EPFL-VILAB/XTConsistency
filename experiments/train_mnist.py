@@ -76,9 +76,10 @@ if __name__ == "__main__":
 
     for epochs in range(0, 10):
 
-        # test_set = itertools.islice(val_loader, 1)
-        # test_images = torch.cat([x for x, y in test_set], dim=0)
-        # logger.images(test_images, "predictions")
+        test_set = itertools.islice(val_loader, 1)
+        test_images = torch.cat([x for x, y in test_set], dim=0)
+        test_images = test_images[0:4]
+        logger.images(test_images, "predictions", nrow=2, resize=512)
 
         logger.update('epoch', epochs)
 

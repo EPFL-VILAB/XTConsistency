@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import random, sys, os, json, math
 
 import torch
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, utils
 import visdom
 
 from utils import *
@@ -116,21 +116,23 @@ class VisdomLogger(BaseLogger):
         
         self.windows[plot_name] = window
 
-    def images(self, data, image_name, resize=64):
+    def images(self, data, image_name, opts={}, nrow=2, resize=64):
 
         transform = transforms.Compose([
                                     transforms.ToPILImage(),
                                     transforms.Resize(resize),
                                     transforms.ToTensor()])
         data = torch.stack([transform(x) for x in data.cpu()])
-        data = data.data.cpu().numpy()
+        data = utils.make_grid(data, nrow=nrow)
 
         window = self.windows.get(image_name, None)
+        options = {'title': image_name}
+        options.update(opts)
 
         if window is not None:
-            window = self.visdom.images(np.array(data), opts={'title': image_name}, win=window)
+            window = self.visdom.image(np.array(data), opts=options, win=window)
         else:
-            window = self.visdom.images(np.array(data), opts={'title': image_name})
+            window = self.visdom.image(np.array(data), opts=options)
                 
         self.windows[image_name] = window
 
