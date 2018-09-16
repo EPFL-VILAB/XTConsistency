@@ -114,6 +114,7 @@ if __name__ == "__main__":
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
+        print (targets.shape)
         test_masks = build_mask(targets)
 
         logger.images(test_images, "images")
