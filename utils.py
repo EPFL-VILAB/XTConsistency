@@ -43,17 +43,17 @@ def elapsed(times=[time.time()]):
 
 # Cycles through iterable without making extra copies
 def cycle(iterable):
-    while True:
-        for i in iterable:
-            yield i
+	while True:
+		for i in iterable:
+			yield i
 
 def build_mask(target):
 	if target.shape[1] == 1:
 		return target != 0
 	
-    mask1 = (target[:, 0, :, :] != 0)
-    mask2 = (target[:, 1, :, :] != 0)
-    mask3 = (target[:, 2, :, :] != 0)
-    mask = (mask1.float() + mask2.float() + mask3.float()) > 0
-    mask = mask.unsqueeze(1).expand_as(target)
-    return mask
+	mask1 = (target[:, 0, :, :] != 0)
+	mask2 = (target[:, 1, :, :] != 0)
+	mask3 = (target[:, 2, :, :] != 0)
+	mask = (mask1.float() + mask2.float() + mask3.float()) > 0
+	mask = mask.unsqueeze(1).expand_as(target)
+	return mask
