@@ -124,7 +124,7 @@ def main(perceptual_weight=0, convergence_weight=None):
         num_workers=16,
         shuffle=False,
     )
-    test_set = list(itertools.islice(test_loader, 1))
+    test_set = list(itertools.islice(test_loader, 1))[0:24]
     test_images = torch.cat([x for x, y in test_set], dim=0)
     logger.images(test_images, "images")
 
@@ -157,8 +157,8 @@ def main(perceptual_weight=0, convergence_weight=None):
             mixed_loss = lambda pred, target: mse_loss(pred, target) + convergence_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        logger.images(preds, "predictions")
-        logger.images(targets, "targets")
+        logger.images(preds, "predictions", resize=512)
+        logger.images(targets, "targets", resize=512)
 
         with torch.no_grad():
             curvature_preds = loss_model(preds)
