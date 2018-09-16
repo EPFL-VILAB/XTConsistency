@@ -21,13 +21,13 @@ import IPython
 
 class ConvBlock(nn.Module):
             
-    def __init__(self, f1, f2, transpose=False):
+    def __init__(self, f1, f2, dilation=1, transpose=False):
         super().__init__()
         self.transpose = transpose
         self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
         if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), 
-                stride=2, padding=1, output_padding=1)
+            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), dilation=dilation,
+                stride=2, padding=dilation, output_padding=1)
         self.bn = nn.BatchNorm2d(f1)
         
     def forward(self, x):
@@ -43,36 +43,19 @@ class Network(TrainableModel):
 
     def __init__(self):
         super(Network, self).__init__()
-        # self.resnet = models.resnet50()
-        # self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        # self.decoder = nn.Sequential(ConvBlock(8, 128),
-        #                     ConvBlock(128, 128), ConvBlock(128, 128),
-        #                     ConvBlock(128, 128), ConvBlock(128, 128),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 128, transpose=True),
-        #                     ConvBlock(128, 3, transpose=True)
-        #                 )
-
         self.decoder = nn.Sequential(ConvBlock(3, 32),
-                            ConvBlock(32, 32), ConvBlock(32, 32),
-                            ConvBlock(32, 32), ConvBlock(32, 32),
-                            ConvBlock(32, 1)
+                            ConvBlock(32, 32), ConvBlock(32, 32, dilation=2),
+                            ConvBlock(32, 1, dilation=4)
                         )
 
     def forward(self, x):
-        
-        # for layer in list(self.resnet._modules.values())[:-2]:
-        #     x = layer(x)
-        # x = self.final_conv(x)
         x = self.decoder(x)
-        
         return x
 
     def loss(self, pred, target):
-        return F.mse_loss(pred, target)
+        mask = build_mask(target)
+        # print ("Mask: ", mask.float().sum()/mask.nelement())
+        return 256.0*F.mse_loss(pred[mask], target[mask])
 
 
 
@@ -80,8 +63,9 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
+    # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
@@ -128,16 +112,20 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, 200)
-        losses = model.fit_with_losses(train_set, logger=logger)
+        (losses,) = model.fit_with_metrics(train_set, logger=logger, metrics=[model.loss])
         logger.update('train_loss', np.mean(losses))
 
         val_set = itertools.islice(val_loader, 200)
-        losses = model.predict_with_losses(val_set)
+        (losses,) = model.predict_with_metrics(val_set, logger=logger, metrics=[model.loss])
         logger.update('val_loss', np.mean(losses))
 
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
-        preds, targets, losses = model.predict_with_data(test_set)
+        preds, targets, losses, _ = model.predict_with_data(test_set)
+        print (targets.shape)
+        test_masks = build_mask(targets)
+
         logger.images(test_images, "images")
+        logger.images(test_masks, "masks")
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
