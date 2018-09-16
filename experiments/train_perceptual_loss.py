@@ -80,7 +80,7 @@ def main(perceptual_weight=0, convergence_weight=None):
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     # PERCEPTUAL LOSS
-    loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature.pth")
+    loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature_v2.pth")
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target:  F.mse_loss(loss_model(pred), loss_model(target))
