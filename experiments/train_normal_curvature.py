@@ -133,6 +133,6 @@ if __name__ == "__main__":
         test_masks = mask
 
         logger.images(test_images, "images")
-        logger.images(test_masks.float(), "masks", normalize=True)
+        logger.images(test_masks.float(), "masks", resize=512, normalize=True, nrow=1)
         logger.images(preds, "predictions")
         logger.images(targets, "targets")
