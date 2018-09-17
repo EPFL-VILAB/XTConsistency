@@ -53,7 +53,8 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0)
+        mask = build_mask(target, val=0.0, tol=1e-3)
+        print ("Mask: ", mask.float().mean())
         return F.mse_loss(pred[mask], target[mask])
 
 
@@ -98,7 +99,7 @@ if __name__ == "__main__":
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
 
     # TRAINING
-    for epochs in range(0, 2):
+    for epochs in range(0, 200):
         
         logger.update('epoch', epochs)
         
@@ -113,24 +114,7 @@ if __name__ == "__main__":
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        test_masks = build_mask(targets, val=0.0, tol=1e-1)
-        
-        print (targets.min())
-        print (targets.max())
-        print (targets.shape)
-        print (targets[:, 0, :, :].min(), targets[:, 0, :, :].max())
-        print (targets[:, 1, :, :].min(), targets[:, 1, :, :].max())
-        print (targets[:, 2, :, :].min(), targets[:, 2, :, :].max())
-        val, tol = 0.0, 1e-1
-        mask1 = (targets[:, 0, :, :] >= val - tol) & (targets[:, 0, :, :] <= val + tol)
-        mask2 = (targets[:, 1, :, :] >= val - tol) & (targets[:, 1, :, :] <= val + tol)
-        mask3 = (targets[:, 2, :, :] >= val - tol) & (targets[:, 2, :, :] <= val + tol)
-        print (mask1.float().mean())
-        print (mask2.float().mean())
-        print (mask3.float().mean())
-        mask = ~(mask1 & mask2 & mask3).unsqueeze(1).expand_as(targets)
-        print (mask.float().mean())
-        test_masks = mask
+        test_masks = build_mask(targets, val=0.0, tol=1e-3)
 
         logger.images(test_images, "images")
         logger.images(test_masks.float(), "masks")
