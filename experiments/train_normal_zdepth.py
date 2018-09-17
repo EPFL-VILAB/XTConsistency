@@ -53,8 +53,8 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0)
-        return 256.0*F.mse_loss(pred[mask], target[mask])
+        mask = build_mask(x, val=8000.0, tol=1e-2)
+        return F.mse_loss(pred[mask]/8000.0, target[mask]/8000.0)
 
 
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=1e-3, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
@@ -85,8 +85,11 @@ if __name__ == "__main__":
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
-    to_tensor = transforms.ToTensor()
-    dest_transforms = lambda x: torch.log(to_tensor(x).float() + 1e-5)
+    def dest_transforms(x):
+        x = transforms.ToTensor()(x).float()
+        mask = build_mask(x, 65535.0, tol=1000)
+        x[~mask] = 8000.0
+        return x
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
@@ -121,8 +124,7 @@ if __name__ == "__main__":
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        logger.histogram(targets.view(-1), "preds_hist", opts=dict(numbins=30))
 
-        logger.images(test_images, "images")
-        logger.images(preds, "predictions")
-        logger.images(targets, "targets")
+        logger.images(test_images, "images", resize=128)
+        logger.images(preds, "predictions", resize=128)
+        logger.images(targets, "targets", resize=128)

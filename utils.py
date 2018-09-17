@@ -49,7 +49,7 @@ def cycle(iterable):
 
 def build_mask(target, val=0.0, tol=1e-3):
 	if target.shape[1] == 1:
-		return (target >= val - tol) & (target <= val + tol)
+		return ~((target >= val - tol) & (target <= val + tol))
 	
 	mask1 = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
 	mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
