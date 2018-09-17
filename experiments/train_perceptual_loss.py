@@ -158,8 +158,8 @@ def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
             mixed_loss = lambda pred, target: mse_loss(pred, target) + convergence_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        test_masks = build_mask(targets, val=0.5, tol=1e-2)
-        logger.images(test_masks, "masks", resize=128)
+        test_masks = build_mask(targets, val=0.502)
+        logger.images(test_masks.float(), "masks", resize=128)
         logger.images(preds, "predictions", nrow=1, resize=512)
         logger.images(targets, "targets", nrow=1, resize=512)
 
