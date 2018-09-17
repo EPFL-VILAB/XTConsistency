@@ -85,11 +85,14 @@ if __name__ == "__main__":
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
     train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
 
+    to_tensor = transforms.ToTensor()
     def dest_transforms(x):
-        x = transforms.ToTensor()(x).float()
+        x = to_tensor(x).float()
         mask = build_mask(x, 65535.0, tol=1000)
         x[~mask] = 8000.0
         return x
+
+    dest_transforms = lambda x: to_tensor(x).float()/(256.0)
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
