@@ -47,13 +47,12 @@ def cycle(iterable):
 		for i in iterable:
 			yield i
 
-def build_mask(target, val=0.0, tol=1e-2):
+def build_mask(target, val=0.0, tol=1e-3):
 	if target.shape[1] == 1:
-		return target != val
+		return (target >= val - tol) & (target <= val + tol)
 	
-	mask1 = (target[:, 0, :, :] >= val - tol2)
-	mask2 = (target[:, 1, :, :] != val)
-	mask3 = (target[:, 2, :, :] != val)
-	mask = (mask1.float() + mask2.float() + mask3.float()) > 0
-	mask = mask.unsqueeze(1).expand_as(target)
+	mask1 = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
+	mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
+	mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
+	mask = ~(mask1 & mask2 & mask3).unsqueeze(1).expand_as(target)
 	return mask

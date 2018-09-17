@@ -53,8 +53,7 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target)
-        # print ("Mask: ", mask.float().sum()/mask.nelement())
+        mask = build_mask(target, val=0.0)
         return F.mse_loss(pred[mask], target[mask])
 
 
@@ -114,8 +113,7 @@ if __name__ == "__main__":
         test_set = list(itertools.islice(val_loader, 1))
         test_images = torch.cat([x for x, y in test_set], dim=0)
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        print (targets.shape)
-        test_masks = build_mask(targets)
+        test_masks = build_mask(targets, val=0.0, tol=1e-2)
 
         logger.images(test_images, "images")
         logger.images(test_masks, "masks")
