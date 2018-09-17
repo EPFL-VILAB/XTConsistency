@@ -135,7 +135,7 @@ class VisdomLogger(BaseLogger):
                                     transforms.ToTensor()])
         data = torch.stack([transform(x) for x in data.cpu()])
         print (data.min(), data.max())
-        data = utils.make_grid(data, nrow=nrow, normalize=normalize, pad_value=1)
+        data = utils.make_grid(data, nrow=nrow, normalize=normalize, pad_value=0)
 
         window = self.windows.get(image_name, None)
         options = {'title': image_name}
