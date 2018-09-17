@@ -54,7 +54,6 @@ class Network(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(target, val=0.0, tol=1e-3)
-        print ("Mask: ", mask.float().mean())
         return F.mse_loss(pred[mask], target[mask])
 
 
