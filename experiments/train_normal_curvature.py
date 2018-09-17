@@ -128,7 +128,7 @@ if __name__ == "__main__":
         print (mask1.float().mean())
         print (mask2.float().mean())
         print (mask3.float().mean())
-        mask = ~(mask1 & mask2 & mask3).unsqueeze(1).expand_as(target)
+        mask = ~(mask1 & mask2 & mask3).unsqueeze(1).expand_as(targets)
         print (mask.float().mean())
         test_masks = mask
 
