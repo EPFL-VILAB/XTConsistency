@@ -108,7 +108,7 @@ class TrainableModel(AbstractModel):
         for batch, y in datagen:
             y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, metrics=metrics, train=train)
             if logger is not None: logger.update('loss', loss)
-            yield ((y_pred.data, y.data, loss, metric_data))
+            yield ((y_pred.detach(), y.detach(), loss, metric_data))
 
     def fit(self, datagen, loss_fn=None, metrics=[], logger=None):
         for x in self._process_data(datagen, loss_fn=loss_fn, metrics=metrics, train=train, logger=logger):

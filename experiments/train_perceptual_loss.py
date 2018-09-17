@@ -69,7 +69,8 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        return F.mse_loss(pred, target)
+        mask = build_mask(pred, val=0.502)
+        return F.mse_loss(pred[mask], target[mask])
 
 
 def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
@@ -126,7 +127,7 @@ def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
     )
     test_set = list(itertools.islice(test_loader, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
-    logger.images(test_images, "images")
+    logger.images(test_images, "images", resize=128)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))
@@ -157,14 +158,16 @@ def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
             mixed_loss = lambda pred, target: mse_loss(pred, target) + convergence_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
+        test_masks = build_mask(targets, val=0.5, tol=1e-2)
+        logger.images(test_masks, "masks", resize=128)
         logger.images(preds, "predictions", nrow=1, resize=512)
         logger.images(targets, "targets", nrow=1, resize=512)
 
         with torch.no_grad():
             curvature_preds = loss_model(preds)
             curvature_targets = loss_model(targets)
-            logger.images(curvature_preds, "curvature_predictions")
-            logger.images(curvature_targets, "curvature_targets")
+            logger.images(curvature_preds, "curvature_predictions", resize=128)
+            logger.images(curvature_targets, "curvature_targets", resize=128)
 
         scheduler.step()
 
