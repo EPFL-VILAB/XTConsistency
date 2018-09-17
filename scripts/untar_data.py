@@ -1,8 +1,6 @@
 
 import subprocess, glob, os
 from multiprocessing import Pool
-from utils import *
-from logger import VisdomLogger
 from fire import Fire
 
 def process_file(file, result_loc="result"):
@@ -26,11 +24,9 @@ def main(filename="data/alllinks.txt",
 	links = [(link, link.split('/')) for link in links]
 	links = [file for (file, (*rest, task, archive)) in links if task in tasks]
 
-	logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
-
 	with Pool() as pool:
 		for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):
-			logger.text (f"Downloaded {result_dir}: {i}/{len(links)} files")
+			print (f"Downloaded {result_dir}: {i}/{len(links)} files")
 
 if __name__ == "__main__":
 	Fire(main)

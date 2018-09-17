@@ -72,7 +72,7 @@ class Network(TrainableModel):
         return F.mse_loss(pred, target)
 
 
-def main(perceptual_weight=0, convergence_weight=None):
+def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
 
     # MODEL
     model = DataParallelModel(Network())
@@ -84,7 +84,7 @@ def main(perceptual_weight=0, convergence_weight=None):
 
     mse_loss = lambda pred, target: F.mse_loss(pred, target)
     perceptual_loss = lambda pred, target:  F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
+    mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)

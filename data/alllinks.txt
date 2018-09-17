@@ -9305,7 +9305,6 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/elmira_segment_unsu
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/elton_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/emmaus_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/espanola_segment_unsup2d.tar
-
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/eudora_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/euharlee_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/everton_segment_unsup2d.tar
@@ -9317,8 +9316,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/fitchburg_segment_u
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/fleming_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/fonda_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/forkland_segment_unsup2d.tar
-http://storage.googleapis.com/task
-onomy_data/segment_unsup2d/foyil_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/foyil_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/frankfort_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/fredericksburg_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/freedom_segment_unsup2d.tar
@@ -9329,8 +9327,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/galatia_segment_uns
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gasburg_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gastonia_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gaylord_segment_unsup2d.tar
-http://storage.googleapis.com/taskonomy_data/segment_unsup2d/germa
-n_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/german_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/germfask_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gilbert_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gladstone_segment_unsup2d.tar
@@ -9342,8 +9339,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gluck_segment_unsup
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gluek_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/goffs_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/goodfield_segment_unsup2d.tar
-http://storage.googleapi
-s.com/taskonomy_data/segment_unsup2d/goodview_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/goodview_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/goodwine_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/goodyear_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gough_segment_unsup2d.tar
@@ -9354,8 +9350,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/grantsville_segment
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/grassy_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gratz_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/gravelly_segment_unsup2d.tar
-http://storage.googleapis.com/taskonomy_data/segment_unsup2d/
-greigsville_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/greigsville_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/grigston_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/haaswood_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hacienda_segment_unsup2d.tar
@@ -9366,8 +9361,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hambleton_segment_u
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hammon_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hanson_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/harrellsville_segment_unsup2d.tar
-http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hartline_segment_unsup2
-d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hartline_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hatfield_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/haxtun_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/haymarket_segment_unsup2d.tar
@@ -9379,8 +9373,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/herricks_segment_un
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/highspire_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hildebran_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hillsdale_segment_unsup2d.tar
-http://storage.googleapis.com/ta
-skonomy_data/segment_unsup2d/hitchland_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hitchland_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hiteman_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hobson_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/holcut_segment_unsup2d.tar
@@ -9391,8 +9384,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hornsby_segment_uns
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hortense_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/howie_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/hurley_segment_unsup2d.tar
-http://storage.googleapis.com/taskonomy_data/segment_unsup2d/idanha_segment_u
-nsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/idanha_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/ihlen_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/imbery_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/inkom_segment_unsup2d.tar
@@ -9415,8 +9407,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kildare_segment_uns
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kinde_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kingdom_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kingfisher_segment_unsup2d.tar
-http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kinney_segment_unsup2
-d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kinney_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kirksville_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/kirwin_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/klickitat_segment_unsup2d.tar
@@ -9679,8 +9670,7 @@ http://storage.googleapis.com/taskonomy_data/segment_unsup2d/wilbraham_segment_u
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/wilkesboro_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/wilkinsburg_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/willow_segment_unsup2d.tar
-http://storage.goog
-leapis.com/taskonomy_data/segment_unsup2d/wilseyville_segment_unsup2d.tar
+http://storage.googleapis.com/taskonomy_data/segment_unsup2d/wilseyville_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/windhorst_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/winfield_segment_unsup2d.tar
 http://storage.googleapis.com/taskonomy_data/segment_unsup2d/winooski_segment_unsup2d.tar
