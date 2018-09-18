@@ -46,32 +46,36 @@ class Network(TrainableModel):
         self.resnet = models.resnet50()
         self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
 
-        self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 1, transpose=True),
-        )
+        # self.decoder = nn.Sequential(
+        #     ConvBlock(8, 128),
+        #     ConvBlock(128, 128),
+        #     ConvBlock(128, 128),
+        #     ConvBlock(128, 128),
+        #     ConvBlock(128, 128),
+        #     ConvBlock(128, 128, transpose=True),
+        #     ConvBlock(128, 128, transpose=True),
+        #     ConvBlock(128, 128, transpose=True),
+        #     ConvBlock(128, 128, transpose=True),
+        #     ConvBlock(128, 1, transpose=True),
+        # )
 
-        # self.decoder = nn.Sequential(ConvBlock(3, 32),
-        #                     ConvBlock(32, 32), ConvBlock(32, 32, dilation=2),
-        #                     ConvBlock(32, 1, dilation=4)
-        #                 )
+        self.decoder = nn.Sequential(
+                            ConvBlock(3, 32),
+                            ConvBlock(32, 32), 
+                            ConvBlock(32, 32, dilation=2),
+                            ConvBlock(32, 32, dilation=2),
+                            ConvBlock(32, 32, dilation=4),
+                            ConvBlock(32, 1, dilation=4).
+                        )
 
     def forward(self, x):
 
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
-        x = self.decoder(x)
-
+        # for layer in list(self.resnet._modules.values())[:-2]:
+        #     x = layer(x)
+        # x = self.final_conv(x)
         # x = self.decoder(x)
+
+        x = self.decoder(x)
         return x
 
     def loss(self, pred, target):
@@ -85,7 +89,7 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-3, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=8e-3, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
