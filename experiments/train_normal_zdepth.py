@@ -53,7 +53,7 @@ class Network(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=8000.0, tol=100)
+        mask = build_mask(target, val=1.0)
         print ("Mask: ", mask.float().mean())
         return F.mse_loss(pred[mask], target[mask])
 
@@ -92,10 +92,9 @@ if __name__ == "__main__":
         mask = build_mask(x, 65535.0, tol=1000)
         print ("transforms mask: ", mask.float().mean())
         x[~mask] = 8000.0
-
+        x = x/8000.0
+        print ("aftermask: ", build_mask(x, val=1.0).float().mean())
         return x
-
-    dest_transforms = lambda x: to_tensor(x).float()/(256.0)
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
@@ -138,5 +137,5 @@ if __name__ == "__main__":
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         
-        logger.images(preds, "predictions", normalize=True, resize=128)
-        logger.images(targets, "targets", normalize=True, resize=128)
+        logger.images(preds, "predictions", resize=128)
+        logger.images(targets, "targets", resize=128)
