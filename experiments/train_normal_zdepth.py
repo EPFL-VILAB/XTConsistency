@@ -63,8 +63,6 @@ class Network(TrainableModel):
                             ConvBlock(3, 32),
                             ConvBlock(32, 32), 
                             ConvBlock(32, 32, dilation=2),
-                            ConvBlock(32, 32, dilation=2),
-                            ConvBlock(32, 32, dilation=4),
                             ConvBlock(32, 1, dilation=4)
                         )
 
