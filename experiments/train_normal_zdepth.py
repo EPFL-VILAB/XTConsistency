@@ -116,7 +116,7 @@ if __name__ == "__main__":
     test_set = list(itertools.islice(val_loader, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
     test_targets = torch.cat([y for x, y in test_set], dim=0)
-    test_masks = build_mask(test_targets, val=8000.0, tol=100)
+    test_masks = build_mask(test_targets, val=1.0)
 
     print ("Test masks: ", test_masks.float().mean())
     logger.images(test_images, "images", resize=128)
