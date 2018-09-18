@@ -88,13 +88,13 @@ if __name__ == "__main__":
 
     to_tensor = transforms.ToTensor()
     def dest_transforms(x):
-        x = to_tensor(x).float()
+        x = to_tensor(x).float().unsqueeze(0)
         mask = build_mask(x, 65535.0, tol=1000)
         print ("transforms mask: ", mask.float().mean())
         x[~mask] = 8000.0
         x = x/8000.0
         print ("aftermask: ", build_mask(x, val=1.0).float().mean())
-        return x
+        return x[0]
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
