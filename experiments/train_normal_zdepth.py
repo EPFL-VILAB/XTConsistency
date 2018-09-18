@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=8e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
     # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     logger.images(test_masks.float(), "masks", resize=128)
 
     # TRAINING
-    for epochs in range(0, 100):
+    for epochs in range(0, 800):
         
         logger.update('epoch', epochs)
         
