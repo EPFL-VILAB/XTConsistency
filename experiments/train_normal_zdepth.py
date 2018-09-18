@@ -56,7 +56,7 @@ class Network(TrainableModel):
             ConvBlock(128, 128, transpose=True),
             ConvBlock(128, 128, transpose=True),
             ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 3, transpose=True),
+            ConvBlock(128, 1, transpose=True),
         )
 
         # self.decoder = nn.Sequential(ConvBlock(3, 32),
@@ -65,7 +65,7 @@ class Network(TrainableModel):
         #                 )
 
     def forward(self, x):
-        
+
         for layer in list(self.resnet._modules.values())[:-2]:
             x = layer(x)
         x = self.final_conv(x)
