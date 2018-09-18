@@ -90,6 +90,7 @@ if __name__ == "__main__":
     def dest_transforms(x):
         x = to_tensor(x).float()
         mask = build_mask(x, 65535.0, tol=1000)
+        print ("transforms mask: ", mask.float().mean())
         x[~mask] = 8000.0
 
         return x
