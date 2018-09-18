@@ -114,6 +114,15 @@ if __name__ == "__main__":
 
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
 
+    test_set = list(itertools.islice(val_loader, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+    test_targets = torch.cat([y for x, y in test_set], dim=0)
+    test_masks = build_mask(test_targets, val=8000.0, tol=100)
+
+    print ("Test masks: ", mask.float().mean())
+    logger.images(test_images, "images", resize=128)
+    logger.images(test_masks.float(), "masks", resize=128)
+
     # TRAINING
     for epochs in range(0, 100):
         
@@ -127,13 +136,10 @@ if __name__ == "__main__":
         (losses,) = model.predict_with_metrics(val_set, logger=logger, metrics=[model.loss])
         logger.update('val_loss', np.mean(losses))
 
-        test_set = list(itertools.islice(val_loader, 1))
-        test_images = torch.cat([x for x, y in test_set], dim=0)
+        
+        
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        test_masks = build_mask(targets, val=8000.0, tol=100)
-        print ("Test masks: ", mask.float().mean())
-
-        logger.images(test_images, "images", resize=128)
-        logger.images(test_masks.float(), "masks", resize=128)
+        
+        
         logger.images(preds, "predictions", normalize=True, resize=128)
         logger.images(targets, "targets", normalize=True, resize=128)
