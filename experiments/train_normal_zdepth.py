@@ -119,7 +119,7 @@ if __name__ == "__main__":
     test_targets = torch.cat([y for x, y in test_set], dim=0)
     test_masks = build_mask(test_targets, val=8000.0, tol=100)
 
-    print ("Test masks: ", mask.float().mean())
+    print ("Test masks: ", test_masks.float().mean())
     logger.images(test_images, "images", resize=128)
     logger.images(test_masks.float(), "masks", resize=128)
 
@@ -136,10 +136,7 @@ if __name__ == "__main__":
         (losses,) = model.predict_with_metrics(val_set, logger=logger, metrics=[model.loss])
         logger.update('val_loss', np.mean(losses))
 
-        
-        
         preds, targets, losses, _ = model.predict_with_data(test_set)
-        
         
         logger.images(preds, "predictions", normalize=True, resize=128)
         logger.images(targets, "targets", normalize=True, resize=128)
