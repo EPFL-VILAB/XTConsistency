@@ -77,7 +77,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     # PERCEPTUAL LOSS

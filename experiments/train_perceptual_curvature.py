@@ -155,7 +155,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
         if weight_step is not None:
             perceptual_weight += weight_step
-            logger.text ("Increasing perceptual loss weight: {perceptual_weight}")
+            logger.text (f"Increasing perceptual loss weight: {perceptual_weight}")
             mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
