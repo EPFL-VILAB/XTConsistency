@@ -73,11 +73,11 @@ class Network(TrainableModel):
         return F.mse_loss(pred[mask], target[mask])
 
 
-def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
+def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
     # MODEL
     model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
+    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     # PERCEPTUAL LOSS
@@ -153,9 +153,10 @@ def main(perceptual_weight=0, convergence_weight=None, mse_weight=1):
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
-        if convergence_weight is not None and epochs == 200:
-            logger.text ("Adding perceptual loss after convergence")
-            mixed_loss = lambda pred, target: mse_loss(pred, target) + convergence_weight*perceptual_loss(pred, target)
+        if weight_step is not None:
+            perceptual_weight += weight_step
+            logger.text ("Increasing perceptual loss weight: {perceptual_weight}")
+            mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         test_masks = build_mask(targets, val=0.502)
