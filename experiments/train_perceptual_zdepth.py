@@ -140,18 +140,18 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, 200)
-        (mse_data, perceptual_data) = model.fit_with_metrics(
-            train_set, loss_fn=mixed_loss, metrics=[mse_loss, perceptual_loss], logger=logger
+        (mse_data,) = model.fit_with_metrics(
+            train_set, loss_fn=mixed_loss, metrics=[mse_loss], logger=logger
         )
         logger.update("train_mse_loss", np.mean(mse_data))
-        logger.update("train_perceptual_loss", np.mean(perceptual_data))
+        # logger.update("train_perceptual_loss", np.mean(perceptual_data))
 
         val_set = itertools.islice(val_loader, 200)
-        (mse_data, perceptual_data) = model.fit_with_metrics(
-            val_set, loss_fn=mixed_loss, metrics=[mse_loss, perceptual_loss], logger=logger
+        (mse_data,) = model.fit_with_metrics(
+            val_set, loss_fn=mixed_loss, metrics=[mse_loss], logger=logger
         )
         logger.update("val_mse_loss", np.mean(mse_data))
-        logger.update("val_perceptual_loss", np.mean(perceptual_data))
+        # logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
         if weight_step is not None:
             perceptual_weight += weight_step
