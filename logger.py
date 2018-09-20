@@ -109,7 +109,7 @@ class VisdomLogger(BaseLogger):
         window = self.windows.get(plot_name, None)
         options = {'title': plot_name}
         options.update(opts)
-        if window is not None:
+        if window is not None and self.visdom.win_exists(window):
             window = self.visdom.line(np.array(data), opts=options, win=window)
         else:
             window = self.visdom.line(np.array(data), opts=options)
@@ -120,7 +120,7 @@ class VisdomLogger(BaseLogger):
         window = self.windows.get(plot_name, None)
         options = {'title': plot_name}
         options.update(opts)
-        if window is not None:
+        if window is not None and self.visdom.win_exists(window):
             window = self.visdom.histogram(np.array(data), opts=options, win=window)
         else:
             window = self.visdom.histogram(np.array(data), opts=options)
@@ -141,7 +141,7 @@ class VisdomLogger(BaseLogger):
         options = {'title': image_name}
         options.update(opts)
 
-        if window is not None:
+        if window is not None and self.visdom.win_exists(window):
             window = self.visdom.image(np.array(data), opts=options, win=window)
         else:
             window = self.visdom.image(np.array(data), opts=options)
