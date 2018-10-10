@@ -70,7 +70,8 @@ class Network(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(pred, val=0.502)
-        return F.mse_loss(pred[mask], target[mask])
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)
 
 
 def main(perceptual_weight=0, mse_weight=1, weight_step=None):
@@ -84,9 +85,9 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature_v2.pth")
 
     def mixed_loss(pred, target):
-        mask = build_mask(target, val=0.502)
-        mse = F.mse_loss(pred[mask], target[mask])
-        percep = F.mse_loss(loss_model(pred)[mask], loss_model(target)[mask])
+        mask = build_mask(target.detach(), val=0.502)
+        mse = F.mse_loss(pred*mask.float(), target*mask.float())
+        percep = F.mse_loss(loss_model(pred)*mask.float(), loss_model(target)*mask.float())
         return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
     # LOGGING

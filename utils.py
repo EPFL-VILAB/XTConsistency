@@ -57,3 +57,50 @@ def build_mask(target, val=0.0, tol=1e-3):
 	mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
 	mask = ~(mask1 & mask2 & mask3).unsqueeze(1).expand_as(target)
 	return mask
+
+
+def load_data(csv_file, source_task, dest_task, batch_size=32):
+
+    building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
+    test_buildings = ["almena", "mifflintown"]
+    train_buildings = [building for building, train, test, val in building_tags \
+                            if train == "1" and building not in test_buildings]
+    val_buildings = [building for building, train, test, val in building_tags if val == "1"]
+    
+
+    train_loader = torch.utils.data.DataLoader(
+        ImageTaskDataset(buildings=train_buildings, source_task=source_task, dest_task=dest_task),
+        batch_size=batch_size,
+        num_workers=16,
+        shuffle=True,
+    )
+    val_loader = torch.utils.data.DataLoader(
+        ImageTaskDataset(buildings=val_buildings, source_task=source_task, dest_task=dest_task),
+        batch_size=batch_size,
+        num_workers=16,
+        shuffle=True,
+    )
+    test_loader1 = torch.utils.data.DataLoader(
+        ImageTaskDataset(buildings=["almena"], source_task=source_task, dest_task=dest_task),
+        batch_size=6,
+        num_workers=12,
+        shuffle=False,
+    )
+    test_loader2 = torch.utils.data.DataLoader(
+        ImageTaskDataset(buildings=["mifflintown"], source_task=source_task, dest_task=dest_task),
+        batch_size=6,
+        num_workers=6,
+        shuffle=False,
+    )
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir="data/ood_images"),
+        batch_size=10,
+        num_workers=10,
+        shuffle=False,
+    )
+    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+    ood_images = list(itertools.islice(ood_loader, 1))
+
+    return train_loader, val_loader, test_set, test_images, ood_images
