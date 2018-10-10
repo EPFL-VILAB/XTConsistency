@@ -78,14 +78,16 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     # MODEL
     model = DataParallelModel(Network())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-    scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
+    scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
     # PERCEPTUAL LOSS
     loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature_v2.pth")
 
-    mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target:  F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
+    def mixed_loss(pred, target):
+        mask = build_mask(target, val=0.502)
+        mse = F.mse_loss(pred[mask], target[mask])
+        percep = F.mse_loss(loss_model(pred)[mask], loss_model(target)[mask])
+        return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
@@ -141,14 +143,14 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
         train_set = itertools.islice(train_loader, 200)
         (mse_data, perceptual_data) = model.fit_with_metrics(
-            train_set, loss_fn=mixed_loss, metrics=[mse_loss, perceptual_loss], logger=logger
+            train_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("train_mse_loss", np.mean(mse_data))
         logger.update("train_perceptual_loss", np.mean(perceptual_data))
 
         val_set = itertools.islice(val_loader, 200)
-        (mse_data, perceptual_data) = model.fit_with_metrics(
-            val_set, loss_fn=mixed_loss, metrics=[mse_loss, perceptual_loss], logger=logger
+        (mse_data, perceptual_data) = model.predict_with_metrics(
+            val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_perceptual_loss", np.mean(perceptual_data))
@@ -156,7 +158,12 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
         if weight_step is not None:
             perceptual_weight += weight_step
             logger.text (f"Increasing perceptual loss weight: {perceptual_weight}")
-            mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
+            
+            def mixed_loss(pred, target):
+                mask = build_mask(target, val=0.502)
+                mse = F.mse_loss(pred[mask], target[mask])
+                percep = F.mse_loss(loss_model(pred)[mask], loss_model(target)[mask])
+                return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
         preds, targets, losses, _ = model.predict_with_data(test_set)
         test_masks = build_mask(targets, val=0.502)

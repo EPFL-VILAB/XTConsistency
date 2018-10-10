@@ -11,3 +11,4 @@ jobinfo.txt
 *.gz
 .DS_Store/*
 result
+checkpoints

@@ -4,7 +4,8 @@ import numpy as np
 import random, sys, os, time, glob, math
 import random
 
-JOB = open('jobinfo.txt').read().strip()
+EXPERIMENT, RESUME_JOB = open("scripts/jobinfo.txt").read().strip().split(', ')
+JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 try:
 	import torch
