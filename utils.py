@@ -60,12 +60,11 @@ def build_mask(target, val=0.0, tol=1e-3):
 
 
 def load_data(csv_file, source_task, dest_task, batch_size=32):
-
-    building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
+    building_tags = np.genfromtxt(open(csv_file), delimiter=",", dtype=str, skip_header=True)
+    
     test_buildings = ["almena", "mifflintown"]
-    train_buildings = [building for building, train, test, val in building_tags \
-                            if train == "1" and building not in test_buildings]
-    val_buildings = [building for building, train, test, val in building_tags if val == "1"]
+    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
     
 
     train_loader = torch.utils.data.DataLoader(
@@ -104,3 +103,32 @@ def load_data(csv_file, source_task, dest_task, batch_size=32):
     ood_images = list(itertools.islice(ood_loader, 1))
 
     return train_loader, val_loader, test_set, test_images, ood_images
+
+
+def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_model=None):
+
+    preds, targets, losses, _ = model.predict_with_data(test_set)
+    test_masks = build_mask(targets, mask_val, tol=1e-6)
+    logger.images(test_masks.float(), "masks", resize=128)
+    print ("limits R: ", preds[:, 0].min().cpu().data.numpy().mean(), preds[:, 0].mean().cpu().data.numpy().mean(), preds[:, 0].max().cpu().data.numpy().mean())
+    print ("limits G: ", preds[:, 1].min().cpu().data.numpy().mean(), preds[:, 1].mean().cpu().data.numpy().mean(), preds[:, 1].max().cpu().data.numpy().mean())
+    print ("limits B: ", preds[:, 2].min().cpu().data.numpy().mean(), preds[:, 2].mean().cpu().data.numpy().mean(), preds[:, 2].max().cpu().data.numpy().mean())
+
+    print ("targets R: ", targets[:, 0].min().cpu().data.numpy().mean(), targets[:, 0].mean().cpu().data.numpy().mean(), targets[:, 0].max().cpu().data.numpy().mean())
+    print ("targets G: ", targets[:, 1].min().cpu().data.numpy().mean(), targets[:, 1].mean().cpu().data.numpy().mean(), targets[:, 1].max().cpu().data.numpy().mean())
+    print ("targets B: ", targets[:, 2].min().cpu().data.numpy().mean(), targets[:, 2].mean().cpu().data.numpy().mean(), targets[:, 2].max().cpu().data.numpy().mean())
+
+    logger.images(preds.clamp(min=0, max=1), "predictions", nrow=1, resize=512)
+    logger.images(targets, "targets", nrow=1, resize=512)
+
+    if ood_images is not None:
+        ood_preds = model.predict(ood_images)
+        logger.images(ood_preds, "ood_predictions", nrow=1, resize=512)
+
+    if loss_model is not None:
+        with torch.no_grad():
+            curvature_preds = loss_model(preds)
+            curvature_targets = loss_model(targets)
+            logger.images(curvature_preds, "loss_predictions", resize=128)
+            logger.images(curvature_targets, "loss_targets", resize=128)
+

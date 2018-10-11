@@ -21,58 +21,6 @@ from fire import Fire
 import IPython
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), stride=2, padding=1, output_padding=1)
-        # self.bn = nn.BatchNorm2d(f1)
-        self.bn = nn.GroupNorm(8, f1)
-
-    def forward(self, x):
-        # x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            x = F.relu(self.convt(x))
-        x = F.relu(self.conv(x))
-        return x
-
-
-class Network(TrainableModel):
-    def __init__(self):
-        super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 3, transpose=True),
-        )
-
-    def forward(self, x):
-
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
-        x = self.decoder(x)
-
-        return x
-
-    def loss(self, pred, target):
-        mask = build_mask(pred, val=0.502)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
-
 
 def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
@@ -107,35 +55,11 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     logger.add_hook(lambda x: model.save("/result/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
-
-    train_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=train_buildings, source_task="rgb", dest_task="normal"),
-        batch_size=48,
-        num_workers=16,
-        shuffle=True,
-    )
-    val_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=test_buildings, source_task="rgb", dest_task="normal"),
-        batch_size=48,
-        num_workers=16,
-        shuffle=True,
-    )
-    test_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_task="rgb", dest_task="normal"),
-        batch_size=12,
-        num_workers=12,
-        shuffle=False,
-    )
-    test_set = list(itertools.islice(test_loader, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
+    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=32)
     logger.images(test_images, "images", resize=128)
-
-    logger.text("Train files count: " + str(len(train_loader.dataset)))
-    logger.text("Val files count: " + str(len(val_loader.dataset)))
-
-    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    print (len(ood_images))
+    logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
+    plot_images(model, logger, test_set, ood_images, mask_val=0.502, loss_model=loss_model)
 
     # TRAINING
     for epochs in range(0, 800):
@@ -166,17 +90,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
                 percep = F.mse_loss(loss_model(pred)[mask], loss_model(target)[mask])
                 return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
-        preds, targets, losses, _ = model.predict_with_data(test_set)
-        test_masks = build_mask(targets, val=0.502)
-        logger.images(test_masks.float(), "masks", resize=128)
-        logger.images(preds, "predictions", nrow=1, resize=512)
-        logger.images(targets, "targets", nrow=1, resize=512)
-
-        with torch.no_grad():
-            curvature_preds = loss_model(preds)
-            curvature_targets = loss_model(targets)
-            logger.images(curvature_preds, "curvature_predictions", resize=128)
-            logger.images(curvature_targets, "curvature_targets", resize=128)
+        plot_images(model, logger, test_set, ood_images, mask_val=0.502, loss_model=loss_model)
 
         scheduler.step()
 
