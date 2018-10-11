@@ -12,3 +12,4 @@ jobinfo.txt
 .DS_Store/*
 result
 checkpoints
+*.pyc
