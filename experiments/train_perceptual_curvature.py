@@ -15,69 +15,17 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from .train_normal_curvature import Network as CurvatureNetwork
 
+from modules.resnet import ResNet
+
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
 import IPython
 
-
-class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), stride=2, padding=1, output_padding=1)
-        # self.bn = nn.BatchNorm2d(f1)
-        self.bn = nn.GroupNorm(8, f1)
-
-    def forward(self, x):
-        # x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            x = F.relu(self.convt(x))
-        x = F.relu(self.conv(x))
-        return x
-
-
-class Network(TrainableModel):
-    def __init__(self):
-        super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 3, transpose=True),
-        )
-
-    def forward(self, x):
-
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
-        x = self.decoder(x)
-
-        return x
-
-    def loss(self, pred, target):
-        mask = build_mask(pred, val=0.502)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
-
-
 def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
     # MODEL
-    model = DataParallelModel(Network())
+    model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
