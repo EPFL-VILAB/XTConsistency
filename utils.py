@@ -1,8 +1,10 @@
 #utils.py
 
 import numpy as np
-import random, sys, os, time, glob, math
-import random
+import random, sys, os, time, glob, math, itertools
+
+from sklearn.model_selection import train_test_split
+
 
 EXPERIMENT, RESUME_JOB = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
@@ -59,14 +61,14 @@ def build_mask(target, val=0.0, tol=1e-3):
 	return mask
 
 
-def load_data(csv_file, source_task, dest_task, batch_size=32):
-    building_tags = np.genfromtxt(open(csv_file), delimiter=",", dtype=str, skip_header=True)
+def load_data(source_task, dest_task, batch_size=32):
+    from datasets import ImageTaskDataset, ImageDataset
+
     
     test_buildings = ["almena", "mifflintown"]
     buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
     
-
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,

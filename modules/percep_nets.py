@@ -109,3 +109,36 @@ class BaseNet(TrainableModel):
         return mse, (mse.detach(),)
 
 
+class ResidualsNet(TrainableModel):
+    def __init__(self):
+        super().__init__()
+
+        self.encoder = nn.Sequential(
+            ConvBlock(3, 32, use_groupnorm=False), 
+            ConvBlock(32, 32, use_groupnorm=False),
+        )
+        self.mid = nn.Sequential(
+            ConvBlock(32, 64, use_groupnorm=False), 
+            ConvBlock(64, 64, use_groupnorm=False),
+            ConvBlock(64, 32, use_groupnorm=False),
+        )
+        self.decoder = nn.Sequential(
+            ConvBlock(64, 32, use_groupnorm=False), 
+            ConvBlock(32, 3, use_groupnorm=False),
+        )
+
+    def forward(self, x):
+        tmp = self.encoder(x)
+        x = F.max_pool2d(tmp, 2)
+        x = self.mid(x)
+        x = F.upsample(x, scale_factor=2, mode='bilinear')
+        x = torch.cat([x, tmp], dim=1)
+        x = self.decoder(x)
+        return x
+
+    def loss(self, pred, target):
+        mask = build_mask(target, val=0.0, tol=1e-6)
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)
+
+
