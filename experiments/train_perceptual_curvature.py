@@ -13,7 +13,6 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
-from .train_normal_curvature import Network as CurvatureNetwork
 
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, DeepNet, BaseNet

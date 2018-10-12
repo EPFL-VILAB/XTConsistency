@@ -15,7 +15,6 @@ from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
 from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet
-from sklearn.model_selection import train_test_split
 
 import IPython
 

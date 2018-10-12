@@ -14,81 +14,54 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
+from modules.percep_nets import ConvBlock
 from sklearn.model_selection import train_test_split
 
 import IPython
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), stride=2, padding=1, output_padding=1)
-        # self.bn = nn.BatchNorm2d(f1)
-        self.bn = nn.GroupNorm(8, f1)
 
-    def forward(self, x):
-        # x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            x = F.relu(self.convt(x))
-        x = F.relu(self.conv(x))
-        return x
-
-
-class Network(TrainableModel):
-
+class ResidualsNet(TrainableModel):
     def __init__(self):
-        super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
+        super().__init__()
 
+        self.encoder = nn.Sequential(
+            ConvBlock(3, 32, use_groupnorm=False), 
+            ConvBlock(32, 32, use_groupnorm=False),
+        )
+        self.mid = nn.Sequential(
+            ConvBlock(32, 64, dilation=1, use_groupnorm=False), 
+            ConvBlock(64, 64, dilation=2, use_groupnorm=False),
+            ConvBlock(64, 64, dilation=2, use_groupnorm=False),
+            ConvBlock(64, 32, dilation=4, use_groupnorm=False),
+        )
         self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 1, transpose=True),
+            ConvBlock(64, 32, use_groupnorm=False), 
+            ConvBlock(32, 1, use_groupnorm=False),
         )
 
-        # self.decoder = nn.Sequential(
-        #                     ConvBlock(3, 32),
-        #                     ConvBlock(32, 32), 
-        #                     ConvBlock(32, 32, dilation=2),
-        #                     ConvBlock(32, 1, dilation=4)
-        #                 )
-
     def forward(self, x):
-
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
+        tmp = self.encoder(x)
+        x = F.max_pool2d(tmp, 2)
+        x = self.mid(x)
+        x = F.upsample(x, scale_factor=2, mode='bilinear')
+        x = torch.cat([x, tmp], dim=1)
         x = self.decoder(x)
-
-        # x = self.decoder(x)
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=1.0)
-        print ("Mask: ", mask.float().mean())
-        return F.mse_loss(pred[mask], target[mask])
+        mask = build_mask(target, val=0.0, tol=1e-6)
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)
 
 
 
 if __name__ == "__main__":
 
     # MODEL
-    model = DataParallelModel(Network())
+    model = DataParallelModel(ResidualsNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-    # scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.85)
-    # print (model.forward(torch.randn(1, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
     # LOGGING
     logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
@@ -135,15 +108,9 @@ if __name__ == "__main__":
     logger.text("Val files count: " + str(len(val_loader.dataset)))
 
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
-
     test_set = list(itertools.islice(val_loader, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-    test_targets = torch.cat([y for x, y in test_set], dim=0)
-    test_masks = build_mask(test_targets, val=1.0)
-
-    print ("Test masks: ", test_masks.float().mean())
-    logger.images(test_images, "images", resize=128)
-    logger.images(test_masks.float(), "masks", resize=128)
+    
+    plot_images(model, logger, test_set, mask_val=1.0)
 
     # TRAINING
     for epochs in range(0, 800):
@@ -158,7 +125,4 @@ if __name__ == "__main__":
         (losses,) = model.predict_with_metrics(val_set, logger=logger, metrics=[model.loss])
         logger.update('val_loss', np.mean(losses))
 
-        preds, targets, losses, _ = model.predict_with_data(test_set)
-        
-        logger.images(preds, "predictions", resize=128)
-        logger.images(targets, "targets", resize=128)
+        plot_images(model, logger, test_set, mask_val=1.0)
