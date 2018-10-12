@@ -16,6 +16,7 @@ from datasets import ImageTaskDataset
 from .train_normal_curvature import Network as CurvatureNetwork
 
 from modules.resnet import ResNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet
 
 from sklearn.model_selection import train_test_split
 from fire import Fire
@@ -30,8 +31,9 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    # PERCEPTUAL LOSS
-    loss_model = DataParallelModel.load(CurvatureNetwork().cuda(), "/models/normal2curvature_v2.pth")
+    loss_model = DataParallelModel.load(DenseNet().cuda(), "/models/normal2curvature_dense.pth")
+    # loss_model = DataParallelModel.load(DeepNet().cuda(), "/models/normal2curvature_deep.pth")
+    # loss_model = DataParallelModel.load(BaseNet().cuda(), "/models/normal2curvature_base.pth")
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)

@@ -129,6 +129,6 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
         with torch.no_grad():
             curvature_preds = loss_model(preds)
             curvature_targets = loss_model(targets)
-            logger.images(curvature_preds, "loss_predictions", resize=128)
-            logger.images(curvature_targets, "loss_targets", resize=128)
+            logger.images(curvature_preds.clamp(min=0, max=1), "loss_predictions", resize=128)
+            logger.images(curvature_targets.clamp(min=0, max=1), "loss_targets", resize=128)
 
