@@ -112,13 +112,6 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-6)
     logger.images(test_masks.float(), "masks", resize=128)
-    print ("limits R: ", preds[:, 0].min().cpu().data.numpy().mean(), preds[:, 0].mean().cpu().data.numpy().mean(), preds[:, 0].max().cpu().data.numpy().mean())
-    print ("limits G: ", preds[:, 1].min().cpu().data.numpy().mean(), preds[:, 1].mean().cpu().data.numpy().mean(), preds[:, 1].max().cpu().data.numpy().mean())
-    print ("limits B: ", preds[:, 2].min().cpu().data.numpy().mean(), preds[:, 2].mean().cpu().data.numpy().mean(), preds[:, 2].max().cpu().data.numpy().mean())
-
-    print ("targets R: ", targets[:, 0].min().cpu().data.numpy().mean(), targets[:, 0].mean().cpu().data.numpy().mean(), targets[:, 0].max().cpu().data.numpy().mean())
-    print ("targets G: ", targets[:, 1].min().cpu().data.numpy().mean(), targets[:, 1].mean().cpu().data.numpy().mean(), targets[:, 1].max().cpu().data.numpy().mean())
-    print ("targets B: ", targets[:, 2].min().cpu().data.numpy().mean(), targets[:, 2].mean().cpu().data.numpy().mean(), targets[:, 2].max().cpu().data.numpy().mean())
 
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=1, resize=512)
     logger.images(targets, "targets", nrow=1, resize=512)

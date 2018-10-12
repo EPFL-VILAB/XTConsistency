@@ -28,16 +28,22 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     # MODEL
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+    
+    print (model.forward(torch.randn(1, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(8, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(16, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(32, 3, 512, 512)).shape)
+    
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    loss_model = DataParallelModel.load(DenseNet().cuda(), "/models/normal2curvature_dense.pth")
+    # loss_model = DataParallelModel.load(DenseNet().cuda(), "/models/normal2curvature_dense.pth")
     # loss_model = DataParallelModel.load(DeepNet().cuda(), "/models/normal2curvature_deep.pth")
-    # loss_model = DataParallelModel.load(BaseNet().cuda(), "/models/normal2curvature_base.pth")
+    loss_model = DataParallelModel.load(BaseNet().cuda(), "/models/normal2curvature_base.pth")
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
-        percep = F.mse_loss(loss_model(pred)*mask.float(), loss_model(target)*mask.float())
+        percep = torch.tensor(0.0).to(mse.device) if perceptual_weight == 0 else F.mse_loss(loss_model(pred)*mask.float(), loss_model(target)*mask.float())
         return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
     # LOGGING

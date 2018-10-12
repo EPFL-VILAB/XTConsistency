@@ -2,6 +2,7 @@
 import random, sys, os, glob, yaml, time
 import argparse, subprocess, shutil
 from fire import Fire
+import IPython
 
 
 def sync(config='sync'):
@@ -21,7 +22,7 @@ def update(cmd):
 def upload(exp_id, resume=0):
     os.system("echo " + exp_id + ", " + str(resume) + " > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude", 
-        "checkpoints", "--exclude", ".gi""t""", "--exclude", "data/snapshots", "--exclude", "data/results"]);
+        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results"]);
     data = subprocess.check_output(["ngc", "dataset", "upload", "-y", exp_id, "-s", "checkpoints/" + exp_id + "/"]).decode()
     i = data.index("Dataset: ")
     return int(data[(i+9):(i+14)])

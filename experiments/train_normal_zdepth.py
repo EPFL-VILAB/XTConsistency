@@ -36,15 +36,16 @@ class ResidualsNet(TrainableModel):
             ConvBlock(64, 32, dilation=4, use_groupnorm=False),
         )
         self.decoder = nn.Sequential(
-            ConvBlock(64, 32, use_groupnorm=False), 
+            ConvBlock(64, 32, use_groupnorm=False),
+            ConvBlock(32, 32, use_groupnorm=False),
             ConvBlock(32, 1, use_groupnorm=False),
         )
 
     def forward(self, x):
         tmp = self.encoder(x)
-        x = F.max_pool2d(tmp, 2)
+        x = F.max_pool2d(tmp, 4)
         x = self.mid(x)
-        x = F.upsample(x, scale_factor=2, mode='bilinear')
+        x = F.upsample(x, scale_factor=4, mode='bilinear')
         x = torch.cat([x, tmp], dim=1)
         x = self.decoder(x)
         return x
@@ -118,11 +119,11 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, 200)
-        (losses,) = model.fit_with_metrics(train_set, logger=logger, metrics=[model.loss])
+        (losses,) = model.fit_with_metrics(train_set, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
         val_set = itertools.islice(val_loader, 200)
-        (losses,) = model.predict_with_metrics(val_set, logger=logger, metrics=[model.loss])
+        (losses,) = model.predict_with_metrics(val_set, logger=logger)
         logger.update('val_loss', np.mean(losses))
 
         plot_images(model, logger, test_set, mask_val=1.0)

@@ -86,6 +86,7 @@ class VisdomLogger(BaseLogger):
         self.port = kwargs.pop('port', 7000)
         self.server = kwargs.pop('server', '35.230.67.129')
         self.env = kwargs.pop('env', 'main')
+        print ("In (git) scaling-reset")
         print (f"Logging to environment {self.env}")
         self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
         self.visdom.delete_env(self.env)
