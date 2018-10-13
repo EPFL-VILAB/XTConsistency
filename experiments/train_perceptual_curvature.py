@@ -16,7 +16,7 @@ from datasets import ImageTaskDataset
 
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, DeepNet, BaseNet
-
+from modules.unet import UNet
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
@@ -32,6 +32,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
     print (model.forward(torch.randn(8, 3, 512, 512)).shape)
     print (model.forward(torch.randn(16, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(24, 3, 512, 512)).shape)
     print (model.forward(torch.randn(32, 3, 512, 512)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)

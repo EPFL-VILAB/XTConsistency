@@ -112,7 +112,7 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-6)
     logger.images(test_masks.float(), "masks", resize=128)
-
+    print ("Ranges: ", preds.min().cpu().data.mean(), preds.mean().cpu().data.mean(), preds.max().cpu().data.mean())
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=1, resize=512)
     logger.images(targets, "targets", nrow=1, resize=512)
 

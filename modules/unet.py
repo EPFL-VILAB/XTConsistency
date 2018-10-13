@@ -115,4 +115,5 @@ class UNet(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(pred, val=0.502)
-        return F.mse_loss(pred[mask], target[mask])
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)

@@ -2,8 +2,6 @@
 import random, sys, os, glob, yaml, time
 import argparse, subprocess, shutil
 from fire import Fire
-import IPython
-
 
 def sync(config='sync'):
     subprocess.run("git add -A".split())
