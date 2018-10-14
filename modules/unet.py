@@ -110,7 +110,7 @@ class UNet(TrainableModel):
         x = self.up_block5(self.x2, x)
         x = self.up_block6(self.x1, x)
         x = self.relu(self.last_bn(self.last_conv1(x)))
-        x = self.last_conv2(x)
+        x = self.relu(self.last_conv2(x))
         return x
 
     def loss(self, pred, target):
