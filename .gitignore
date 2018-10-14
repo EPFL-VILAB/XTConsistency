@@ -13,3 +13,4 @@ jobinfo.txt
 result
 checkpoints
 *.pyc
+data/results

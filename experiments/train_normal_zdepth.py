@@ -14,46 +14,10 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
-from modules.percep_nets import ConvBlock
+from modules.depth_nets import UNetDepth, ResNetDepth, ResidualsNet
 from sklearn.model_selection import train_test_split
 
 import IPython
-
-
-
-class ResidualsNet(TrainableModel):
-    def __init__(self):
-        super().__init__()
-
-        self.encoder = nn.Sequential(
-            ConvBlock(3, 32, use_groupnorm=False), 
-            ConvBlock(32, 32, use_groupnorm=False),
-        )
-        self.mid = nn.Sequential(
-            ConvBlock(32, 64, dilation=1, use_groupnorm=False), 
-            ConvBlock(64, 64, dilation=2, use_groupnorm=False),
-            ConvBlock(64, 64, dilation=2, use_groupnorm=False),
-            ConvBlock(64, 32, dilation=4, use_groupnorm=False),
-        )
-        self.decoder = nn.Sequential(
-            ConvBlock(64, 32, use_groupnorm=False),
-            ConvBlock(32, 32, use_groupnorm=False),
-            ConvBlock(32, 1, use_groupnorm=False),
-        )
-
-    def forward(self, x):
-        tmp = self.encoder(x)
-        x = F.max_pool2d(tmp, 4)
-        x = self.mid(x)
-        x = F.upsample(x, scale_factor=4, mode='bilinear')
-        x = torch.cat([x, tmp], dim=1)
-        x = self.decoder(x)
-        return x
-
-    def loss(self, pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-6)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
 
 
 
@@ -61,6 +25,9 @@ if __name__ == "__main__":
 
     # MODEL
     model = DataParallelModel(ResidualsNet())
+    # model = DataParallelModel(ResNetDepth())
+    # model = DataParallelModel(UNetDepth())
+
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
@@ -97,13 +64,13 @@ if __name__ == "__main__":
                             ImageTaskDataset(buildings=train_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
                                 dest_transforms=dest_transforms),
-                        batch_size=80, num_workers=16, shuffle=True)
+                        batch_size=48, num_workers=16, shuffle=True)
 
     val_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=test_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
                                 dest_transforms=dest_transforms),
-                        batch_size=80, num_workers=16, shuffle=True)
+                        batch_size=48, num_workers=16, shuffle=True)
 
     logger.text("Train files count: " + str(len(train_loader.dataset)))
     logger.text("Val files count: " + str(len(val_loader.dataset)))

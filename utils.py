@@ -107,7 +107,7 @@ def load_data(source_task, dest_task, batch_size=32):
     return train_loader, val_loader, test_set, test_images, ood_images
 
 
-def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_model=None):
+def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}):
 
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-6)
@@ -120,10 +120,10 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
         ood_preds = model.predict(ood_images)
         logger.images(ood_preds, "ood_predictions", nrow=1, resize=512)
 
-    if loss_model is not None:
+    for name, loss_model in loss_models.items():
         with torch.no_grad():
             curvature_preds = loss_model(preds)
             curvature_targets = loss_model(targets)
-            logger.images(curvature_preds.clamp(min=0, max=1), "loss_predictions", resize=128)
-            logger.images(curvature_targets.clamp(min=0, max=1), "loss_targets", resize=128)
+            logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions", resize=128)
+            logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize=128)
 

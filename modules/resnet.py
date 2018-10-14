@@ -137,10 +137,10 @@ class ResNet(TrainableModel):
         super().__init__()
         # self.resnet = models.resnet50()
         self.resnet = ResNetOriginal(Bottleneck, [3, 4, 6, 3])
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
+        self.final_conv = nn.Conv2d(2048, 128, (3, 3), padding=1)
 
         self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
+            ConvBlock(128, 128),
             ConvBlock(128, 128),
             ConvBlock(128, 128),
             ConvBlock(128, 128),
