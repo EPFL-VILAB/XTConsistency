@@ -54,7 +54,7 @@ class AbstractModel(nn.Module):
 
         loss_fn = loss_fn or self.loss
 
-        self.train()
+        self.train(train)
         self.zero_grad()
         self.optimizer.zero_grad()
 

@@ -13,79 +13,39 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
-from .train_normal_zdepth import Network as DepthNetwork
 
+from modules.resnet import ResNet
+from modules.depth_nets import UNetDepth
+from modules.unet import UNet
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
 import IPython
 
 
-class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), stride=2, padding=1, output_padding=1)
-        # self.bn = nn.BatchNorm2d(f1)
-        self.bn = nn.GroupNorm(8, f1)
-
-    def forward(self, x):
-        # x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            x = F.relu(self.convt(x))
-        x = F.relu(self.conv(x))
-        return x
-
-
-class Network(TrainableModel):
-    def __init__(self):
-        super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        self.decoder = nn.Sequential(
-            ConvBlock(8, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 3, transpose=True),
-        )
-
-    def forward(self, x):
-
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
-        x = self.decoder(x)
-
-        return x
-
-    def loss(self, pred, target):
-        mask = build_mask(pred, val=0.502)
-        return F.mse_loss(pred[mask], target[mask])
-
-
 def main(perceptual_weight=0, mse_weight=1, weight_step=None):
 
     # MODEL
-    model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
-    scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
+    model = DataParallelModel(ResNet())
+    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+    
+    print (model.forward(torch.randn(1, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(8, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(16, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(24, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(32, 3, 512, 512)).shape)
+    
+    scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    # PERCEPTUAL LOSS
-    loss_model = DataParallelModel.load(DepthNetwork().cuda(), "/models/normal2zdepth.pth")
+    # loss_model = DataParallelModel.load(DenseNet().cuda(), "/models/normal2curvature_dense.pth")
+    # loss_model = DataParallelModel.load(DeepNet().cuda(), "/models/normal2curvature_deep.pth")
+    loss_model = DataParallelModel.load(UNetDepth().cuda(), "/models/normal2zdepth_unet.pth")
 
-    mse_loss = lambda pred, target: F.mse_loss(pred, target)
-    perceptual_loss = lambda pred, target:  F.mse_loss(loss_model(pred), loss_model(target))
-    mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
+    def mixed_loss(pred, target):
+        mask = build_mask(target.detach(), val=0.502)
+        mse = F.mse_loss(pred*mask.float(), target*mask.float())
+        percep = torch.tensor(0.0).to(mse.device) if perceptual_weight == 0 else F.mse_loss(loss_model(pred)*mask.float(), loss_model(target)*mask.float())
+        return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
     # LOGGING
     logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
@@ -104,35 +64,11 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     logger.add_hook(lambda x: model.save("/result/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
-
-    train_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=train_buildings, source_task="rgb", dest_task="normal"),
-        batch_size=32,
-        num_workers=16,
-        shuffle=True,
-    )
-    val_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=test_buildings, source_task="rgb", dest_task="normal"),
-        batch_size=32,
-        num_workers=16,
-        shuffle=True,
-    )
-    test_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_task="rgb", dest_task="normal"),
-        batch_size=12,
-        num_workers=12,
-        shuffle=False,
-    )
-    test_set = list(itertools.islice(test_loader, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
+    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=16)
     logger.images(test_images, "images", resize=128)
-
-    logger.text("Train files count: " + str(len(train_loader.dataset)))
-    logger.text("Val files count: " + str(len(val_loader.dataset)))
-
-    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    print (len(ood_images))
+    logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
+    plot_images(model, logger, test_set, ood_images, mask_val=0.502, loss_model=loss_model)
 
     # TRAINING
     for epochs in range(0, 800):
@@ -140,35 +76,30 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, 200)
-        (mse_data,) = model.fit_with_metrics(
-            train_set, loss_fn=mixed_loss, metrics=[mse_loss], logger=logger
+        (mse_data, perceptual_data) = model.fit_with_metrics(
+            train_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("train_mse_loss", np.mean(mse_data))
-        # logger.update("train_perceptual_loss", np.mean(perceptual_data))
+        logger.update("train_perceptual_loss", np.mean(perceptual_data))
 
         val_set = itertools.islice(val_loader, 200)
-        (mse_data,) = model.fit_with_metrics(
-            val_set, loss_fn=mixed_loss, metrics=[mse_loss], logger=logger
+        (mse_data, perceptual_data) = model.predict_with_metrics(
+            val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_mse_loss", np.mean(mse_data))
-        # logger.update("val_perceptual_loss", np.mean(perceptual_data))
+        logger.update("val_perceptual_loss", np.mean(perceptual_data))
 
         if weight_step is not None:
             perceptual_weight += weight_step
-            logger.text ("Increasing perceptual loss weight: {perceptual_weight}")
-            mixed_loss = lambda pred, target: mse_weight*mse_loss(pred, target) + perceptual_weight*perceptual_loss(pred, target)
+            logger.text (f"Increasing perceptual loss weight: {perceptual_weight}")
+            
+            def mixed_loss(pred, target):
+                mask = build_mask(target.detach(), val=0.502)
+                mse = F.mse_loss(pred*mask.float(), target*mask.float())
+                percep = torch.tensor(0.0).to(mse.device) if perceptual_weight == 0 else F.mse_loss(loss_model(pred)*mask.float(), loss_model(target)*mask.float())
+                return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
-        preds, targets, losses, _ = model.predict_with_data(test_set)
-        test_masks = build_mask(targets, val=0.502)
-        logger.images(test_masks.float(), "masks", resize=128)
-        logger.images(preds, "predictions", nrow=1, resize=512)
-        logger.images(targets, "targets", nrow=1, resize=512)
-
-        with torch.no_grad():
-            depth_preds = loss_model(preds)
-            depth_targets = loss_model(targets)
-            logger.images(depth_preds, "depth_predictions", resize=128)
-            logger.images(depth_targets, "depth_targets", resize=128)
+        plot_images(model, logger, test_set, ood_images, mask_val=0.502, loss_model=loss_model)
 
         scheduler.step()
 
