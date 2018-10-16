@@ -4,7 +4,6 @@ import numpy as np
 import random, sys, os, time, glob, math, itertools
 
 from sklearn.model_selection import train_test_split
-from torchvision import transforms
 
 
 EXPERIMENT, RESUME_JOB = open("scripts/jobinfo.txt").read().strip().split(', ')
@@ -64,49 +63,41 @@ def build_mask(target, val=0.0, tol=1e-3):
 
 def load_data(source_task, dest_task, batch_size=32, resize=256):
     from datasets import ImageTaskDataset, ImageDataset
+    from torchvision import transforms
 
+    test_buildings = ["almena", "mifflintown"]
+    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
+
+    # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
     
     # test_buildings = ["almena", "mifflintown"]
-    # buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    # train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-
-    building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
-    
-    test_buildings = ["almena", "mifflintown"]
-    train_buildings = [building for building, train, test, val in building_tags \
-                            if train == "1" and building not in test_buildings]
-    val_buildings = [building for building, train, test, val in building_tags if val == "1"]
-    transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
+    # train_buildings = [building for building, train, test, val in building_tags \
+    #                         if train == "1" and building not in test_buildings]
+    # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
+    transform = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
     
     train_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=train_buildings, source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        source_transforms=transforms,
-        dest_transforms=transforms,
         num_workers=16,
         shuffle=True,
     )
     val_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=val_buildings, source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=val_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        source_transforms=transforms,
-        dest_transforms=transforms,
         num_workers=16,
         shuffle=True,
     )
     test_loader1 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=["almena"], source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=6,
-        source_transforms=transforms,
-        dest_transforms=transforms,
         num_workers=12,
         shuffle=False,
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["mifflintown"], source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=["mifflintown"], source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=6,
-        source_transforms=transforms,
-        dest_transforms=transforms,
         num_workers=6,
         shuffle=False,
     )
