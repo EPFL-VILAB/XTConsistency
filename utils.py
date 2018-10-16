@@ -4,6 +4,7 @@ import numpy as np
 import random, sys, os, time, glob, math, itertools
 
 from sklearn.model_selection import train_test_split
+from torchvision import transforms
 
 
 EXPERIMENT, RESUME_JOB = open("scripts/jobinfo.txt").read().strip().split(', ')
@@ -61,35 +62,51 @@ def build_mask(target, val=0.0, tol=1e-3):
 	return mask
 
 
-def load_data(source_task, dest_task, batch_size=32):
+def load_data(source_task, dest_task, batch_size=32, resize=256):
     from datasets import ImageTaskDataset, ImageDataset
 
     
+    # test_buildings = ["almena", "mifflintown"]
+    # buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
+    # train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
+
+    building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
+    
     test_buildings = ["almena", "mifflintown"]
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
+    train_buildings = [building for building, train, test, val in building_tags \
+                            if train == "1" and building not in test_buildings]
+    val_buildings = [building for building, train, test, val in building_tags if val == "1"]
+    transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
     
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
+        source_transforms=transforms,
+        dest_transforms=transforms,
         num_workers=16,
         shuffle=True,
     )
     val_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=val_buildings, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
+        source_transforms=transforms,
+        dest_transforms=transforms,
         num_workers=16,
         shuffle=True,
     )
     test_loader1 = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=["almena"], source_task=source_task, dest_task=dest_task),
         batch_size=6,
+        source_transforms=transforms,
+        dest_transforms=transforms,
         num_workers=12,
         shuffle=False,
     )
     test_loader2 = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=["mifflintown"], source_task=source_task, dest_task=dest_task),
         batch_size=6,
+        source_transforms=transforms,
+        dest_transforms=transforms,
         num_workers=6,
         shuffle=False,
     )
@@ -110,15 +127,15 @@ def load_data(source_task, dest_task, batch_size=32):
 def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}):
 
     preds, targets, losses, _ = model.predict_with_data(test_set)
-    test_masks = build_mask(targets, mask_val, tol=1e-6)
-    logger.images(test_masks.float(), "masks", resize=128)
+    test_masks = build_mask(targets, mask_val, tol=1e-3)
+    logger.images(test_masks.float(), "masks", resize=64)
     print ("Ranges: ", preds.min().cpu().data.mean(), preds.mean().cpu().data.mean(), preds.max().cpu().data.mean())
-    logger.images(preds.clamp(min=0, max=1), "predictions", nrow=1, resize=512)
-    logger.images(targets, "targets", nrow=1, resize=512)
+    logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
+    logger.images(targets, "targets", nrow=2, resize=256)
 
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
-        logger.images(ood_preds, "ood_predictions", nrow=1, resize=512)
+        logger.images(ood_preds, "ood_predictions", nrow=2, resize=256)
 
     for name, loss_model in loss_models.items():
         with torch.no_grad():

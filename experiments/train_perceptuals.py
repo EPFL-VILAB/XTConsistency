@@ -32,6 +32,12 @@ def main(curvature_step=0, depth_step=0):
     # MODEL
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+
+    print (model.forward(torch.randn(1, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(24, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(32, 3, 256, 256)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 

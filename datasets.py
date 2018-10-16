@@ -40,6 +40,7 @@ class ImageTaskDataset(Dataset):
             sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
         ]
         self.source_files = [y for x in self.source_files for y in x]
+        print ("Source files len: ", len(self.source_files))
 
     def __len__(self):
         return len(self.source_files)
@@ -71,7 +72,7 @@ class ImageDataset(Dataset):
     def __init__(
         self,
         data_dir="/data/ood_images",
-        resize=(512, 512),
+        resize=(256, 256),
     ):
 
         self.transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
