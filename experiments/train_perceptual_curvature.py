@@ -33,7 +33,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     print (model.forward(torch.randn(8, 3, 512, 512)).shape)
     print (model.forward(torch.randn(16, 3, 512, 512)).shape)
     print (model.forward(torch.randn(24, 3, 512, 512)).shape)
-    print (model.forward(torch.randn(32, 3, 512, 512)).shape)
+    # print (model.forward(torch.randn(32, 3, 512, 512)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
@@ -64,7 +64,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
     logger.add_hook(lambda x: model.save("/result/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=32)
+    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=24)
     logger.images(test_images, "images", resize=128)
     print (len(ood_images))
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
