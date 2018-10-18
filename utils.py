@@ -6,8 +6,13 @@ import random, sys, os, time, glob, math, itertools
 from sklearn.model_selection import train_test_split
 
 
-EXPERIMENT, RESUME_JOB = open("scripts/jobinfo.txt").read().strip().split(', ')
+EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
+
+MODELS_DIR = f"{BASE_DIR}/models"
+DATA_DIR = f"{BASE_DIR}/data"
+RESULTS_DIR = f"{BASE_DIR}/results"
+
 
 try:
 	import torch
@@ -66,7 +71,8 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
     from torchvision import transforms
 
     test_buildings = ["almena", "mifflintown"]
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
+    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
+    print (buildings)
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
 
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
@@ -120,7 +126,6 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     logger.images(test_masks.float(), "masks", resize=64)
-    print ("Ranges: ", preds.min().cpu().data.mean(), preds.mean().cpu().data.mean(), preds.max().cpu().data.mean())
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
     logger.images(targets, "targets", nrow=2, resize=256)
 

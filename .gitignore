@@ -1,6 +1,6 @@
 raw
 __pycache__/*
-sftp-config.json
+sftp-config*.json
 models
 processed
 *.pth

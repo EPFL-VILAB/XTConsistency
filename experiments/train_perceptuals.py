@@ -33,16 +33,17 @@ def main(curvature_step=0, depth_step=0):
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
-    print (model.forward(torch.randn(1, 3, 256, 256)).shape)
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
     print (model.forward(torch.randn(16, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(24, 3, 256, 256)).shape)
     print (model.forward(torch.randn(32, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(64, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(128, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(256, 3, 256, 256)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    curvature_model = DataParallelModel.load(DenseNet().cuda(), "/models/normal2curvature_dense.pth")
-    depth_model = DataParallelModel.load(UNetDepth().cuda(), "/models/normal2zdepth_unet.pth")
+    curvature_model = DataParallelModel.load(DenseNet().cuda(), f"{MODELS_DIR}/normal2curvature_dense.pth")
+    depth_model = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
@@ -70,10 +71,10 @@ def main(curvature_step=0, depth_step=0):
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
     logger.add_hook(jointplot3, feature="val_depth_loss", freq=1)
-    logger.add_hook(lambda x: model.save("/result/model.pth"), feature="loss", freq=400)
+    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=8)
+    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=128)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502, 

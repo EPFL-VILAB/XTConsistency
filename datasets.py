@@ -27,18 +27,20 @@ class ImageTaskDataset(Dataset):
     def __init__(
         self,
         buildings,
-        data_dir="/data",
+        data_dir=DATA_DIR,
         source_task="rgb",
         dest_task="normal",
         source_transforms=transforms.ToTensor(),
         dest_transforms=transforms.ToTensor(),
     ):
-
+        self.data_dir = data_dir
         self.source_task, self.dest_task, self.buildings = (source_task, dest_task, buildings)
         self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
         self.source_files = [
             sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
         ]
+        for building in buildings:
+            print (glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
         self.source_files = [y for x in self.source_files for y in x]
         print ("Source files len: ", len(self.source_files))
 
@@ -48,9 +50,8 @@ class ImageTaskDataset(Dataset):
     def __getitem__(self, idx):
 
         source_file = self.source_files[idx]
-
-        result = parse.parse("{data_dir}/{building}_{task}/{task}/{view}_domain_{task}.png", source_file)
-        data_dir, building, task, view = (result["data_dir"], result["building"], result["task"], result["view"])
+        result = parse.parse(self.data_dir + "/{building}_{task}/{task}/{view}_domain_{task2}.png", source_file)
+        data_dir, building, task, view = (self.data_dir, result["building"], result["task"], result["view"])
         dest_file = f"{data_dir}/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
 
         try:
@@ -71,7 +72,7 @@ class ImageDataset(Dataset):
 
     def __init__(
         self,
-        data_dir="/data/ood_images",
+        data_dir=f"{DATA_DIR}/ood_images",
         resize=(256, 256),
     ):
 
@@ -102,12 +103,15 @@ if __name__ == "__main__":
     ood_images = torch.cat(list(itertools.islice(ood_loader, 1)), dim=0)
     logger.images(ood_images, "ood_images", resize=128)
 
-    # dataset = ImageTaskDataset(
-    #     buildings=["ackermanville", "adairsville", "adrian", "airport", "akiak"], data_dir="result"
-    # )
-    # data_loader = torch.utils.data.DataLoader(dataset, num_workers=32, batch_size=32, shuffle=True)
-    # logger = Logger("data")
-    # logger.add_hook(lambda data: logger.step(), freq=16)
+    transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
+    data_loader = torch.utils.data.DataLoader(
+        ImageTaskDataset(buildings=["mifflintown"], source_transforms=transform, dest_transforms=transform, source_task="rgb", dest_task="normal"),
+        batch_size=6,
+        num_workers=6,
+        shuffle=False,
+    )
+    logger.add_hook(lambda data: logger.step(), freq=16)
 
-    # for i, (X, Y) in enumerate(data_loader):
-    #     logger.update("epoch", i)
+    for i, (X, Y) in enumerate(data_loader):
+        logger.update("epoch", i)
+        
