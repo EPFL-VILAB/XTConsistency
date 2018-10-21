@@ -7,125 +7,72 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision import datasets, transforms, models
+from torch.optim.lr_scheduler import MultiStepLR
 
 from utils import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
-from torch.optim.lr_scheduler import MultiStepLR
 
+from modules.resnet import ResNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet
+from modules.depth_nets import UNetDepth
+from modules.unet import UNet
 from sklearn.model_selection import train_test_split
+from fire import Fire
 
 import IPython
 
 
-class ConvBlock(nn.Module):
-            
-    def __init__(self, f1, f2, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), padding=1)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(f1, f1, (3, 3), 
-                stride=2, padding=1, output_padding=1)
-        self.bn = nn.BatchNorm2d(f1)
-        
-    def forward(self, x):
-        #x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            x = F.relu(self.convt(x))
-        x = F.relu(self.conv(x))
-        return x
+def main(curvature_step=0, depth_step=0):
 
-
-class Network(TrainableModel):
-
-    def __init__(self):
-        super(Network, self).__init__()
-        self.resnet = models.resnet50()
-        self.final_conv = nn.Conv2d(2048, 8, (3, 3), padding=1)
-
-        self.decoder = nn.Sequential(ConvBlock(8, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128), ConvBlock(128, 128),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 128, transpose=True),
-                            ConvBlock(128, 3, transpose=True)
-                        )
-
-    def forward(self, x):
-        
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        x = self.final_conv(x)
-        x = self.decoder(x)
-        
-        return x
-
-    def loss(self, pred, target):
-        return F.mse_loss(pred, target)
-
-
-
-if __name__ == "__main__":
+    curvature_weight = 0.0
+    depth_weight = 0.0
 
     # MODEL
-    model = DataParallelModel(Network())
-    model.compile(torch.optim.Adam, lr=1e-4, weight_decay=2e-6, amsgrad=True)
-    scheduler = MultiStepLR(model.optimizer, milestones=[5*i+1 for i in range(0, 80)], gamma=0.9)
+    model = DataParallelModel(ResNet())
+    model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
+    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(32, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(64, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(128, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(256, 3, 256, 256)).shape)
+    
     # LOGGING
-    logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
-    logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
+    logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
+    logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
-    def jointplot(data):
-        data = np.stack([logger.data["train_loss"], logger.data["val_loss"]], axis=1)
-        logger.plot(data, "loss", opts={'legend': ['train', 'val']})
+    def jointplot1(data):
+        data = np.stack((logger.data["train_mse_loss"], logger.data["val_mse_loss"]), axis=1)
+        logger.plot(data, "mse_loss", opts={"legend": ["train_mse", "val_mse"]})
 
-    logger.add_hook(jointplot, feature='val_loss', freq=1)
-    logger.add_hook(lambda x: 
-        [print ("Saving model to /result/model.pth"),
-        model.save("/result/model.pth")],
-        feature='loss', freq=400,
-    )
+    logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
+    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
-     # DATA LOADING
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
-
-    train_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=train_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=80, num_workers=16, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=test_buildings, source_task='rgb', dest_task='normal'),
-                        batch_size=80, num_workers=16, shuffle=True)
-
-    logger.text("Train files count: " + str(len(train_loader.dataset)))
-    logger.text("Val files count: " + str(len(val_loader.dataset)))
-
-    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    # DATA LOADING
+    train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
+        load_data("rgb", "normal", batch_size=128)
+    logger.images(test_images, "images", resize=128)
+    logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=64)
+    plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 
     # TRAINING
     for epochs in range(0, 800):
+
+        logger.update("epoch", epochs)
+
+        train_set = itertools.islice(train_loader, train_step)
+        (mse_data,) = model.fit_with_metrics(train_set, logger=logger)
+        logger.update("train_mse_loss", np.mean(mse_data))
+
+        val_set = itertools.islice(val_loader, val_step)
+        (mse_data,) = model.predict_with_metrics(val_set, logger=logger)
+        logger.update("val_mse_loss", np.mean(mse_data))
         
-        logger.update('epoch', epochs)
-        
-        train_set = itertools.islice(train_loader, 200)
-        (losses,) = model.fit_with_metrics(train_set, logger=logger, metrics=[model.loss])
-        logger.update('train_loss', np.mean(losses))
+        plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 
-        val_set = itertools.islice(val_loader, 200)
-        (losses,) = model.predict_with_metrics(val_set, metrics=[model.loss])
-        logger.update('val_loss', np.mean(losses))
 
-        test_set = list(itertools.islice(val_loader, 1))
-        test_images = torch.cat([x for x, y in test_set], dim=0)
-        preds, targets, losses, _ = model.predict_with_data(test_set)
-        logger.images(test_images, "images")
-        logger.images(preds, "predictions")
-        logger.images(targets, "targets")
-
-        scheduler.step()
+if __name__ == "__main__":
+    Fire(main)

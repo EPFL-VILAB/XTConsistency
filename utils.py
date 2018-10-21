@@ -10,7 +10,7 @@ EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().sp
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/models"
-DATA_DIR = f"{BASE_DIR}/data"
+DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
 RESULTS_DIR = f"{BASE_DIR}/results"
 
 
@@ -72,7 +72,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
 
     test_buildings = ["almena", "mifflintown"]
     buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
-    print (buildings)
+    print ("Buildings: ", buildings)
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
 
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
@@ -88,37 +88,47 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
         batch_size=batch_size,
         num_workers=16,
         shuffle=True,
+        pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=val_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=16,
         shuffle=True,
+        pin_memory=True
     )
     test_loader1 = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=["almena"], source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=12,
         shuffle=False,
+        pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["mifflintown"], source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=["albertville"], source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
         shuffle=False,
+        pin_memory=True
     )
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir="data/ood_images"),
         batch_size=10,
         num_workers=10,
         shuffle=False,
+        pin_memory=True
     )
+    train_step = int(len(train_loader.dataset.source_files)//(100*batch_size))
+    val_step = int(len(val_loader.dataset.source_files)//(100*batch_size))
+    print ("Train step: ", train_step)
+    print ("Val step: ", val_step)
+    
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
     test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
     ood_images = list(itertools.islice(ood_loader, 1))
 
-    return train_loader, val_loader, test_set, test_images, ood_images
+    return train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step
 
 
 def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}):

@@ -39,9 +39,10 @@ class ImageTaskDataset(Dataset):
         self.source_files = [
             sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
         ]
+        self.source_files = []
         for building in buildings:
-            print (glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
-        self.source_files = [y for x in self.source_files for y in x]
+            self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
+        # self.source_files = [y for x in self.source_files for y in x]
         print ("Source files len: ", len(self.source_files))
 
     def __len__(self):
@@ -105,12 +106,12 @@ if __name__ == "__main__":
 
     transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
     data_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["mifflintown"], source_transforms=transform, dest_transforms=transform, source_task="rgb", dest_task="normal"),
-        batch_size=6,
-        num_workers=6,
-        shuffle=False,
+        ImageTaskDataset(buildings=["almena"], source_transforms=transform, dest_transforms=transform, source_task="rgb", dest_task="normal"),
+        batch_size=64,
+        num_workers=32,
+        shuffle=True,
     )
-    logger.add_hook(lambda data: logger.step(), freq=16)
+    logger.add_hook(lambda data: logger.step(), freq=32)
 
     for i, (X, Y) in enumerate(data_loader):
         logger.update("epoch", i)
