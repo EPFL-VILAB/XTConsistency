@@ -13,6 +13,9 @@ MODELS_DIR = f"{BASE_DIR}/models"
 DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
 RESULTS_DIR = f"{BASE_DIR}/results"
 
+print ("Models dir: ", MODELS_DIR)
+print ("Results dir: ", RESULTS_DIR)
+print ("Data dir: ", DATA_DIR)
 
 try:
 	import torch
