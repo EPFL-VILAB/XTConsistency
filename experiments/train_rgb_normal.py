@@ -31,6 +31,7 @@ def main(curvature_step=0, depth_step=0):
 
     # MODEL
     model = DataParallelModel(ResNet())
+    # model = DataParallelModel.load(ResNet().cuda(), f"{RESULTS_DIR}/model.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
@@ -64,13 +65,26 @@ def main(curvature_step=0, depth_step=0):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)
-        (mse_data,) = model.fit_with_metrics(train_set, logger=logger)
-        logger.update("train_mse_loss", np.mean(mse_data))
+        (train_mse_data,) = model.fit_with_metrics(train_set, logger=logger)
+
+        logger.update("train_mse_loss", np.mean(train_mse_data))
 
         val_set = itertools.islice(val_loader, val_step)
-        (mse_data,) = model.predict_with_metrics(val_set, logger=logger)
-        logger.update("val_mse_loss", np.mean(mse_data))
-        
+        (val_mse_data,) = model.predict_with_metrics(val_set, logger=logger)
+        logger.update("val_mse_loss", np.mean(val_mse_data))
+
+        #print out running variances
+        for m in model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                print(f"running_var: {str(m.running_var.mean())}")
+                logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
+
+        # stop if we get a high val mse
+        if np.mean(val_mse_data) - np.mean(train_mse_data) > 0.01:
+            print("high val mse!!!")
+            logger.text("high val mse!!!")
+            IPython.embed()
+
         plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 
 
