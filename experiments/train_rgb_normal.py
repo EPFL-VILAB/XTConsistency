@@ -42,7 +42,7 @@ def main(curvature_step=0, depth_step=0):
     # print (model.forward(torch.randn(256, 3, 256, 256)).shape)
     
     # LOGGING
-    logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
+    logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
     def jointplot1(data):
@@ -77,7 +77,7 @@ def main(curvature_step=0, depth_step=0):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
                 print(f"running_var: {str(m.running_var.mean())}")
-                logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
+                # logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
 
         # stop if we get a high val mse
         if np.mean(val_mse_data) - np.mean(train_mse_data) > 0.01:

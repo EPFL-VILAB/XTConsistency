@@ -54,8 +54,8 @@ class AbstractModel(nn.Module):
 
         loss_fn = loss_fn or self.loss
 
-        # self.zero_grad()
-        # self.optimizer.zero_grad()
+        self.zero_grad()
+        self.optimizer.zero_grad()
 
         self.train(train)
 
@@ -68,8 +68,8 @@ class AbstractModel(nn.Module):
         if train:
             loss.backward()
             self.optimizer.step()
-            # self.zero_grad()
-            # self.optimizer.zero_grad()
+            self.zero_grad()
+            self.optimizer.zero_grad()
 
         return pred, float(loss), metrics
 
