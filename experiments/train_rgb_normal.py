@@ -77,7 +77,7 @@ def main(curvature_step=0, depth_step=0):
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
                 print(f"running_var: {str(m.running_var.mean())}")
-                logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
+                # logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
 
         # stop if we get a high val mse
         if np.mean(val_mse_data) - np.mean(train_mse_data) > 0.01:
