@@ -89,14 +89,14 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=16,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=val_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=16,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
