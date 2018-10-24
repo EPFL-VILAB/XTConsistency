@@ -49,8 +49,6 @@ class DenseNet(TrainableModel):
             ConvBlock(96, 96),
             ConvBlock(96, 96),
             ConvBlock(96, 3),
-            # ConvBlock(32, 32, dilation=2), 
-            # ConvBlock(32, 3, dilation=4)
         )
 
     def forward(self, x):
@@ -58,9 +56,8 @@ class DenseNet(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-6)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
 
 
 class DeepNet(TrainableModel):
@@ -82,9 +79,8 @@ class DeepNet(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-6)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
 
 
 
@@ -104,9 +100,8 @@ class BaseNet(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-6)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
 
 
 class ResidualsNet(TrainableModel):
@@ -137,8 +132,7 @@ class ResidualsNet(TrainableModel):
         return x
 
     def loss(self, pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-6)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
 
 

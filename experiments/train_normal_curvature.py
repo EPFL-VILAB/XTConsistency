@@ -22,12 +22,18 @@ import IPython
 if __name__ == "__main__":
 
     # MODEL
-    model = DataParallelModel(ResidualsNet())
+    model = DataParallelModel(DenseNet())
     model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
+    def loss(pred, target):
+        mask = build_mask(target, val=0.0, tol=1e-2)
+        print ("Mask mean: ", mask.float().mean())
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)
+
     # LOGGING
-    logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
+    logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
     def jointplot(data):
@@ -35,9 +41,10 @@ if __name__ == "__main__":
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
-    logger.add_hook(lambda x: model.save("/result/model.pth"), feature='loss', freq=400)
+    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature='loss', freq=400)
 
-    train_loader, val_loader, test_set, test_images, ood_images = load_data("normal", "principal_curvature", batch_size=64)
+    train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
+        load_data("normal", "principal_curvature", batch_size=64)
     plot_images(model, logger, test_set, mask_val=0.0)
 
     # TRAINING
@@ -45,12 +52,12 @@ if __name__ == "__main__":
         
         logger.update('epoch', epochs)
         
-        train_set = itertools.islice(train_loader, 200)
-        (losses,) = model.fit_with_metrics(train_set, logger=logger)
+        train_set = itertools.islice(train_loader, train_step)
+        (losses,) = model.fit_with_metrics(train_set, loss_fn=loss, logger=logger)
         logger.update('train_loss', np.mean(losses))
 
-        val_set = itertools.islice(val_loader, 200)
-        (losses,) = model.predict_with_metrics(val_set, logger=logger)
+        val_set = itertools.islice(val_loader, val_step)
+        (losses,) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
         logger.update('val_loss', np.mean(losses))
 
         plot_images(model, logger, test_set, mask_val=0.0)

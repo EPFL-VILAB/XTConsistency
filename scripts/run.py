@@ -18,7 +18,7 @@ def update(cmd):
     subprocess.run("docker push nvcr.io/stanfordsvl00/task_discovery".split())
 
 def upload(exp_id, resume=0):
-    os.system("echo " + exp_id + ", " + str(resume) + " > scripts/jobinfo.txt")
+    os.system("echo " + exp_id + ", " + str(resume) + ", / > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude", 
         "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results"]);
     data = subprocess.check_output(["ngc", "dataset", "upload", "-y", exp_id, "-s", "checkpoints/" + exp_id + "/"]).decode()
