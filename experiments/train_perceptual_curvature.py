@@ -48,7 +48,7 @@ def main(perceptual_weight=0, mse_weight=1, weight_step=None):
         return mse_weight*mse + perceptual_weight*percep, (mse.detach(), percep.detach())
 
     # LOGGING
-    logger = VisdomLogger("train", server="35.230.67.129", port=7000, env=JOB)
+    logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
     def jointplot1(data):

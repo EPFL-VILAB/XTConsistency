@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     model = Network()
     model.compile(torch.optim.SGD, lr=0.01, momentum=0.5, nesterov=True)
-    logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
+    logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda data: logger.step(), feature='loss', freq=500)
 
     def jointplot(data):
