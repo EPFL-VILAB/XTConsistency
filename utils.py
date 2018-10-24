@@ -11,7 +11,7 @@ JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/models"
 DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
-RESULTS_DIR = f"{BASE_DIR}/result"
+RESULTS_DIR = f"{BASE_DIR}/results"
 
 if BASE_DIR == "/":
     DATA_DIR = "/data"
