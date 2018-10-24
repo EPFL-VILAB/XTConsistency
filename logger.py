@@ -83,7 +83,7 @@ class Logger(BaseLogger):
 class VisdomLogger(BaseLogger):
 
     def __init__(self, *args, **kwargs):
-        self.port = kwargs.pop('port', 7000)
+        self.port = kwargs.pop('port', 8000)
         self.server = kwargs.pop('server', '35.230.67.129')
         self.env = kwargs.pop('env', 'main')
         print ("In (git) scaling-reset")

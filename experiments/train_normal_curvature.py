@@ -27,7 +27,7 @@ if __name__ == "__main__":
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
     # LOGGING
-    logger = VisdomLogger("train", server='35.230.67.129', port=7000, env=JOB)
+    logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
     def jointplot(data):
