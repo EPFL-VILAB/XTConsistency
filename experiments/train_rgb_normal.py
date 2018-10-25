@@ -34,6 +34,12 @@ def main(curvature_step=0, depth_step=0):
     # model = DataParallelModel.load(ResNet().cuda(), f"{RESULTS_DIR}/model.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
+    def loss(pred, target):
+        mask = build_mask(target.detach(), val=0.502)
+        mse = F.mse_loss(pred*mask.float(), target*mask.float())
+        unmask_mse = F.mse_loss(pred, target)
+        return mse, (mse.detach(),)
+
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
     print (model.forward(torch.randn(16, 3, 256, 256)).shape)
     print (model.forward(torch.randn(32, 3, 256, 256)).shape)
@@ -65,12 +71,12 @@ def main(curvature_step=0, depth_step=0):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)
-        (train_mse_data,) = model.fit_with_metrics(train_set, logger=logger)
+        (train_mse_data,) = model.fit_with_metrics(train_set, loss_fn=loss, logger=logger)
 
         logger.update("train_mse_loss", np.mean(train_mse_data))
 
         val_set = itertools.islice(val_loader, val_step)
-        (val_mse_data,) = model.predict_with_metrics(val_set, logger=logger)
+        (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
         logger.update("val_mse_loss", np.mean(val_mse_data))
 
         #print out running variances
@@ -83,7 +89,8 @@ def main(curvature_step=0, depth_step=0):
         if np.mean(val_mse_data) - np.mean(train_mse_data) > 0.01:
             print("high val mse!!!")
             logger.text("high val mse!!!")
-            IPython.embed()
+            return
+            # IPython.embed()
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 

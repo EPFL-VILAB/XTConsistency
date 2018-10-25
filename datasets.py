@@ -2,8 +2,6 @@
 import numpy as np
 import matplotlib as mpl
 
-mpl.use("Agg")
-import matplotlib.pyplot as plt
 import os, sys, math, random, tarfile, glob, time, itertools
 import parse
 

@@ -7,7 +7,7 @@ from utils import elapsed
 import IPython
 
 
-def execute(cmd, config="default", shutdown=False, debug=False):
+def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=False):
 
     elapsed()
     try:
@@ -18,7 +18,7 @@ def execute(cmd, config="default", shutdown=False, debug=False):
     mode = config
     run_data = run_log[mode] = run_log.get(mode, {})
     run_data["runs"] = run_data.get("runs", 0) + 1
-    run_name = mode + "_" + str(run_data["runs"])
+    run_name = experiment_id or (mode + "_" + str(run_data["runs"]))
     run_data[run_name] = run_data.get(run_name, {"config": config, "cmd": cmd, "status": "Running"})
     run_data = run_data[run_name]
 
@@ -75,8 +75,8 @@ def execute(cmd, config="default", shutdown=False, debug=False):
         time.sleep(60)
         subprocess.call("sudo shutdown -h now", shell=True)
 
-def run(cmd, mode="experiment", config="default", shutdown=False, debug=False):
-    cmd = f""" screen -S {config} bash -c "python -m scripts.run2 execute \\"{cmd}\\" --mode {mode} --config {config} --shutdown {shutdown} --debug {debug}" """
+def run(cmd, mode="experiment", config="default", experiment_id=None, shutdown=False, debug=False):
+    cmd = f""" screen -S {config} bash -c "sudo /home/shared/anaconda3/bin/python -m scripts.run2 execute \\"{cmd}\\" --mode {mode} --config {config} --experiment-id {experiment_id} --shutdown {shutdown} --debug {debug}" """
     subprocess.call(shlex.split(cmd))
 
 
