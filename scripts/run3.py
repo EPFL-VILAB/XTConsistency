@@ -18,6 +18,10 @@ def upload(exp_id):
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+def delete(env):
+    import visdom
+    link = visdom.Visdom(server="http://35.229.22.191", port=7000, env=env)
+    link.delete_env(env)
 
 def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
     exp_id = experiment_id(config)
