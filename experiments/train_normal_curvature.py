@@ -28,23 +28,29 @@ if __name__ == "__main__":
 
     def loss(pred, target):
         mask = build_mask(target, val=0.0, tol=1e-2)
-        print ("Mask mean: ", mask.float().mean())
         mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        unmask_mse = F.mse_loss(pred, target)
+        return mse, (mse.detach(), unmask_mse.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
 
-    def jointplot(data):
+    def jointplot1(data):
         data = np.stack([logger.data["train_loss"], logger.data["val_loss"]], axis=1)
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
-    logger.add_hook(jointplot, feature='val_loss', freq=1)
+    def jointplot2(data):
+        data = np.stack([logger.data["train_unmask_loss"], logger.data["val_unmask_loss"]], axis=1)
+        logger.plot(data, "unmask_loss", opts={'legend': ['train_unmask', 'val_unmask']})
+
+    logger.add_hook(jointplot1, feature='val_loss', freq=1)
+    logger.add_hook(jointplot2, feature='val_unmask_loss', freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature='loss', freq=400)
 
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
         load_data("normal", "principal_curvature", batch_size=64)
+    logger.images(test_images, "images", resize=128)
     plot_images(model, logger, test_set, mask_val=0.0)
 
     # TRAINING
@@ -53,11 +59,13 @@ if __name__ == "__main__":
         logger.update('epoch', epochs)
         
         train_set = itertools.islice(train_loader, train_step)
-        (losses,) = model.fit_with_metrics(train_set, loss_fn=loss, logger=logger)
+        (losses, unmask_losses) = model.fit_with_metrics(train_set, loss_fn=loss, logger=logger)
         logger.update('train_loss', np.mean(losses))
+        logger.update('train_unmask_loss', np.mean(unmask_losses))
 
         val_set = itertools.islice(val_loader, val_step)
-        (losses,) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
+        (losses, unmask_losses) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
         logger.update('val_loss', np.mean(losses))
+        logger.update('val_unmask_loss', np.mean(unmask_losses))
 
         plot_images(model, logger, test_set, mask_val=0.0)

@@ -79,7 +79,6 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
 
     test_buildings = ["almena", "mifflintown"]
     buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
-    print ("Buildings: ", buildings)
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
 
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
@@ -93,14 +92,14 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=64,
+        num_workers=32,
         shuffle=True,
         pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=val_buildings, source_transforms=transform, dest_transforms=transform, source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=64,
+        num_workers=32,
         shuffle=True,
         pin_memory=True
     )
@@ -142,8 +141,10 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
 
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-3)
-    logger.images(test_masks.float(), "masks", resize=64)
+    logger.images(test_masks.float(), "masks", resize=256)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
+    logger.images(preds.clamp(min=0, max=1).cpu() * test_masks.float(), "pred_masked", nrow=2, resize=256)
+    logger.images(targets.cpu() * (1.0 - test_masks.float()), "target_highlight", nrow=2, resize=256)
     logger.images(targets, "targets", nrow=2, resize=256)
 
     if ood_images is not None:

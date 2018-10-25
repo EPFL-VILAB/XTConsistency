@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from torchvision import datasets, transforms, models
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.checkpoint import checkpoint
 
 from utils import *
 from models import TrainableModel, DataParallelModel
@@ -26,31 +27,31 @@ import IPython
 
 def main(curvature_step=0, depth_step=0):
 
-    curvature_weight = 0.0
-    depth_weight = 0.0
+    curvature_weight = 1.0
+    depth_weight = 1.0
 
     # MODEL
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(32, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(64, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(128, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(256, 3, 256, 256)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    curvature_model = DataParallelModel.load(DenseNet().cuda(), f"{MODELS_DIR}/normal2curvature_dense.pth")
-    depth_model = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    curvature_model_base = DataParallelModel.load(DenseNet().cuda(), f"{MODELS_DIR}/normal2curvature_dense.pth")
+    def curvature_model(pred):
+        return checkpoint(curvature_model_base, pred)
+
+    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    def depth_model(pred):
+        return checkpoint(depth_model_base, pred)
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
         curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
         depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
-        return mse + curvature_weight*curvature + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
+        return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
@@ -74,7 +75,8 @@ def main(curvature_step=0, depth_step=0):
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    train_loader, val_loader, test_set, test_images, ood_images = load_data("rgb", "normal", batch_size=32)
+    train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
+        load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
@@ -85,7 +87,7 @@ def main(curvature_step=0, depth_step=0):
 
         logger.update("epoch", epochs)
 
-        train_set = itertools.islice(train_loader, 200)
+        train_set = itertools.islice(train_loader, train_step)
         (mse_data, curvature_data, depth_data) = model.fit_with_metrics(
             train_set, loss_fn=mixed_loss, logger=logger
         )
@@ -93,7 +95,7 @@ def main(curvature_step=0, depth_step=0):
         logger.update("train_curvature_loss", np.mean(curvature_data))
         logger.update("train_depth_loss", np.mean(depth_data))
 
-        val_set = itertools.islice(val_loader, 200)
+        val_set = itertools.islice(val_loader, val_step)
         (mse_data, curvature_data, depth_data) = model.predict_with_metrics(
             val_set, loss_fn=mixed_loss, logger=logger
         )
