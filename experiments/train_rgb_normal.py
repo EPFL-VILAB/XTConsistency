@@ -79,18 +79,11 @@ def main(curvature_step=0, depth_step=0):
         (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
         logger.update("val_mse_loss", np.mean(val_mse_data))
 
-        #print out running variances
-        for m in model.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                print(f"running_var: {str(m.running_var.mean())}")
-                # logger.text(f"running_var: {str(m.running_var.mean().data.cpu().numpy())}")
-
         # stop if we get a high val mse
         if np.mean(val_mse_data) - np.mean(train_mse_data) > 0.01:
             print("high val mse!!!")
             logger.text("high val mse!!!")
             return
-            # IPython.embed()
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 
