@@ -52,8 +52,6 @@ def main(curvature_step=0, depth_step=0):
         curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
         depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
-        print ("Mse: ", mse)
-        print ("Unmask mse: ", F.mse_loss(pred, target))
         return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
     # LOGGING

@@ -8,9 +8,9 @@ from sklearn.model_selection import train_test_split
 EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
-MODELS_DIR = f"{BASE_DIR}/models"
+MODELS_DIR = f"{BASE_DIR}/shared/models"
 DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
-RESULTS_DIR = f"{BASE_DIR}/results"
+RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 
 if BASE_DIR == "/":
     DATA_DIR = "/data"
