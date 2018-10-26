@@ -58,17 +58,39 @@ def main(curvature_step=0, depth_step=0):
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
+    def get_running_means_w_std_bounds_and_legend(list_of_values):
+        running_mean_and_std_bounds = []
+        legend = ["Mean-STD", "Mean", "Mean+STD"]
+        for ii in range(len(list_of_values)):
+            mean = np.mean(list_of_values[:ii])
+            std = np.std(list_of_values[:ii])
+
+            running_mean_and_std_bounds.append([mean-std, mean, mean+std])
+
+        return running_mean_and_std_bounds, legend
+
     def jointplot1(data):
+        # compute running mean for every
         data = np.stack((logger.data["train_mse_loss"], logger.data["val_mse_loss"]), axis=1)
         logger.plot(data, "mse_loss", opts={"legend": ["train_mse", "val_mse"]})
+
+        running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_mse_loss"])
+        logger.plot(running_mean_and_std_bounds, "mse_loss_running_mean", opts={"legend": legend})
 
     def jointplot2(data):
         data = np.stack((logger.data["train_curvature_loss"], logger.data["val_curvature_loss"]), axis=1)
         logger.plot(data, "curvature_loss", opts={"legend": ["train_curvature", "val_curvature"]})
 
+        running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_curvature_loss"])
+        logger.plot(running_mean_and_std_bounds, "curvature_loss_running_mean", opts={"legend": legend})
+
+
     def jointplot3(data):
         data = np.stack((logger.data["train_depth_loss"], logger.data["val_depth_loss"]), axis=1)
         logger.plot(data, "depth_loss", opts={"legend": ["train_depth", "val_depth"]})
+
+        running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_depth_loss"])
+        logger.plot(running_mean_and_std_bounds, "depth_loss_running_mean", opts={"legend": legend})
 
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
@@ -95,6 +117,20 @@ def main(curvature_step=0, depth_step=0):
         logger.update("train_mse_loss", np.mean(mse_data))
         logger.update("train_curvature_loss", np.mean(curvature_data))
         logger.update("train_depth_loss", np.mean(depth_data))
+
+        # Used to log losses in case we want to analyze them afterwards for whitening
+        temp_logs_location = f"{BASE_DIR}/temp_logs"
+        with open(f"{temp_logs_location}/log_train_mse_losses.txt", "a") as log_file:
+            log_file.write(', '.join([str(dd.cpu().tolist()) for dd in mse_data]))
+            log_file.write("\n")
+
+        with open(f"{temp_logs_location}/log_train_curvature_loss.txt", "a") as log_file:
+            log_file.write(', '.join([str(dd.cpu().tolist()) for dd in curvature_data]))
+            log_file.write("\n")
+
+        with open(f"{temp_logs_location}/log_train_depth_loss.txt", "a") as log_file:
+            log_file.write(', '.join([str(dd.cpu().tolist()) for dd in depth_data]))
+            log_file.write("\n")
 
         val_set = itertools.islice(val_loader, val_step)
         (mse_data, curvature_data, depth_data) = model.predict_with_metrics(
