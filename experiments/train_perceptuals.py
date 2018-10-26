@@ -107,7 +107,6 @@ def main(curvature_step=0, depth_step=0):
 
     # TRAINING
     for epochs in range(0, 800):
-
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)
@@ -118,6 +117,7 @@ def main(curvature_step=0, depth_step=0):
         logger.update("train_curvature_loss", np.mean(curvature_data))
         logger.update("train_depth_loss", np.mean(depth_data))
 
+        # TODO clear out logs first, before appending to this
         # Used to log losses in case we want to analyze them afterwards for whitening
         temp_logs_location = f"{BASE_DIR}/temp_logs"
         with open(f"{temp_logs_location}/log_train_mse_losses.txt", "a") as log_file:
