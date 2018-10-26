@@ -18,7 +18,7 @@ class ResidualsNet(TrainableModel):
         super().__init__()
 
         self.encoder = nn.Sequential(
-            ConvBlock(3, 32, use_groupnorm=False), 
+            ConvBlock(3, 32, groups=3, use_groupnorm=False), 
             ConvBlock(32, 32, use_groupnorm=False),
         )
         self.mid = nn.Sequential(
@@ -44,7 +44,6 @@ class ResidualsNet(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(target, val=1.0)
-        print ("Mask mean: ", mask.float().mean())
         mse = F.mse_loss(pred[mask], target[mask])
         return mse, (mse.detach(),)
 
@@ -54,11 +53,11 @@ class UNet_up_block(nn.Module):
         super().__init__()
         self.up_sampling = nn.Upsample(scale_factor=2, mode='bilinear')
         self.conv1 = nn.Conv2d(prev_channel + input_channel, output_channel, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(output_channel)
+        self.bn1 = nn.GroupNorm(8, output_channel)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(output_channel)
+        self.bn2 = nn.GroupNorm(8, output_channel)
         self.conv3 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(output_channel)        
+        self.bn3 = nn.GroupNorm(8, output_channel)        
         self.relu = torch.nn.ReLU()
         self.up_sample = up_sample
 
@@ -76,11 +75,11 @@ class UNet_down_block(nn.Module):
     def __init__(self, input_channel, output_channel, down_size=True):
         super().__init__()
         self.conv1 = nn.Conv2d(input_channel, output_channel, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(output_channel)
+        self.bn1 = nn.GroupNorm(8, output_channel)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(output_channel)
+        self.bn2 = nn.GroupNorm(8, output_channel)
         self.conv3 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(output_channel)
+        self.bn3 = nn.GroupNorm(8, output_channel)
         self.max_pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU()
         self.down_size = down_size
@@ -105,41 +104,41 @@ class UNetDepth(TrainableModel):
         self.down_block4 = UNet_down_block(64, 128, True)
         self.down_block5 = UNet_down_block(128, 256, True)
         self.down_block6 = UNet_down_block(256, 512, True)
-        self.down_block7 = UNet_down_block(512, 1024, True)
+        # self.down_block7 = UNet_down_block(512, 1024, True)
 
-        self.mid_conv1 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(1024)
-        self.mid_conv2 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(1024)
-        self.mid_conv3 = torch.nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn3 = torch.nn.BatchNorm2d(1024)
+        self.mid_conv1 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn1 = nn.GroupNorm(8, 512)
+        self.mid_conv2 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn2 = nn.GroupNorm(8, 512)
+        self.mid_conv3 = torch.nn.Conv2d(512, 512, 3, padding=1)
+        self.bn3 = torch.nn.GroupNorm(8, 512)
 
-        self.up_block1 = UNet_up_block(512, 1024, 512)
-        self.up_block2 = UNet_up_block(256, 512, 256)
-        self.up_block3 = UNet_up_block(128, 256, 128)
-        self.up_block4 = UNet_up_block(64, 128, 64)
-        self.up_block5 = UNet_up_block(32, 64, 32)
-        self.up_block6 = UNet_up_block(16, 32, 16)
+        # self.up_block1 = UNet_up_block(512, 1024, 512)
+        self.up_block2 = UNet_up_block(256, 512, 256, True)
+        self.up_block3 = UNet_up_block(128, 256, 128, True)
+        self.up_block4 = UNet_up_block(64, 128, 64, True)
+        self.up_block5 = UNet_up_block(32, 64, 32, True)
+        self.up_block6 = UNet_up_block(16, 32, 16, True)
 
         self.last_conv1 = nn.Conv2d(16, 16, 3, padding=1)
-        self.last_bn = nn.BatchNorm2d(16)
+        self.last_bn = nn.GroupNorm(8, 16)
         self.last_conv2 = nn.Conv2d(16, 1, 1, padding=0)
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        self.x1 = self.down_block1(x)
-        self.x2 = self.down_block2(self.x1)
-        self.x3 = self.down_block3(self.x2)
-        self.x4 = self.down_block4(self.x3)
-        self.x5 = self.down_block5(self.x4)
-        self.x6 = self.down_block6(self.x5)
-        self.x7 = self.down_block7(self.x6)
+        x = self.x1 = self.down_block1(x)
+        x = self.x2 = self.down_block2(self.x1)
+        x = self.x3 = self.down_block3(self.x2)
+        x = self.x4 = self.down_block4(self.x3)
+        x = self.x5 = self.down_block5(self.x4)
+        x = self.x6 = self.down_block6(self.x5)
+        # x = self.x7 = self.down_block7(self.x6)
 
-        self.x7 = self.relu(self.bn1(self.mid_conv1(self.x7)))
-        self.x7 = self.relu(self.bn2(self.mid_conv2(self.x7)))
-        self.x7 = self.relu(self.bn3(self.mid_conv3(self.x7)))
+        x = self.relu(self.bn1(self.mid_conv1(x)))
+        x = self.relu(self.bn2(self.mid_conv2(x)))
+        x = self.relu(self.bn3(self.mid_conv3(x)))
 
-        x = self.up_block1(self.x6, self.x7)
+        # x = self.up_block1(self.x6, x)
         x = self.up_block2(self.x5, x)
         x = self.up_block3(self.x4, x)
         x = self.up_block4(self.x3, x)
@@ -151,7 +150,6 @@ class UNetDepth(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(target, val=1.0)
-        print (mask.float().mean())
         mse = F.mse_loss(pred[mask], target[mask])
         return mse, (mse.detach(),)
 
@@ -171,7 +169,7 @@ class ConvBlock(nn.Module):
         if use_groupnorm:
             self.bn = nn.GroupNorm(groups, f1)
         else:
-            self.bn = nn.BatchNorm2d(f1)
+            self.bn = nn.GroupNorm(8, f1)
 
     def forward(self, x):
         # x = F.dropout(x, 0.04, self.training)
@@ -189,12 +187,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = nn.GroupNorm(8, planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = nn.GroupNorm(8, planes)
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.bn3 = nn.GroupNorm(8, planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -228,7 +226,7 @@ class ResNetOriginal(nn.Module):
         super(ResNetOriginal, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
+        self.bn1 = nn.GroupNorm(8, 64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -251,7 +249,7 @@ class ResNetOriginal(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
+                nn.GroupNorm(8, planes * block.expansion),
             )
 
         layers = []
@@ -311,7 +309,6 @@ class ResNetDepth(TrainableModel):
 
     def loss(self, pred, target):
         mask = build_mask(target, val=1.0)
-        print (mask.float().mean())
         mse = F.mse_loss(pred[mask], target[mask])
         return mse, (mse.detach(),)
 

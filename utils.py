@@ -73,9 +73,9 @@ def build_mask(target, val=0.0, tol=1e-3):
     mask1 = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
     mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
     mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
-    mask = ~(mask1 & mask2 & mask3).unsqueeze(1)
+    mask = (mask1 & mask2 & mask3).unsqueeze(1)
     mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-    mask = mask.expand_as(target)
+    mask = (~mask).expand_as(target)
     return mask
 
 
@@ -83,7 +83,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
     from datasets import ImageTaskDataset, ImageDataset
     from torchvision import transforms
 
-    test_buildings = ["almena", "mifflinburg"]
+    test_buildings = ["almena", "albertville"]
     buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
 
@@ -120,7 +120,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
         pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["mifflinburg"], source_transforms=transform, dest_transforms=transform,
+        ImageTaskDataset(buildings=["albertville"], source_transforms=transform, dest_transforms=transform,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
@@ -152,9 +152,7 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     logger.images(test_masks.float(), "masks", resize=256)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
-    logger.images(preds.clamp(min=0, max=1).cpu() * test_masks.float(), "pred_masked", nrow=2, resize=256)
-    logger.images(targets.cpu() * (1.0 - test_masks.float()), "target_highlight", nrow=2, resize=256)
-    logger.images(targets, "targets", nrow=2, resize=256)
+    logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
 
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
@@ -162,8 +160,7 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
 
     for name, loss_model in loss_models.items():
         with torch.no_grad():
-            (F.conv2d(x[:, 0:1].float(), torch.ones(1, 1, 3, 3), padding=1) == 0).shape
             curvature_preds = loss_model(preds)
             curvature_targets = loss_model(targets)
-            logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions", resize = 128)
-            logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize = 128)
+            logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions", resize=128)
+            logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize=128)

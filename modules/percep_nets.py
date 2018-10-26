@@ -15,10 +15,10 @@ from utils import *
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, use_groupnorm=True, groups=8, dilation=1, transpose=False):
+    def __init__(self, f1, f2, kernel_size=3, padding=1, use_groupnorm=True, groups=8, dilation=1, transpose=False):
         super().__init__()
         self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), dilation=dilation, padding=dilation)
+        self.conv = nn.Conv2d(f1, f2, (kernel_size, kernel_size), dilation=dilation, padding=padding*dilation)
         if self.transpose:
             self.convt = nn.ConvTranspose2d(
                 f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
@@ -71,6 +71,49 @@ class DeepNet(TrainableModel):
             ConvBlock(32, 32, dilation=2),
             ConvBlock(32, 32, dilation=4),
             ConvBlock(32, 32, dilation=4),
+            ConvBlock(32, 3),
+        )
+
+    def forward(self, x):
+        x = self.decoder(x)
+        return x
+
+    def loss(self, pred, target):
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
+
+
+class WideNet(TrainableModel):
+    def __init__(self):
+        super().__init__()
+
+        self.decoder = nn.Sequential(
+            ConvBlock(3, 32, groups=3), 
+            ConvBlock(32, 32, kernel_size=5, padding=2),
+            ConvBlock(32, 32, kernel_size=5, padding=2),
+            ConvBlock(32, 32, kernel_size=5, padding=2),
+            ConvBlock(32, 3),
+        )
+
+    def forward(self, x):
+        x = self.decoder(x)
+        return x
+
+    def loss(self, pred, target):
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
+
+
+class PyramidNet(TrainableModel):
+    def __init__(self):
+        super().__init__()
+
+        self.decoder = nn.Sequential(
+            ConvBlock(3, 16, groups=3), 
+            ConvBlock(16, 32, kernel_size=5, padding=2),
+            ConvBlock(32, 64, kernel_size=5, padding=2),
+            ConvBlock(64, 96, kernel_size=3, padding=1),
+            ConvBlock(96, 32, kernel_size=3, padding=1),
             ConvBlock(32, 3),
         )
 

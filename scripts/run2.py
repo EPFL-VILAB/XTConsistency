@@ -75,8 +75,8 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
         time.sleep(60)
         subprocess.call("sudo shutdown -h now", shell=True)
 
-def run(cmd, mode="experiment", config="default", experiment_id=None, shutdown=False, debug=False):
-    cmd = f""" screen -S {config} bash -c "sudo /home/shared/anaconda3/bin/python -m scripts.run2 execute \\"{cmd}\\" --mode {mode} --config {config} --experiment-id {experiment_id} --shutdown {shutdown} --debug {debug}" """
+def run(cmd, config="default", experiment_id=None, shutdown=False, debug=False):
+    cmd = f""" screen -S {config} bash -c "sudo /home/shared/anaconda3/bin/python -m scripts.run2 execute \\"{cmd}\\" --config {config} --experiment-id {experiment_id} --shutdown {shutdown} --debug {debug}; bash" """
     subprocess.call(shlex.split(cmd))
 
 

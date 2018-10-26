@@ -14,7 +14,7 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
-from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet, WideNet, PyramidNet
 
 import IPython
 
@@ -22,7 +22,8 @@ import IPython
 if __name__ == "__main__":
 
     # MODEL
-    model = DataParallelModel(DenseNet())
+    print ("Using PyramidNet")
+    model = DataParallelModel(PyramidNet())
     model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 

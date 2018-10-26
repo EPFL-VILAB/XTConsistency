@@ -24,9 +24,9 @@ import IPython
 if __name__ == "__main__":
 
     # MODEL
-    model = DataParallelModel(ResidualsNet())
+    # model = DataParallelModel(ResidualsNet())
     # model = DataParallelModel(ResNetDepth())
-    # model = DataParallelModel(UNetDepth())
+    model = DataParallelModel(UNetDepth())
 
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
@@ -40,40 +40,31 @@ if __name__ == "__main__":
         logger.plot(data, "loss", opts={'legend': ['train', 'val']})
 
     logger.add_hook(jointplot, feature='val_loss', freq=1)
-    logger.add_hook(lambda x: 
-        [print ("Saving model to /result/model.pth"),
-        model.save("/result/model.pth")],
-        feature='loss', freq=400,
-    )
+    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature='loss', freq=400)
 
      # DATA LOADING
-    buildings = [file[6:-7] for file in glob.glob("/data/*_normal")]
-    train_buildings, test_buildings = train_test_split(buildings, test_size=0.1)
+    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
 
     to_tensor = transforms.ToTensor()
     def dest_transforms(x):
         x = to_tensor(x).float().unsqueeze(0)
         mask = build_mask(x, 65535.0, tol=1000)
-        print ("transforms mask: ", mask.float().mean())
         x[~mask] = 8000.0
         x = x/8000.0
-        print ("aftermask: ", build_mask(x, val=1.0).float().mean())
         return x[0]
 
     train_loader = torch.utils.data.DataLoader(
                             ImageTaskDataset(buildings=train_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
                                 dest_transforms=dest_transforms),
-                        batch_size=48, num_workers=16, shuffle=True)
+                        batch_size=64, num_workers=16, shuffle=True)
 
     val_loader = torch.utils.data.DataLoader(
-                            ImageTaskDataset(buildings=test_buildings, 
+                            ImageTaskDataset(buildings=val_buildings, 
                                 source_task='normal', dest_task='depth_zbuffer',
                                 dest_transforms=dest_transforms),
-                        batch_size=48, num_workers=16, shuffle=True)
-
-    logger.text("Train files count: " + str(len(train_loader.dataset)))
-    logger.text("Val files count: " + str(len(val_loader.dataset)))
+                        batch_size=64, num_workers=16, shuffle=True)
 
     train_loader, val_loader = cycle(train_loader), cycle(val_loader)
     test_set = list(itertools.islice(val_loader, 1))
