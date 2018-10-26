@@ -28,6 +28,9 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
     os.makedirs("output/")
     os.makedirs(f"checkpoints/{run_name}", exist_ok=True)
     os.system("echo " + run_name + ", 0, mount > scripts/jobinfo.txt")
+    print ("Hello")
+    os.system("echo " + run_name + ", 0, mount > mount/shared/hi.txt")
+    print ("goodbye")
 
     cmd = shlex.split(cmd)
     if cmd[0] == "python" and debug:

@@ -16,7 +16,7 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 
 from modules.resnet import ResNet
-from modules.percep_nets import DenseNet, DeepNet, BaseNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet
 from sklearn.model_selection import train_test_split
@@ -49,8 +49,10 @@ def main(curvature_step=0, depth_step=0):
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
-        curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-        depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+        curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
+            F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
+        depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
+            F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
         return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
@@ -112,9 +114,12 @@ def main(curvature_step=0, depth_step=0):
         def mixed_loss(pred, target):
             mask = build_mask(target.detach(), val=0.502)
             mse = F.mse_loss(pred*mask.float(), target*mask.float())
-            curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-            depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
-            return mse + curvature_weight*curvature + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
+            curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
+                F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
+            depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
+                F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+
+            return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
                         loss_models={"curvature": curvature_model, "depth": depth_model})
