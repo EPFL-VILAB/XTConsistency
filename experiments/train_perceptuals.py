@@ -49,10 +49,8 @@ def main(curvature_step=0, depth_step=0):
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
-        curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
-            F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-        depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
-            F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+        curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
+        depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
         return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
@@ -85,7 +83,6 @@ def main(curvature_step=0, depth_step=0):
 
         running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_curvature_loss"])
         logger.plot(running_mean_and_std_bounds, "curvature_loss_running_mean", opts={"legend": legend})
-
 
     def jointplot3(data):
         data = np.stack((logger.data["train_depth_loss"], logger.data["val_depth_loss"]), axis=1)
@@ -150,10 +147,8 @@ def main(curvature_step=0, depth_step=0):
         def mixed_loss(pred, target):
             mask = build_mask(target.detach(), val=0.502)
             mse = F.mse_loss(pred*mask.float(), target*mask.float())
-            curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
-                F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-            depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
-                F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+            curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
+            depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
             return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
