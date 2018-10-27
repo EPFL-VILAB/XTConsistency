@@ -38,7 +38,7 @@ def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
 
     with open('/Users/nikcheerla/.sshrc', 'w') as outfile:
         print (f"gsutil -m cp -r gs://taskonomy-code/{exp_id}/* .", file=outfile)
-        print (f"""/home/shared/anaconda3/bin/python -m scripts.run2 run --config "{config}" --experiment-id "{exp_id}" --shutdown {shutdown} "{cmd}" """, file=outfile)
+        print (f"""sudo /home/shared/anaconda3/bin/python -m scripts.run2 run --config "{config}" --experiment-id "{exp_id}" --shutdown {shutdown} "{cmd}" """, file=outfile)
     
     print (cmd)
     subprocess.run(["sshrc", f"{instance}.us-west1-b.chaos-theory-201106"])

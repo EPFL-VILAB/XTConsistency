@@ -11,6 +11,7 @@ JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 MODELS_DIR = f"{BASE_DIR}/shared/models"
 DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
+os.system(f"sudo mkdir {RESULTS_DIR}")
 
 if BASE_DIR == "/":
     DATA_DIR = "/data"
@@ -79,7 +80,7 @@ def build_mask(target, val=0.0, tol=1e-3):
     return mask
 
 
-def load_data(source_task, dest_task, batch_size=32, resize=256):
+def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, resize=256):
     from datasets import ImageTaskDataset, ImageDataset
     from torchvision import transforms
 
@@ -93,10 +94,14 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
     # train_buildings = [building for building, train, test, val in building_tags \
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
-    transform = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
+
+    source_transforms = source_transforms or (lambda x: x)
+    dest_transforms = dest_transforms or (lambda x: x)
+    source_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), source_transforms])
+    dest_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), dest_transforms])
 
     train_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform,
+        ImageTaskDataset(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=32,
@@ -104,7 +109,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
         pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=val_buildings, source_transforms=transform, dest_transforms=transform,
+        ImageTaskDataset(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=32,
@@ -112,7 +117,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
         pin_memory=True
     )
     test_loader1 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_transforms=transform, dest_transforms=transform,
+        ImageTaskDataset(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=12,
@@ -120,7 +125,7 @@ def load_data(source_task, dest_task, batch_size=32, resize=256):
         pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["albertville"], source_transforms=transform, dest_transforms=transform,
+        ImageTaskDataset(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
