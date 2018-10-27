@@ -70,6 +70,7 @@ class Dense1by1Net(TrainableModel):
             ConvBlock(96, 96),
             ConvBlock(96, 96),
             ConvBlock(96, 96),
+            ConvBlock(96, 96),
             ConvBlock(96, 3),
         )
 
