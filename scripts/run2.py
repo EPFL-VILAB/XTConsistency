@@ -43,7 +43,7 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
     process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, universal_newlines=True)
 
     try:
-        with open(f"checkpoints/{run_name}/stdout.txt", "w") as outfile:
+        with open(f"mount/shared/results_{run_name}/stdout.txt", "w") as outfile:
             for stdout_line in iter(process.stdout.readline, ""):
                 print(stdout_line, end="")
                 outfile.write(stdout_line)
@@ -79,7 +79,7 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
         subprocess.call("sudo shutdown -h now", shell=True)
 
 def run(cmd, config="default", experiment_id=None, shutdown=False, debug=False):
-    cmd = f""" screen -S {config} bash -c "sudo /home/shared/anaconda3/bin/python -m scripts.run2 execute \\"{cmd}\\" --config {config} --experiment-id {experiment_id} --shutdown {shutdown} --debug {debug}; bash" """
+    cmd = f""" screen -S {config} bash -c "sudo /home/shared/anaconda3/bin/python -m scripts.run2 execute \\"{cmd}\\" --config {config} --experiment-id {experiment_id} --shutdown {shutdown} --debug {debug} && bash" """
     subprocess.call(shlex.split(cmd))
 
 

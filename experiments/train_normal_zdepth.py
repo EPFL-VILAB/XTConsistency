@@ -27,10 +27,10 @@ if __name__ == "__main__":
     model = DataParallelModel(UNetDepth())
     print ("Loader model")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-    print (model.forward(torch.randn(1, 3, 512, 512)).shape)
+    print (model.forward(torch.randn(1, 3, 256, 256)).shape)
 
     def loss(pred, target):
-        mask = build_mask(target, val=1.0, tol=1e-2)
+        mask = build_mask(target, val=1.0, tol=1e-3)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
         return mse, (mse.detach(),)
 
@@ -48,9 +48,9 @@ if __name__ == "__main__":
     # DATA LOADING
     def dest_transforms(x):
         x = x.unsqueeze(0)
-        mask = build_mask(x, 65535.0, tol=1000)
+        mask = (x <= 65535.0 - 1000.0)
         x[~mask] = 8000.0
-        x = x/8000.0
+        x = (x.float()/8000.0)
         return x[0]
 
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \

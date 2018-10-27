@@ -13,16 +13,42 @@ from models import TrainableModel
 from utils import *
 
 
+
+class ConvBlock(nn.Module):
+    def __init__(self, f1, f2, kernel_size=3, padding=1, use_groupnorm=True, groups=8, dilation=1, transpose=False):
+        super().__init__()
+        self.transpose = transpose
+        self.conv = nn.Conv2d(f1, f2, (kernel_size, kernel_size), dilation=dilation, padding=padding*dilation)
+        if self.transpose:
+            self.convt = nn.ConvTranspose2d(
+                f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
+            )
+        if use_groupnorm:
+            self.bn = nn.GroupNorm(groups, f1)
+        else:
+            self.bn = nn.BatchNorm2d(f1)
+
+    def forward(self, x):
+        # x = F.dropout(x, 0.04, self.training)
+        x = self.bn(x)
+        if self.transpose:
+            # x = F.upsample(x, scale_factor=2, mode='bilinear')
+            x = F.relu(self.convt(x))
+            # x = x[:, :, :-1, :-1]
+        x = F.relu(self.conv(x))
+        return x
+
+
 class UNet_up_block(nn.Module):
     def __init__(self, prev_channel, input_channel, output_channel, up_sample=True):
         super().__init__()
         self.up_sampling = nn.Upsample(scale_factor=2, mode='bilinear')
         self.conv1 = nn.Conv2d(prev_channel + input_channel, output_channel, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(output_channel)
+        self.bn1 = nn.GroupNorm(8, output_channel)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(output_channel)
+        self.bn2 = nn.GroupNorm(8, output_channel)
         self.conv3 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(output_channel)        
+        self.bn3 = nn.GroupNorm(8, output_channel)        
         self.relu = torch.nn.ReLU()
         self.up_sample = up_sample
 
@@ -40,11 +66,11 @@ class UNet_down_block(nn.Module):
     def __init__(self, input_channel, output_channel, down_size=True):
         super().__init__()
         self.conv1 = nn.Conv2d(input_channel, output_channel, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(output_channel)
+        self.bn1 = nn.GroupNorm(8, output_channel)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(output_channel)
+        self.bn2 = nn.GroupNorm(8, output_channel)
         self.conv3 = nn.Conv2d(output_channel, output_channel, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(output_channel)
+        self.bn3 = nn.GroupNorm(8, output_channel)
         self.max_pool = nn.MaxPool2d(2, 2)
         self.relu = nn.ReLU()
         self.down_size = down_size
@@ -63,7 +89,11 @@ class UNet(TrainableModel):
     def __init__(self):
         super().__init__()
 
-        self.down_block1 = UNet_down_block(3, 16, False)
+        self.initial = nn.Sequential(
+            ConvBlock(3, 16, groups=3, kernel_size=1, padding=0),
+            ConvBlock(16, 16, groups=4, kernel_size=1, padding=0)
+        )
+        self.down_block1 = UNet_down_block(16, 16, False)
         self.down_block2 = UNet_down_block(16, 32, True)
         self.down_block3 = UNet_down_block(32, 64, True)
         self.down_block4 = UNet_down_block(64, 128, True)
@@ -72,11 +102,11 @@ class UNet(TrainableModel):
         self.down_block7 = UNet_down_block(512, 1024, True)
 
         self.mid_conv1 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(1024)
+        self.bn1 = nn.GroupNorm(8, 1024)
         self.mid_conv2 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn2 = nn.BatchNorm2d(1024)
+        self.bn2 = nn.GroupNorm(8, 1024)
         self.mid_conv3 = torch.nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn3 = torch.nn.BatchNorm2d(1024)
+        self.bn3 = torch.nn.GroupNorm(8, 1024)
 
         self.up_block1 = UNet_up_block(512, 1024, 512)
         self.up_block2 = UNet_up_block(256, 512, 256)
@@ -86,11 +116,12 @@ class UNet(TrainableModel):
         self.up_block6 = UNet_up_block(16, 32, 16)
 
         self.last_conv1 = nn.Conv2d(16, 16, 3, padding=1)
-        self.last_bn = nn.BatchNorm2d(16)
+        self.last_bn = nn.GroupNorm(8, 16)
         self.last_conv2 = nn.Conv2d(16, 3, 1, padding=0)
         self.relu = nn.ReLU()
 
     def forward(self, x):
+        x = self.initial(x)
         self.x1 = self.down_block1(x)
         self.x2 = self.down_block2(self.x1)
         self.x3 = self.down_block3(self.x2)

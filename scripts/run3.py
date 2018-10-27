@@ -14,9 +14,8 @@ def experiment_id(config):
 def upload(exp_id):
     os.system(f"echo {exp_id}, 0, mount > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude",
-        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results"])
+    subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split())
 
 def delete(env):
     import visdom
@@ -33,6 +32,7 @@ def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
     cmd = shlex.split(cmd)
     if cmd[0] == "python":
         cmd[0] = "/home/shared/anaconda3/bin/python"
+        cmd.insert(1, "-u")
         cmd.insert(0, "sudo")
     cmd = " ".join(cmd)
 

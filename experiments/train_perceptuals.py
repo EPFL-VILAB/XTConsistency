@@ -16,7 +16,7 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 
 from modules.resnet import ResNet
-from modules.percep_nets import DenseNet, DeepNet, BaseNet, WideNet, PyramidNet
+from modules.percep_nets import DenseNet, Dense1by1Net, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet
 from sklearn.model_selection import train_test_split
@@ -38,7 +38,7 @@ def main(curvature_step=0, depth_step=0):
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    curvature_model_base = DataParallelModel.load(DenseNet().cuda(), f"{MODELS_DIR}/normal2curvature_dense_v2.pth")
+    curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_v2.pth")
     def curvature_model(pred):
         return checkpoint(curvature_model_base, pred)
 

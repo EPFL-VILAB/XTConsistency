@@ -67,15 +67,26 @@ def cycle(iterable):
             yield i
 
 
-def build_mask(target, val=0.0, tol=1e-3):
+def build_mask(target, val=0.0, tol=1e-3, dilate=True):
     if target.shape[1] == 1:
-        return ~((target >= val - tol) & (target <= val + tol))
+        mask = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
+        mask = mask.unsqueeze(1)
+        if dilate:
+            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+            mask = (~mask).expand_as(target)
+        return mask
 
     mask1 = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
     mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
     mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
     mask = (mask1 & mask2 & mask3).unsqueeze(1)
-    mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+    if dilate:
+        mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+        mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+
     mask = (~mask).expand_as(target)
     return mask
 
@@ -104,7 +115,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=32,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
@@ -112,7 +123,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=32,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
@@ -120,12 +131,12 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
-        num_workers=12,
+        num_workers=6,
         shuffle=False,
         pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
+        ImageTaskDataset(buildings=["akiak"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
@@ -139,8 +150,8 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         shuffle=False,
         pin_memory=True
     )
-    train_step = int(len(train_loader.dataset.source_files) // (100 * batch_size))
-    val_step = int(len(val_loader.dataset.source_files) // (100 * batch_size))
+    train_step = int(2248616 // (100 * batch_size))
+    val_step = int(245592 // (100 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
 
