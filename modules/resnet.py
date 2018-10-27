@@ -12,11 +12,12 @@ from torch.optim.lr_scheduler import MultiStepLR
 from models import TrainableModel
 from utils import *
 
+
 class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, use_groupnorm=True, groups=8, dilation=1, transpose=False):
+    def __init__(self, f1, f2, kernel_size=3, padding=1, use_groupnorm=True, groups=8, dilation=1, transpose=False):
         super().__init__()
         self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), dilation=dilation, padding=dilation)
+        self.conv = nn.Conv2d(f1, f2, (kernel_size, kernel_size), dilation=dilation, padding=padding*dilation)
         if self.transpose:
             self.convt = nn.ConvTranspose2d(
                 f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
@@ -24,7 +25,7 @@ class ConvBlock(nn.Module):
         if use_groupnorm:
             self.bn = nn.GroupNorm(groups, f1)
         else:
-            self.bn = nn.GroupNorm(8, f1)
+            self.bn = nn.BatchNorm2d(f1)
 
     def forward(self, x):
         # x = F.dropout(x, 0.04, self.training)
@@ -79,14 +80,19 @@ class ResNetOriginal(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
         super(ResNetOriginal, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        self.initial = nn.Sequential(
+            ConvBlock(3, 16, groups=3, kernel_size=1, padding=0),
+            ConvBlock(16, 16, groups=4, kernel_size=1, padding=0)
+        )
+
+        self.conv1 = nn.Conv2d(16, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.GroupNorm(8, 64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
         self.avgpool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -116,6 +122,7 @@ class ResNetOriginal(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = self.initial(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -146,7 +153,7 @@ class ResNet(TrainableModel):
             ConvBlock(128, 128),
             ConvBlock(128, 128),
             ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
+            ConvBlock(128, 128),
             ConvBlock(128, 128, transpose=True),
             ConvBlock(128, 128, transpose=True),
             ConvBlock(128, 3, transpose=True),
