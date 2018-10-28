@@ -73,6 +73,7 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
     def get_running_std(list_of_values):
         return [np.std(list_of_values[:ii]) for ii in range(len(list_of_values))]
 
+    # TODO(ajay) fix warning when calculating cov on first iteration
     def get_running_covs(list_of_values_1, list_of_values_2):
         assert len(list_of_values_1) == len(list_of_values_2)
 
@@ -144,7 +145,7 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
         logger.update("train_curvature_loss", np.mean(curvature_data))
         logger.update("train_depth_loss", np.mean(depth_data))
 
-        # TODO clear out logs first, before appending to this
+        # TODO(ajay) clear out logs first, before appending to this
         # Used to log losses in case we want to analyze them afterwards for whitening
         temp_logs_location = f"{BASE_DIR}/temp_logs"
         with open(f"{temp_logs_location}/log_train_mse_losses.txt", "a") as log_file:
