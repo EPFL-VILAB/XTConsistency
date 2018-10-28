@@ -1,8 +1,10 @@
 
 import random, sys, os, glob, yaml, time
 import argparse, subprocess, shutil, shlex
+import traceback
+
 from fire import Fire
-from utils import elapsed
+from utils import elapsed, BASE_DIR
 
 import IPython
 
@@ -27,10 +29,12 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
     shutil.rmtree("output/", ignore_errors=True)
     os.makedirs("output/")
     os.makedirs(f"checkpoints/{run_name}", exist_ok=True)
+    os.makedirs(f"{BASE_DIR}/shared/results_{run_name}", exist_ok=True)
+
     os.system("echo " + run_name + ", 0, mount > scripts/jobinfo.txt")
-    print ("Hello")
+    print("Hello")
     os.system("echo " + run_name + ", 0, mount > mount/shared/hi.txt")
-    print ("goodbye")
+    print("goodbye")
 
     cmd = shlex.split(cmd)
     if cmd[0] == "python" and debug:
@@ -54,8 +58,10 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
         print("\nKilled by user.")
         process.kill()
         run_data["status"] = "Killed"
-    except OSError:
+    except OSError as error:
+        import pdb; pdb.set_trace()
         print("\nSystem error.")
+        traceback.print_exc()
         process.kill()
         run_data["status"] = "Error"
 
