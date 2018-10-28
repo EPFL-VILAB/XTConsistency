@@ -1,4 +1,3 @@
-
 import os, sys, math, random, itertools
 import numpy as np
 
@@ -25,8 +24,7 @@ from fire import Fire
 import IPython
 
 
-def main(curvature_step=0, depth_step=0):
-
+def main(curvature_step=0, depth_step=0, standardize_losses=False):
     curvature_weight = 0.0
     depth_weight = 0.0
 
@@ -34,25 +32,28 @@ def main(curvature_step=0, depth_step=0):
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
-    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    
-    scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
+    print(model.forward(torch.randn(8, 3, 256, 256)).shape)
+
+    scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
+
     def curvature_model(pred):
         return checkpoint(curvature_model_base, pred)
 
     depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
-        mse = F.mse_loss(pred*mask.float(), target*mask.float())
-        curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-        depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+        mse = F.mse_loss(pred * mask.float(), target * mask.float())
+        curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
+        depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
+        return mse + curvature_weight * curvature + depth_weight * depth, (
+        mse.detach(), curvature.detach(), depth.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
@@ -65,9 +66,21 @@ def main(curvature_step=0, depth_step=0):
             mean = np.mean(list_of_values[:ii])
             std = np.std(list_of_values[:ii])
 
-            running_mean_and_std_bounds.append([mean-std, mean, mean+std])
+            running_mean_and_std_bounds.append([mean - std, mean, mean + std])
 
         return running_mean_and_std_bounds, legend
+
+    def get_running_std(list_of_values):
+        return [np.std(list_of_values[:ii]) for ii in range(len(list_of_values))]
+
+    def get_running_covs(list_of_values_1, list_of_values_2):
+        assert len(list_of_values_1) == len(list_of_values_2)
+
+        covs = []
+        for ii in range(len(list_of_values_1)):
+            covs.append(np.cov(np.stack((list_of_values_1[:ii], list_of_values_2[:ii]), axis=0))[0, 1])
+
+        return covs
 
     def jointplot1(data):
         # compute running mean for every
@@ -76,13 +89,17 @@ def main(curvature_step=0, depth_step=0):
 
         running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_mse_loss"])
         logger.plot(running_mean_and_std_bounds, "mse_loss_running_mean", opts={"legend": legend})
+        logger.plot(get_running_std(logger.data["train_mse_loss"]), "mse_loss_running_stds", opts={"legend": ['STD']})
 
     def jointplot2(data):
         data = np.stack((logger.data["train_curvature_loss"], logger.data["val_curvature_loss"]), axis=1)
         logger.plot(data, "curvature_loss", opts={"legend": ["train_curvature", "val_curvature"]})
 
-        running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_curvature_loss"])
+        running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(
+            logger.data["train_curvature_loss"])
         logger.plot(running_mean_and_std_bounds, "curvature_loss_running_mean", opts={"legend": legend})
+        logger.plot(get_running_std(logger.data["train_curvature_loss"]), "curvature_loss_running_stds",
+                    opts={"legend": ['STD']})
 
     def jointplot3(data):
         data = np.stack((logger.data["train_depth_loss"], logger.data["val_depth_loss"]), axis=1)
@@ -90,10 +107,21 @@ def main(curvature_step=0, depth_step=0):
 
         running_mean_and_std_bounds, legend = get_running_means_w_std_bounds_and_legend(logger.data["train_depth_loss"])
         logger.plot(running_mean_and_std_bounds, "depth_loss_running_mean", opts={"legend": legend})
+        logger.plot(get_running_std(logger.data["train_depth_loss"]), "depth_loss_running_stds",
+                    opts={"legend": ['STD']})
+
+    def covarianceplot(data):
+        covs = get_running_covs(logger.data["train_mse_loss"], logger.data["train_curvature_loss"])
+        logger.plot(covs, "train_mse_curvature_running_covariance", opts={"legend": ['Covariance']})
+
+        covs = get_running_covs(logger.data["train_mse_loss"], logger.data["train_depth_loss"])
+        logger.plot(covs, "train_mse_depth_running_covariance", opts={"legend": ['Covariance']})
+
 
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
     logger.add_hook(jointplot3, feature="val_depth_loss", freq=1)
+    logger.add_hook(covarianceplot, feature="val_depth_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
@@ -101,8 +129,8 @@ def main(curvature_step=0, depth_step=0):
         load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
-    plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-        loss_models={"curvature": curvature_model, "depth": depth_model})
+    plot_images(model, logger, test_set, ood_images, mask_val=0.502,
+                loss_models={"curvature": curvature_model, "depth": depth_model})
 
     # TRAINING
     for epochs in range(0, 800):
@@ -141,19 +169,20 @@ def main(curvature_step=0, depth_step=0):
 
         curvature_weight += curvature_step
         depth_weight += depth_step
-        logger.text (f"Increasing curvature weight: {curvature_weight}")
-        logger.text (f"Increasing depth weight: {depth_weight}")
-        
+        logger.text(f"Increasing curvature weight: {curvature_weight}")
+        logger.text(f"Increasing depth weight: {depth_weight}")
+
         def mixed_loss(pred, target):
             mask = build_mask(target.detach(), val=0.502)
-            mse = F.mse_loss(pred*mask.float(), target*mask.float())
-            curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-            depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+            mse = F.mse_loss(pred * mask.float(), target * mask.float())
+            curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
+            depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-            return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
+            return mse + curvature_weight * curvature + depth_weight * depth, (
+            mse.detach(), curvature.detach(), depth.detach())
 
-        plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-                        loss_models={"curvature": curvature_model, "depth": depth_model})
+        plot_images(model, logger, test_set, ood_images, mask_val=0.502,
+                    loss_models={"curvature": curvature_model, "depth": depth_model})
 
         scheduler.step()
 
