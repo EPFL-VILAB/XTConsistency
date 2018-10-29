@@ -77,8 +77,8 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
             depth_loss_std = np.std(logger.data["train_curvature_loss"])
 
             final_loss = mse / normals_loss_std
-            final_loss += curvature_weight * curvature / curvature_loss_std
-            final_loss += depth_weight * depth / depth_loss_std
+            final_loss += curvature / curvature_loss_std
+            final_loss += depth / depth_loss_std
         else:
             final_loss = mse
             final_loss += curvature_weight * curvature
@@ -124,6 +124,11 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
 
         covs = get_running_p_coeffs(logger.data["train_curvature_loss"], logger.data["train_depth_loss"])
         logger.plot(covs, "train_curvature_depth_running_pearson_coeffs", opts={"legend": ['Pearson Coefficient']})
+
+        ratio_mse_curv_stds = [mse_std / curv_std for mse_std, curv_std in
+                               zip(get_running_std(logger.data["train_mse_loss"]),
+                                   get_running_std(logger.data["train_curvature_loss"]))]
+        logger.plot(ratio_mse_curv_stds, "train_mse_over_curvature_stds", opts={"legend": ['MSE / Curvature STD']})
 
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
