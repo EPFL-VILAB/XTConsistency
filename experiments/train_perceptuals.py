@@ -1,27 +1,12 @@
-import os, sys, math, random, itertools
-import numpy as np
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from torchvision import datasets, transforms, models
+from fire import Fire
+from logger import VisdomLogger
+from models import DataParallelModel
+from modules.depth_nets import UNetDepth
+from modules.percep_nets import Dense1by1Net
+from modules.resnet import ResNet
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.checkpoint import checkpoint
-
 from utils import *
-from models import TrainableModel, DataParallelModel
-from logger import Logger, VisdomLogger
-from datasets import ImageTaskDataset
-
-from modules.resnet import ResNet
-from modules.percep_nets import DenseNet, Dense1by1Net, DeepNet, BaseNet, WideNet, PyramidNet
-from modules.depth_nets import UNetDepth
-from modules.unet import UNet
-from sklearn.model_selection import train_test_split
-from fire import Fire
-
-import IPython
 
 
 def main(curvature_step=0, depth_step=0, standardize_losses=False):
@@ -175,15 +160,6 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
         depth_weight += depth_step
         logger.text(f"Increasing curvature weight: {curvature_weight}")
         logger.text(f"Increasing depth weight: {depth_weight}")
-
-        def mixed_loss(pred, target):
-            mask = build_mask(target.detach(), val=0.502)
-            mse = F.mse_loss(pred * mask.float(), target * mask.float())
-            curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
-            depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
-
-            return mse + curvature_weight * curvature + depth_weight * depth, (
-            mse.detach(), curvature.detach(), depth.detach())
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502,
                     loss_models={"curvature": curvature_model, "depth": depth_model})
