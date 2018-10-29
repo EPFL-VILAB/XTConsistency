@@ -118,6 +118,9 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
         covs = get_running_covs(logger.data["train_mse_loss"], logger.data["train_depth_loss"])
         logger.plot(covs, "train_mse_depth_running_covariance", opts={"legend": ['Covariance']})
 
+        covs = get_running_covs(logger.data["train_curvature_loss"], logger.data["train_depth_loss"])
+        logger.plot(covs, "train_curvature_depth_running_covariance", opts={"legend": ['Covariance']})
+
 
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
