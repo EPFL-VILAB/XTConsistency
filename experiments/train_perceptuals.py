@@ -9,27 +9,61 @@ from torch.utils.checkpoint import checkpoint
 from utils import *
 
 
-def main(curvature_step=0, depth_step=0, standardize_losses=False):
+# These are outside of the main() function since they're pure helpers (ie don't need logger, main vars, etc)
+def get_running_means_w_std_bounds_and_legend(list_of_values):
+    running_mean_and_std_bounds = []
+    legend = ["Mean-STD", "Mean", "Mean+STD"]
+    for ii in range(len(list_of_values)):
+        mean = np.mean(list_of_values[:ii])
+        std = np.std(list_of_values[:ii])
+
+        running_mean_and_std_bounds.append([mean - std, mean, mean + std])
+
+    return running_mean_and_std_bounds, legend
+
+
+def get_running_std(list_of_values):
+    return [np.std(list_of_values[:ii]) for ii in range(len(list_of_values))]
+
+
+def get_running_p_coeffs(list_of_values_1, list_of_values_2):
+    assert len(list_of_values_1) == len(list_of_values_2)
+
+    pearson_coefficients = []
+    for ii in range(len(list_of_values_1)):
+        if ii == 0:  # covariance is undefined if there's only one datapoint
+            correlation_coefficient = 0.0
+        else:
+            cov = np.cov(np.stack((list_of_values_1[:ii], list_of_values_2[:ii]), axis=0))[0, 1]
+            std1 = np.std(list_of_values_1[:ii])
+            std2 = np.std(list_of_values_2[:ii])
+            correlation_coefficient = cov / (std1 * std2)
+
+        pearson_coefficients.append(correlation_coefficient)
+
+    return pearson_coefficients
+
+
+def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
     curvature_weight = 0.0
     depth_weight = 0.0
+
+    # LOGGING
+    logger = VisdomLogger("train", env=JOB)
+    logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
     # MODEL
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-
-    print(model.forward(torch.randn(8, 3, 256, 256)).shape)
-
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
-
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-
-    def curvature_model(pred):
-        return checkpoint(curvature_model_base, pred)
-
     depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
 
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
+
+    def curvature_model(pred):
+        return checkpoint(curvature_model_base, pred)
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
@@ -37,36 +71,21 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
         curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        return mse + curvature_weight * curvature + depth_weight * depth, (
-        mse.detach(), curvature.detach(), depth.detach())
+        if should_standardize_losses:
+            normals_loss_std = np.std(logger.data["train_mse_loss"])
+            curvature_loss_std = np.std(logger.data["train_curvature_loss"])
+            depth_loss_std = np.std(logger.data["train_curvature_loss"])
 
-    # LOGGING
-    logger = VisdomLogger("train", env=JOB)
-    logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
+            final_loss = mse / normals_loss_std
+            final_loss += curvature_weight * curvature / curvature_loss_std
+            final_loss += depth_weight * depth / depth_loss_std
+        else:
+            final_loss = mse
+            final_loss += curvature_weight * curvature
+            final_loss += depth_weight * depth
 
-    def get_running_means_w_std_bounds_and_legend(list_of_values):
-        running_mean_and_std_bounds = []
-        legend = ["Mean-STD", "Mean", "Mean+STD"]
-        for ii in range(len(list_of_values)):
-            mean = np.mean(list_of_values[:ii])
-            std = np.std(list_of_values[:ii])
-
-            running_mean_and_std_bounds.append([mean - std, mean, mean + std])
-
-        return running_mean_and_std_bounds, legend
-
-    def get_running_std(list_of_values):
-        return [np.std(list_of_values[:ii]) for ii in range(len(list_of_values))]
-
-    # TODO(ajay) fix warning when calculating cov on first iteration
-    def get_running_covs(list_of_values_1, list_of_values_2):
-        assert len(list_of_values_1) == len(list_of_values_2)
-
-        covs = []
-        for ii in range(len(list_of_values_1)):
-            covs.append(np.cov(np.stack((list_of_values_1[:ii], list_of_values_2[:ii]), axis=0))[0, 1])
-
-        return covs
+        metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
+        return final_loss, metrics_to_return
 
     def jointplot1(data):
         # compute running mean for every
@@ -97,15 +116,14 @@ def main(curvature_step=0, depth_step=0, standardize_losses=False):
                     opts={"legend": ['STD']})
 
     def covarianceplot(data):
-        covs = get_running_covs(logger.data["train_mse_loss"], logger.data["train_curvature_loss"])
-        logger.plot(covs, "train_mse_curvature_running_covariance", opts={"legend": ['Covariance']})
+        covs = get_running_p_coeffs(logger.data["train_mse_loss"], logger.data["train_curvature_loss"])
+        logger.plot(covs, "train_mse_curvature_running_pearson_coeffs", opts={"legend": ['Pearson Coefficient']})
 
-        covs = get_running_covs(logger.data["train_mse_loss"], logger.data["train_depth_loss"])
-        logger.plot(covs, "train_mse_depth_running_covariance", opts={"legend": ['Covariance']})
+        covs = get_running_p_coeffs(logger.data["train_mse_loss"], logger.data["train_depth_loss"])
+        logger.plot(covs, "train_mse_depth_running_pearson_coeffs", opts={"legend": ['Pearson Coefficient']})
 
-        covs = get_running_covs(logger.data["train_curvature_loss"], logger.data["train_depth_loss"])
-        logger.plot(covs, "train_curvature_depth_running_covariance", opts={"legend": ['Covariance']})
-
+        covs = get_running_p_coeffs(logger.data["train_curvature_loss"], logger.data["train_depth_loss"])
+        logger.plot(covs, "train_curvature_depth_running_pearson_coeffs", opts={"legend": ['Pearson Coefficient']})
 
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
