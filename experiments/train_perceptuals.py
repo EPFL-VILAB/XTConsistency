@@ -9,42 +9,7 @@ from torch.utils.checkpoint import checkpoint
 from utils import *
 
 
-# These are outside of the main() function since they're pure helpers (ie don't need logger, main vars, etc)
-def get_running_means_w_std_bounds_and_legend(list_of_values):
-    running_mean_and_std_bounds = []
-    legend = ["Mean-STD", "Mean", "Mean+STD"]
-    for ii in range(len(list_of_values)):
-        mean = np.mean(list_of_values[:ii])
-        std = np.std(list_of_values[:ii])
-
-        running_mean_and_std_bounds.append([mean - std, mean, mean + std])
-
-    return running_mean_and_std_bounds, legend
-
-
-def get_running_std(list_of_values):
-    return [np.std(list_of_values[:ii]) for ii in range(len(list_of_values))]
-
-
-def get_running_p_coeffs(list_of_values_1, list_of_values_2):
-    assert len(list_of_values_1) == len(list_of_values_2)
-
-    pearson_coefficients = []
-    for ii in range(len(list_of_values_1)):
-        if ii == 0:  # covariance is undefined if there's only one datapoint
-            correlation_coefficient = 0.0
-        else:
-            cov = np.cov(np.stack((list_of_values_1[:ii], list_of_values_2[:ii]), axis=0))[0, 1]
-            std1 = np.std(list_of_values_1[:ii])
-            std2 = np.std(list_of_values_2[:ii])
-            correlation_coefficient = cov / (std1 * std2)
-
-        pearson_coefficients.append(correlation_coefficient)
-
-    return pearson_coefficients
-
-
-def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
+def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standardization_window_size=10):
     curvature_weight = 0.0
     depth_weight = 0.0
 
@@ -72,9 +37,9 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
         if should_standardize_losses:
-            normals_loss_std = np.std(logger.data["train_mse_loss"])
-            curvature_loss_std = np.std(logger.data["train_curvature_loss"])
-            depth_loss_std = np.std(logger.data["train_curvature_loss"])
+            normals_loss_std = np.std(logger.data["train_mse_loss"][-standardization_window_size:])
+            curvature_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
+            depth_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
 
             final_loss = mse / normals_loss_std
             final_loss += curvature / curvature_loss_std
@@ -86,6 +51,38 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False):
 
         metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
         return final_loss, metrics_to_return
+
+    def get_running_means_w_std_bounds_and_legend(list_of_values):
+        running_mean_and_std_bounds = []
+        legend = ["Mean-STD", "Mean", "Mean+STD"]
+        for ii in range(len(list_of_values)):
+            mean = np.mean(list_of_values[:ii][-standardization_window_size:])
+            std = np.std(list_of_values[:ii][-standardization_window_size:])
+
+            running_mean_and_std_bounds.append([mean - std, mean, mean + std])
+
+        return running_mean_and_std_bounds, legend
+
+    def get_running_std(list_of_values):
+        return [np.std(list_of_values[:ii][-standardization_window_size:]) for ii in range(len(list_of_values))]
+
+    def get_running_p_coeffs(list_of_values_1, list_of_values_2):
+        assert len(list_of_values_1) == len(list_of_values_2)
+
+        pearson_coefficients = []
+        for ii in range(len(list_of_values_1)):
+            if ii == 0:  # covariance is undefined if there's only one datapoint
+                correlation_coefficient = 0.0
+            else:
+                cov = np.cov(np.stack((list_of_values_1[:ii][-standardization_window_size:],
+                                       list_of_values_2[:ii][-standardization_window_size:]), axis=0))[0, 1]
+                std1 = np.std(list_of_values_1[:ii][-standardization_window_size:])
+                std2 = np.std(list_of_values_2[:ii][-standardization_window_size:])
+                correlation_coefficient = cov / (std1 * std2)
+
+            pearson_coefficients.append(correlation_coefficient)
+
+        return pearson_coefficients
 
     def jointplot1(data):
         # compute running mean for every
