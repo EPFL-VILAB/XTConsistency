@@ -47,11 +47,7 @@ if __name__ == "__main__":
 
     # DATA LOADING
     def dest_transforms(x):
-        x = x.unsqueeze(0)
-        mask = (x <= 65535.0 - 1000.0)
-        x[~mask] = 8000.0
-        x = (x.float()/8000.0)
-        return x[0]
+        return (x.float()/10000.0).clamp(min=0.0, max=1.0)
 
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
         load_data("normal", "depth_zbuffer", batch_size=48, dest_transforms=dest_transforms)

@@ -15,11 +15,13 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 
 from modules.resnet import ResNet
-from modules.percep_nets import DenseNet, DeepNet, BaseNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet, Dense1by1Net
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet
 from sklearn.model_selection import train_test_split
 from fire import Fire
+
+from torch.utils.checkpoint import checkpoint
 
 import IPython
 
@@ -27,7 +29,25 @@ import IPython
 def main():
 
     # MODEL
-    model = DataParallelModel(UNet())
+
+    curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
+    def curvature_model(pred):
+        return checkpoint(curvature_model_base, pred)
+
+    class Network(TrainableModel):
+
+        def __init__(self):
+            super().__init__()
+            self.model = DataParallelModel(UNet())
+
+        def forward(self, x):
+            return self.model(curvature_model(x))
+
+        def loss(self, pred, target):
+            loss = torch.tensor(0.0, device=pred.device)
+            return loss, (loss.detach(),)
+
+    model = Network()
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
     def loss(pred, target):
@@ -35,8 +55,8 @@ def main():
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
         return mse, (mse.detach(),)
 
-    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
+    print (model(torch.randn(8, 3, 256, 256)).shape)
+    print (model(torch.randn(16, 3, 256, 256)).shape)
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
@@ -47,13 +67,13 @@ def main():
         logger.plot(data, "mse_loss", opts={"legend": ["train_mse", "val_mse"]})
 
     logger.add_hook(jointplot, feature="val_mse_loss", freq=1)
-    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
+    logger.add_hook(lambda x: model.model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("principal_curvature", "normal", batch_size=64)
+        load_data("normal", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
-    plot_images(model, logger, test_set, mask_val=0.502)
+    plot_images(model, logger, test_set, mask_val=0.502, loss_models={'curvature': curvature_model})
 
     # TRAINING
     for epochs in range(0, 800):
@@ -69,7 +89,7 @@ def main():
         (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=loss, logger=logger)
         logger.update("val_mse_loss", np.mean(val_mse_data))
 
-        plot_images(model, logger, test_set, mask_val=0.502)
+        plot_images(model, logger, test_set, mask_val=0.502, loss_models={'curvature': curvature_model})
 
 
 if __name__ == "__main__":

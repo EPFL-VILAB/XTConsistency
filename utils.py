@@ -67,31 +67,29 @@ def cycle(iterable):
             yield i
 
 
-def build_mask(target, val=0.0, tol=1e-3, dilate=True):
+def build_mask(target, val=0.0, tol=1e-3, dilate=None):
     if target.shape[1] == 1:
         mask = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
         mask = mask.unsqueeze(1)
-        if dilate:
-            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-            mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-            mask = (~mask).expand_as(target)
+        if dilate is not None:
+            mask = F.conv2d(mask.float(), torch.ones(1, 1, dilate, dilate, device=mask.device), padding=dilate//2) != 0
+        mask = (~mask).expand_as(target)
         return mask
 
     mask1 = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
     mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
     mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
     mask = (mask1 & mask2 & mask3).unsqueeze(1)
-    if dilate:
-        mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
-        mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+    if dilate is not None :
+        mask = F.conv2d(mask.float(), torch.ones(1, 1, dilate, dilate, device=mask.device), padding=dilate//2) != 0
 
     mask = (~mask).expand_as(target)
     return mask
 
 
-def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, resize=256):
+def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, 
+                resize=256, mask_val=0.502, dilate=5):
+    
     from datasets import ImageTaskDataset, ImageDataset
     from torchvision import transforms
 
@@ -106,10 +104,22 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
-    source_transforms = source_transforms or (lambda x: x)
-    dest_transforms = dest_transforms or (lambda x: x)
-    source_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), source_transforms])
-    dest_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), dest_transforms])
+    resize = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize), transforms.ToTensor()])
+
+    def dilated_kernel(x):
+        mask = build_mask(x.unsqueeze(0), mask_val, dilate=dilate)
+        mask = resize(~mask[0])
+        mask = (mask == 0).float()
+        x = resize(x)
+        x = x*mask.float() + mask_val*(1-mask.float())
+        return x
+
+    if source_transforms != None:
+        source_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
+    else:
+        source_transforms = transforms.Compose([transforms.ToTensor(), source_transforms or (lambda x: x), dilated_kernel])
+
+    dest_transforms = transforms.Compose([transforms.ToTensor(), dest_transforms or (lambda x: x), dilated_kernel])
 
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
@@ -129,19 +139,19 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     )
     test_loader1 = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+                         source_task=source_task, dest_task=dest_task, debug=True),
         batch_size=6,
         num_workers=6,
         shuffle=False,
-        pin_memory=True
+        pin_memory=True,
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["akiak"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+        ImageTaskDataset(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
+                         source_task=source_task, dest_task=dest_task, debug=True),
         batch_size=6,
         num_workers=6,
         shuffle=False,
-        pin_memory=True
+        pin_memory=True,
     )
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir="data/ood_images"),
@@ -169,6 +179,7 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     logger.images(test_masks.float(), "masks", resize=256)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
     logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
+    logger.images(targets.clamp(min=0, max=1)*test_masks.float() + (1-mask_val)*(1 - test_masks.float()), "targets_masked", nrow=2, resize=256)
 
     if ood_images is not None:
         ood_preds = model.predict(ood_images)

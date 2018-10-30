@@ -28,6 +28,7 @@ class ImageTaskDataset(Dataset):
         data_dir=DATA_DIR,
         source_task="rgb",
         dest_task="normal",
+        debug=False,
         source_transforms=transforms.ToTensor(),
         dest_transforms=transforms.ToTensor(),
     ):
@@ -42,6 +43,7 @@ class ImageTaskDataset(Dataset):
             self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
         # self.source_files = [y for x in self.source_files for y in x]
         print ("Source files len: ", len(self.source_files))
+        self.debug = debug
 
     def __len__(self):
         return len(self.source_files)
@@ -53,17 +55,26 @@ class ImageTaskDataset(Dataset):
         data_dir, building, task, view = (self.data_dir, result["building"], result["task"], result["view"])
         dest_file = f"{data_dir}/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
 
+        if not os.path.exists(dest_file):
+            time.sleep(0.1)
+            return self.__getitem__(random.randrange(0, len(self.source_files)))
+
         try:
             image = Image.open(source_file)
             image = self.source_transforms(image).float()
 
             task = Image.open(dest_file)
             task = self.dest_transforms(task).float()
-            return image, task
-        except:
-            # print ("Error in file pair: ", source_file, dest_file)
+        except Exception as e:
+            if self.debug: print (e)
             time.sleep(0.1)
             return self.__getitem__(random.randrange(0, len(self.source_files)))
+        return image, task
+        
+        # except:
+        #     # print ("Error in file pair: ", source_file, dest_file)
+        #     time.sleep(0.1)
+        #     return self.__getitem__(random.randrange(0, len(self.source_files)))
 
 
 class ImageDataset(Dataset):
