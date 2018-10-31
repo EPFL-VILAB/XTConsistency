@@ -60,6 +60,52 @@ class DenseNet(TrainableModel):
         return loss, (loss.detach(),)
 
 
+class Dense1by1Net(TrainableModel):
+    def __init__(self):
+        super().__init__()
+
+        self.decoder = nn.Sequential(
+            ConvBlock(3, 64, groups=3, kernel_size=1, padding=0), 
+            ConvBlock(64, 96, kernel_size=1, padding=0), 
+            ConvBlock(96, 96, kernel_size=1, padding=0),
+            ConvBlock(96, 96),
+            ConvBlock(96, 96),
+            ConvBlock(96, 96),
+            ConvBlock(96, 3),
+        )
+
+    def forward(self, x):
+        x = self.decoder(x)
+        return x
+
+    def loss(self, pred, target):
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
+
+class DenseKernelsNet(TrainableModel):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+
+        self.decoder = nn.Sequential(
+            ConvBlock(3, 64, groups=3, kernel_size=1, padding=0), 
+            ConvBlock(64, 96, kernel_size=1, padding=0), 
+            ConvBlock(96, 96, kernel_size=1, padding=0),
+            ConvBlock(96, 96, kernel_size=kernel_size, padding=kernel_size//2),
+            ConvBlock(96, 96),
+            ConvBlock(96, 96),
+            ConvBlock(96, 96),
+            ConvBlock(96, 3),
+        )
+
+    def forward(self, x):
+        x = self.decoder(x)
+        return x
+
+    def loss(self, pred, target):
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
+
+
 class DeepNet(TrainableModel):
     def __init__(self):
         super().__init__()
