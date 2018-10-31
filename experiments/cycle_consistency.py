@@ -25,7 +25,7 @@ from fire import Fire
 import IPython
 
 
-def main(curvature_step=0, depth_step=0):
+def main(mse_weight=1, cycle_weight=1):
 
     # MODEL
     model = DataParallelModel(ResNet())
@@ -37,7 +37,7 @@ def main(curvature_step=0, depth_step=0):
     def curvature_model(pred):
         return checkpoint(curvature_model_base, pred)
 
-    inverse_model_base = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/curvature2normals_unet.pth")
+    inverse_model_base = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth")
     def inverse_model(pred):
         return checkpoint(inverse_model_base, pred)
 
@@ -49,7 +49,7 @@ def main(curvature_step=0, depth_step=0):
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
         cycle = F.mse_loss(cycle_model(pred)*mask.float(), cycle_model(target)*mask.float())
 
-        return mse + cycle, (mse.detach(), cycle.detach())
+        return mse_weight*mse + cycle_weight*cycle, (mse.detach(), cycle.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
