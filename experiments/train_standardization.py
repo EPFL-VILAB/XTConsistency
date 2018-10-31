@@ -50,7 +50,7 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=True, standar
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
         if should_standardize_losses:
-            if len(logger.data["train_mse_loss"]) >= 2:
+            if "train_mse_loss" in logger.data and len(logger.data["train_mse_loss"]) >= 2:
                 normals_loss_std = np.std(logger.data["train_mse_loss"][-standardization_window_size:])
                 curvature_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
                 depth_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
