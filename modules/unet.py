@@ -13,6 +13,32 @@ from models import TrainableModel
 from utils import *
 
 
+
+class ConvBlock(nn.Module):
+    def __init__(self, f1, f2, kernel_size=3, padding=1, use_groupnorm=True, groups=8, dilation=1, transpose=False):
+        super().__init__()
+        self.transpose = transpose
+        self.conv = nn.Conv2d(f1, f2, (kernel_size, kernel_size), dilation=dilation, padding=padding*dilation)
+        if self.transpose:
+            self.convt = nn.ConvTranspose2d(
+                f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
+            )
+        if use_groupnorm:
+            self.bn = nn.GroupNorm(groups, f1)
+        else:
+            self.bn = nn.BatchNorm2d(f1)
+
+    def forward(self, x):
+        # x = F.dropout(x, 0.04, self.training)
+        x = self.bn(x)
+        if self.transpose:
+            # x = F.upsample(x, scale_factor=2, mode='bilinear')
+            x = F.relu(self.convt(x))
+            # x = x[:, :, :-1, :-1]
+        x = F.relu(self.conv(x))
+        return x
+
+
 class UNet_up_block(nn.Module):
     def __init__(self, prev_channel, input_channel, output_channel, up_sample=True):
         super().__init__()

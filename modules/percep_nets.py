@@ -66,8 +66,8 @@ class Dense1by1Net(TrainableModel):
 
         self.decoder = nn.Sequential(
             ConvBlock(3, 64, groups=3, kernel_size=1, padding=0), 
-            ConvBlock(64, 96, kernel_size=1, padding=0),
-            ConvBlock(96, 96, kernel_size=1, padding=0),
+            ConvBlock(64, 96, kernel_size=1, padding=0), 
+            ConvBlock(96, 96),
             ConvBlock(96, 96),
             ConvBlock(96, 96),
             ConvBlock(96, 96),

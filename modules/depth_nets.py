@@ -18,11 +18,11 @@ class ResidualsNet(TrainableModel):
         super().__init__()
 
         self.encoder = nn.Sequential(
-            ConvBlock(3, 32, groups=3, use_groupnorm=False), 
+            ConvBlock(3, 32, groups=3, use_groupnorm=False),
             ConvBlock(32, 32, use_groupnorm=False),
         )
         self.mid = nn.Sequential(
-            ConvBlock(32, 64, dilation=1, use_groupnorm=False), 
+            ConvBlock(32, 64, dilation=1, use_groupnorm=False),
             ConvBlock(64, 64, dilation=2, use_groupnorm=False),
             ConvBlock(64, 64, dilation=2, use_groupnorm=False),
             ConvBlock(64, 32, dilation=4, use_groupnorm=False),
@@ -101,20 +101,20 @@ class UNetDepth(TrainableModel):
         self.down_block2 = UNet_down_block(16, 32, True)
         self.down_block3 = UNet_down_block(32, 64, True)
         self.down_block4 = UNet_down_block(64, 128, True)
-        self.down_block5 = UNet_down_block(128, 256, False)
-        self.down_block6 = UNet_down_block(256, 512, False)
-        self.down_block7 = UNet_down_block(512, 1024, True)
+        self.down_block5 = UNet_down_block(128, 256, True)
+        self.down_block6 = UNet_down_block(256, 512, True)
+        # self.down_block7 = UNet_down_block(512, 1024, False)
 
-        self.mid_conv1 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn1 = nn.GroupNorm(8, 1024)
-        self.mid_conv2 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn2 = nn.GroupNorm(8, 1024)
-        self.mid_conv3 = torch.nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn3 = torch.nn.GroupNorm(8, 1024)
+        self.mid_conv1 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn1 = nn.GroupNorm(8, 512)
+        self.mid_conv2 = nn.Conv2d(512, 512, 3, padding=1)
+        self.bn2 = nn.GroupNorm(8, 512)
+        self.mid_conv3 = torch.nn.Conv2d(512, 512, 3, padding=1)
+        self.bn3 = torch.nn.GroupNorm(8, 512)
 
-        self.up_block1 = UNet_up_block(512, 1024, 512)
-        self.up_block2 = UNet_up_block(256, 512, 256, False)
-        self.up_block3 = UNet_up_block(128, 256, 128, False)
+        # self.up_block1 = UNet_up_block(512, 1024, 512, False)
+        self.up_block2 = UNet_up_block(256, 512, 256, True)
+        self.up_block3 = UNet_up_block(128, 256, 128, True)
         self.up_block4 = UNet_up_block(64, 128, 64, True)
         self.up_block5 = UNet_up_block(32, 64, 32, True)
         self.up_block6 = UNet_up_block(16, 32, 16, True)
@@ -131,13 +131,13 @@ class UNetDepth(TrainableModel):
         x = self.x4 = self.down_block4(self.x3)
         x = self.x5 = self.down_block5(self.x4)
         x = self.x6 = self.down_block6(self.x5)
-        x = self.x7 = self.down_block7(self.x6)
+        # x = self.x7 = self.down_block7(self.x6)
 
         x = self.relu(self.bn1(self.mid_conv1(x)))
         x = self.relu(self.bn2(self.mid_conv2(x)))
         x = self.relu(self.bn3(self.mid_conv3(x)))
 
-        x = self.up_block1(self.x6, x)
+        # x = self.up_block1(self.x6, x)
         x = self.up_block2(self.x5, x)
         x = self.up_block3(self.x4, x)
         x = self.up_block4(self.x3, x)
