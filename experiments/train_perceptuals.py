@@ -29,14 +29,14 @@ def main(curvature_step=0, depth_step=0):
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
     # MODEL
-    model = DataParallelModel(ResNet())
+    model = DataParallelModel(UNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet_v2.pth")
 
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
@@ -50,10 +50,7 @@ def main(curvature_step=0, depth_step=0):
         curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        final_loss = mse
-        final_loss += curvature_weight * curvature
-        final_loss += depth_weight * depth
-
+        final_loss = mse + curvature_weight * curvature + depth_weight * depth
         metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
         return final_loss, metrics_to_return
 
@@ -72,12 +69,11 @@ def main(curvature_step=0, depth_step=0):
     logger.add_hook(jointplot1, feature="val_mse_loss", freq=1)
     logger.add_hook(jointplot2, feature="val_curvature_loss", freq=1)
     logger.add_hook(jointplot3, feature="val_depth_loss", freq=1)
-    logger.add_hook(covarianceplot, feature="val_depth_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=48)
+        load_data("rgb", "normal", batch_size=32, batch_transforms=random_resize)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502,

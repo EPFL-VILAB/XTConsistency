@@ -117,6 +117,7 @@ class UNet(TrainableModel):
         self.relu = nn.ReLU()
 
     def forward(self, x):
+
         self.x1 = self.down_block1(x)
         self.x2 = self.down_block2(self.x1)
         self.x3 = self.down_block3(self.x2)

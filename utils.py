@@ -33,6 +33,7 @@ try:
     from torch.autograd import Variable
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    dtype = torch.cuda.FloatTensor
 except:
     pass
 
@@ -70,6 +71,13 @@ def cycle(iterable):
         for i in iterable:
             yield i
 
+# Cycles through iterable without making extra copies
+def random_resize(iterable, vals=[128, 192, 256, 320]):
+    from transforms import resize
+    while True:
+        for X, Y in iterable:
+            val = random.choice(vals)
+            yield resize(X.to(DEVICE), val=val).detach(), resize(Y.to(DEVICE), val=val).detach()
 
 def build_mask(target, val=0.0, tol=1e-3, dilate=None):
     if target.shape[1] == 1:
@@ -93,7 +101,7 @@ def build_mask(target, val=0.0, tol=1e-3, dilate=None):
 
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, 
-                resize=256, mask_val=0.502, dilate=5):
+                resize=256, mask_val=0.502, dilate=5, batch_transforms=cycle):
     
     from datasets import ImageTaskDataset, ImageDataset
     from torchvision import transforms
@@ -109,14 +117,14 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
-    resize = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize, interpolation=PIL.Image.NEAREST), 
+    t_resize = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize, interpolation=PIL.Image.NEAREST), 
                                     transforms.ToTensor()])
 
     def dilated_kernel(x):
         mask = build_mask(x.unsqueeze(0), mask_val, dilate=dilate)
-        mask = resize(~mask[0])
+        mask = t_resize(~mask[0])
         mask = (mask == 0).float()
-        x = resize(x)
+        x = t_resize(x)
         x = x*mask.float() + mask_val*(1-mask.float())
         return x
 
@@ -158,7 +166,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True,
     )
     ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir="data/ood_images"),
+        ImageDataset(data_dir="data/ood_images", resize=(resize, resize)),
         batch_size=10,
         shuffle=False,
         pin_memory=True
@@ -168,7 +176,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     print("Train step: ", train_step)
     print("Val step: ", val_step)
 
-    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    train_loader, val_loader = batch_transforms(train_loader), batch_transforms(val_loader)
     test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
     ood_images = list(itertools.islice(ood_loader, 1))

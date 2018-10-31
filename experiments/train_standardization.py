@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 from fire import Fire
 
 
-def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standardization_window_size=10,
+def main(curvature_step=0, depth_step=0, should_standardize_losses=True, standardization_window_size=10,
          include_depth=False):
     curvature_weight = 0.0
     depth_weight = 0.0
