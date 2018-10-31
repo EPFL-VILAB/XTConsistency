@@ -17,6 +17,7 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 os.system(f"sudo mkdir {RESULTS_DIR}")
 
 if BASE_DIR == "/":
+    MODELS_DIR = "/models"
     DATA_DIR = "/data"
     RESULTS_DIR = "/result"
 
