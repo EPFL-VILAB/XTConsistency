@@ -54,16 +54,12 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=True, standar
                 normals_loss_std = np.std(logger.data["train_mse_loss"][-standardization_window_size:])
                 curvature_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
                 depth_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
+                final_loss = mse / float(normals_loss_std)
+                final_loss += curvature / float(curvature_loss_std)
+                if include_depth:
+                    final_loss += depth / float(depth_loss_std)
             else:
-                normals_loss_std = 1
-                curvature_loss_std = 1
-                depth_loss_std = 1
-                
-            final_loss = mse / normals_loss_std
-            final_loss += curvature / curvature_loss_std
-
-            if include_depth:
-                final_loss += depth / depth_loss_std
+                final_loss = mse + curvature
         else:
             final_loss = mse
             final_loss += curvature_weight * curvature
