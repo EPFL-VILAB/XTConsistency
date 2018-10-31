@@ -20,7 +20,8 @@ from sklearn.model_selection import train_test_split
 from fire import Fire
 
 
-def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standardization_window_size=10):
+def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standardization_window_size=10,
+         include_depth=False):
     curvature_weight = 0.0
     depth_weight = 0.0
 
@@ -32,11 +33,9 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standa
     model = DataParallelModel(ResNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
-    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet_v2.pth")
 
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
@@ -57,7 +56,9 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standa
 
             final_loss = mse / normals_loss_std
             final_loss += curvature / curvature_loss_std
-            final_loss += depth / depth_loss_std
+
+            if include_depth:
+                final_loss += depth / depth_loss_std
         else:
             final_loss = mse
             final_loss += curvature_weight * curvature
