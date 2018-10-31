@@ -5,6 +5,9 @@ import random, sys, os, time, glob, math, itertools
 
 from sklearn.model_selection import train_test_split
 
+import IPython
+import PIL
+
 EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
@@ -71,6 +74,7 @@ def build_mask(target, val=0.0, tol=1e-3, dilate=None):
     if target.shape[1] == 1:
         mask = (target[:, 0, :, :] >= val - tol) & (target[:, 0, :, :] <= val + tol)
         mask = mask.unsqueeze(1)
+        mean = mask.data.float().mean()
         if dilate is not None:
             mask = F.conv2d(mask.float(), torch.ones(1, 1, dilate, dilate, device=mask.device), padding=dilate//2) != 0
         mask = (~mask).expand_as(target)
@@ -104,7 +108,8 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
-    resize = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize), transforms.ToTensor()])
+    resize = transforms.Compose([transforms.ToPILImage(), transforms.Resize(resize, interpolation=PIL.Image.NEAREST), 
+                                    transforms.ToTensor()])
 
     def dilated_kernel(x):
         mask = build_mask(x.unsqueeze(0), mask_val, dilate=dilate)
@@ -141,7 +146,6 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task, debug=True),
         batch_size=6,
-        num_workers=6,
         shuffle=False,
         pin_memory=True,
     )
@@ -149,14 +153,12 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task, debug=True),
         batch_size=6,
-        num_workers=6,
         shuffle=False,
         pin_memory=True,
     )
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir="data/ood_images"),
         batch_size=10,
-        num_workers=10,
         shuffle=False,
         pin_memory=True
     )

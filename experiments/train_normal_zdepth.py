@@ -50,7 +50,7 @@ if __name__ == "__main__":
         return (x.float()/10000.0).clamp(min=0.0, max=1.0)
 
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("normal", "depth_zbuffer", batch_size=48, dest_transforms=dest_transforms)
+        load_data("normal", "depth_zbuffer", batch_size=64, dilate=5, dest_transforms=dest_transforms)
     logger.images(test_images, "images", resize=128)    
     plot_images(model, logger, test_set, mask_val=1.0)
 
