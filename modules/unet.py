@@ -89,24 +89,20 @@ class UNet(TrainableModel):
     def __init__(self):
         super().__init__()
 
-        self.initial = nn.Sequential(
-            ConvBlock(3, 16, groups=3, kernel_size=1, padding=0),
-            ConvBlock(16, 16, groups=4, kernel_size=1, padding=0)
-        )
-        self.down_block1 = UNet_down_block(16, 16, False)
-        self.down_block2 = UNet_down_block(16, 32, True)
-        self.down_block3 = UNet_down_block(32, 64, True)
-        self.down_block4 = UNet_down_block(64, 128, True)
-        self.down_block5 = UNet_down_block(128, 256, True)
-        self.down_block6 = UNet_down_block(256, 512, True)
-        self.down_block7 = UNet_down_block(512, 1024, True)
+        self.down_block1 = UNet_down_block(3, 16, False) #   256
+        self.down_block2 = UNet_down_block(16, 32, True) #   128
+        self.down_block3 = UNet_down_block(32, 64, True) #   64
+        self.down_block4 = UNet_down_block(64, 128, True) #  32
+        self.down_block5 = UNet_down_block(128, 256, True) # 16
+        self.down_block6 = UNet_down_block(256, 512, True) # 8
+        self.down_block7 = UNet_down_block(512, 1024, True)# 4 
 
         self.mid_conv1 = nn.Conv2d(1024, 1024, 3, padding=1)
         self.bn1 = nn.GroupNorm(8, 1024)
         self.mid_conv2 = nn.Conv2d(1024, 1024, 3, padding=1)
         self.bn2 = nn.GroupNorm(8, 1024)
         self.mid_conv3 = torch.nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn3 = torch.nn.GroupNorm(8, 1024)
+        self.bn3 = nn.GroupNorm(8, 1024)
 
         self.up_block1 = UNet_up_block(512, 1024, 512)
         self.up_block2 = UNet_up_block(256, 512, 256)
@@ -121,7 +117,6 @@ class UNet(TrainableModel):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.initial(x)
         self.x1 = self.down_block1(x)
         self.x2 = self.down_block2(self.x1)
         self.x3 = self.down_block3(self.x2)
