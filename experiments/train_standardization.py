@@ -50,10 +50,15 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standa
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
         if should_standardize_losses:
-            normals_loss_std = np.std(logger.data["train_mse_loss"][-standardization_window_size:])
-            curvature_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
-            depth_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
-
+            if len(logger.data["train_mse_loss"]) >= 2:
+                normals_loss_std = np.std(logger.data["train_mse_loss"][-standardization_window_size:])
+                curvature_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
+                depth_loss_std = np.std(logger.data["train_curvature_loss"][-standardization_window_size:])
+            else:
+                normals_loss_std = 1
+                curvature_loss_std = 1
+                depth_loss_std = 1
+                
             final_loss = mse / normals_loss_std
             final_loss += curvature / curvature_loss_std
 
@@ -176,10 +181,10 @@ def main(curvature_step=0, depth_step=0, should_standardize_losses=False, standa
         #     log_file.write("\n")
         # TODO(ajay) clear out logs first, before appending to this
         # Used to log losses in case we want to analyze them afterwards for whitening
-        temp_logs_location = f"{BASE_DIR}/temp_logs"
-        with open(f"{temp_logs_location}/log_train_mse_losses.txt", "a") as log_file:
-            log_file.write(', '.join([str(dd.cpu().tolist()) for dd in mse_data]))
-            log_file.write("\n")
+        # temp_logs_location = f"{BASE_DIR}/temp_logs"
+        # with open(f"{temp_logs_location}/log_train_mse_losses.txt", "a") as log_file:
+        #     log_file.write(', '.join([str(dd.cpu().tolist()) for dd in mse_data]))
+        #     log_file.write("\n")
 
         # with open(f"{temp_logs_location}/log_train_curvature_loss.txt", "a") as log_file:
         #     log_file.write(', '.join([str(dd.cpu().tolist()) for dd in curvature_data]))
