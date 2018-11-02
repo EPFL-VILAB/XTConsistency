@@ -17,7 +17,6 @@ from datasets import ImageTaskDataset
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, DeepNet, BaseNet
 from modules.depth_nets import UNetDepth
-from modules.drn import DRN
 from modules.unet import UNet
 from sklearn.model_selection import train_test_split
 from fire import Fire
@@ -31,7 +30,7 @@ def main(curvature_step=0, depth_step=0):
     depth_weight = 0.0
 
     # MODEL
-    model = DataParallelModel(DRN())
+    model = DataParallelModel(ResNet())
     # model = DataParallelModel.load(ResNet().cuda(), f"{RESULTS_DIR}/model.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 

@@ -3,7 +3,7 @@ import subprocess, glob, os
 from multiprocessing import Pool
 from fire import Fire
 
-def process_file(file, result_loc="/result"):
+def process_file(file, result_loc="staging"):
 	try:
 		*rest, task, archive = file.split('/')
 		result_dir = f"{result_loc}/{archive[:-4]}"
@@ -11,13 +11,15 @@ def process_file(file, result_loc="/result"):
 		curl = subprocess.Popen(["curl", "-s", file], stdout=subprocess.PIPE)
 		tar = subprocess.Popen(["tar", "xf", "-", "-C", result_dir, "--no-same-owner"], stdin=curl.stdout, stdout=subprocess.PIPE)
 		tar.wait()
+		subprocess.run(f"gsutil -m cp -r {result_dir} gs://taskonomy-data".split(), stdout=devnull, stderr=devnull)
+		subprocess.run(f"rm -rf {result_dir}".split(), stdout=devnull, stderr=devnull)
 		return result_dir
 	except Exception as e:
 		print (e)
 		return "error"
 
 def main(filename="data/alllinks.txt", 
-		tasks=['normal', 'reshading']):
+		tasks=['rgb', 'normal','principal_curvature', 'depth_zbuffer']):
 	
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]
@@ -26,6 +28,7 @@ def main(filename="data/alllinks.txt",
 	with Pool() as pool:
 		for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):
 			print (f"Downloaded {result_dir}: {i}/{len(links)} files")
+			break
 
 if __name__ == "__main__":
 	Fire(main)

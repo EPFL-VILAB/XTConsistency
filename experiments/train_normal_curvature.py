@@ -14,20 +14,21 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
-from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet, WideNet, PyramidNet, Dense1by1Net, DenseKernelsNet, CurveUNet
+from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet, WideNet, PyramidNet
 
 import IPython
 
 
 if __name__ == "__main__":
 
-    print ("Using Dense1by1Net")
-    model = DataParallelModel(Dense1by1Net())
+    # MODEL
+    print ("Using PyramidNet")
+    model = DataParallelModel(PyramidNet())
     model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
-    print (model.forward(torch.randn(1, 3, 256, 256)).shape)
+    print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
     def loss(pred, target):
-        mask = build_mask(target, val=0.0, tol=1e-3)
+        mask = build_mask(target, val=0.0, tol=1e-2)
         mse = F.mse_loss(pred[mask], target[mask])
         unmask_mse = F.mse_loss(pred, target)
         return mse, (mse.detach(), unmask_mse.detach())
@@ -49,12 +50,12 @@ if __name__ == "__main__":
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature='loss', freq=400)
 
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("normal", "principal_curvature", mask_val=0.0, batch_size=64, dilate=9)
+        load_data("normal", "principal_curvature", batch_size=64)
     logger.images(test_images, "images", resize=128)
     plot_images(model, logger, test_set, mask_val=0.0)
 
     # TRAINING
-    for epochs in range(0, 800):
+    for epochs in range(0, 200):
         
         logger.update('epoch', epochs)
         

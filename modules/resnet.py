@@ -12,12 +12,11 @@ from torch.optim.lr_scheduler import MultiStepLR
 from models import TrainableModel
 from utils import *
 
-
 class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, kernel_size=3, padding=1, use_groupnorm=True, groups=8, dilation=1, transpose=False):
+    def __init__(self, f1, f2, use_groupnorm=True, groups=8, dilation=1, transpose=False):
         super().__init__()
         self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (kernel_size, kernel_size), dilation=dilation, padding=padding*dilation)
+        self.conv = nn.Conv2d(f1, f2, (3, 3), dilation=dilation, padding=dilation)
         if self.transpose:
             self.convt = nn.ConvTranspose2d(
                 f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
@@ -25,7 +24,7 @@ class ConvBlock(nn.Module):
         if use_groupnorm:
             self.bn = nn.GroupNorm(groups, f1)
         else:
-            self.bn = nn.BatchNorm2d(f1)
+            self.bn = nn.GroupNorm(8, f1)
 
     def forward(self, x):
         # x = F.dropout(x, 0.04, self.training)
@@ -80,12 +79,7 @@ class ResNetOriginal(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
         super(ResNetOriginal, self).__init__()
-        self.initial = nn.Sequential(
-            ConvBlock(3, 16, groups=3, kernel_size=1, padding=0),
-            ConvBlock(16, 16, groups=4, kernel_size=1, padding=0)
-        )
-
-        self.conv1 = nn.Conv2d(16, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.GroupNorm(8, 64)
         self.relu = nn.ReLU(inplace=True)
@@ -122,7 +116,6 @@ class ResNetOriginal(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.initial(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
