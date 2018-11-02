@@ -30,14 +30,13 @@ def main(curvature_step=0, depth_step=0):
 
     # MODEL
     model = DataParallelModel(UNet())
-    # model = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/rgb2normal_unet.pth")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
     
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}//normal2zdepth_unet.pth")
+    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth")
 
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
@@ -51,16 +50,7 @@ def main(curvature_step=0, depth_step=0):
         curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
         depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        def standardize_gradients(curvature, depth):
-            def forward(curvature_depth):
-                return curvature, depth
-
-            def backward(curvature_grad, depth_grad):
-                # return complex formula
-
-        curvature, depth = standardize_gradients(curvature, depth)
-
-        final_loss = mse + curvature + depth
+        final_loss = mse + curvature_weight * curvature + depth_weight * depth
         metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
         return final_loss, metrics_to_return
 
@@ -83,12 +73,29 @@ def main(curvature_step=0, depth_step=0):
 
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=48)
+        load_data("rgb", "normal", batch_size=32, batch_transforms=random_resize)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
-    plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                loss_models={"curvature": curvature_model, "depth": depth_model})
 
+    def plot():
+        for resize in range(320, 512, 64):
+            # DATA LOADING
+            train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
+                load_data("rgb", "normal", batch_size=48, resize=resize)
+            preds, targets, losses, _ = model.predict_with_data(test_set)
+            logger.images(preds.clamp(min=0, max=1), f"predictions_{resize}", nrow=2, resize=resize)
+            ood_preds = model.predict(ood_images)
+            logger.images(ood_preds, f"ood_predictions_{resize}", nrow=2, resize=resize)
+
+            if resize == 256:
+                logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
+
+            scheduler.step()
+
+        plot_images(model, logger, test_set, ood_images, mask_val=0.502,
+                    loss_models={"curvature": curvature_model, "depth": depth_model})
+
+    plot()
     # TRAINING
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
@@ -114,13 +121,7 @@ def main(curvature_step=0, depth_step=0):
         logger.text(f"Increasing curvature weight: {curvature_weight}")
         logger.text(f"Increasing depth weight: {depth_weight}")
 
-        if epochs == 75:
-            depth_weight = 10.0
-
-        plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                    loss_models={"curvature": curvature_model, "depth": depth_model})
-
-        scheduler.step()
+        plot()
 
 
 if __name__ == "__main__":
