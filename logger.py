@@ -106,14 +106,18 @@ class VisdomLogger(BaseLogger):
 
         self.windows["text"] = window, display
 
-    def plot(self, data, plot_name, opts={}):
+    def plot(self, data, plot_name, opts=None):
+        if not opts:
+            opts = {}
+
         window = self.windows.get(plot_name, None)
         options = {'title': plot_name}
         options.update(opts)
+        data = np.array(data)
         if window is not None and self.visdom.win_exists(window):
-            window = self.visdom.line(np.array(data), opts=options, win=window)
+            window = self.visdom.line(data, X=np.array(range(len(data))), opts=options, win=window)
         else:
-            window = self.visdom.line(np.array(data), opts=options)
+            window = self.visdom.line(data, X=np.array(range(len(data))), opts=options)
         
         self.windows[plot_name] = window
 
