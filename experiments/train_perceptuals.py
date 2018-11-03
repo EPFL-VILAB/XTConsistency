@@ -1,4 +1,5 @@
 from experiments.plotting_fns import jointplot1, jointplot2, jointplot3
+from experiments.train_standardization import get_standardization_mixed_loss_fn
 from fire import Fire
 from logger import VisdomLogger
 from models import DataParallelModel
@@ -26,10 +27,11 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-    depth_model_base = None #DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    depth_model_base = None  # DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
 
     def curvature_model(pred):
         return checkpoint(curvature_model_base, pred)
+
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
 
@@ -43,9 +45,6 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
 
         return mse + curvature_weight * curvature + depth_weight * depth, (
             mse.detach(), curvature.detach(), depth.detach())
-
-    if should_standardize:
-        mixed_loss = mixed_loss
 
     ### LOGGING ###
     logger = VisdomLogger("train", env=JOB)
@@ -68,6 +67,9 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
                 loss_models={"curvature": curvature_model})  # , "depth": depth_model})
 
     ### TRAINING ###
+    if should_standardize:
+        mixed_loss = get_standardization_mixed_loss_fn(curvature_model, depth_model, logger, False, 10)
+
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
 

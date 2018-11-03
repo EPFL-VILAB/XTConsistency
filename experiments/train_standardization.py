@@ -1,4 +1,15 @@
 from utils import *
+from functools import partial
+
+
+def get_standardization_mixed_loss_fn(curvature_model, depth_model, logger, include_depth, standardization_window_size):
+    return partial(mixed_loss,
+                   curvature_model=curvature_model,
+                   depth_model=depth_model,
+                   logger=logger,
+                   include_depth=include_depth,
+                   standardization_window_size=standardization_window_size,
+            )
 
 
 def mixed_loss(pred, target, curvature_model, depth_model, logger, include_depth, standardization_window_size):
@@ -21,7 +32,6 @@ def mixed_loss(pred, target, curvature_model, depth_model, logger, include_depth
     metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
     return final_loss, metrics_to_return
 
-
 # # TODO clear out logs first, before appending to this
 # # Used to log losses in case we want to analyze them afterwards for whitening
 # temp_logs_location = f"{BASE_DIR}/temp_logs"
@@ -42,4 +52,3 @@ def mixed_loss(pred, target, curvature_model, depth_model, logger, include_depth
 # with open(f"{temp_logs_location}/log_train_depth_loss.txt", "a") as log_file:
 #     log_file.write(', '.join([str(dd.cpu().tolist()) for dd in depth_data]))
 #     log_file.write("\n")
-
