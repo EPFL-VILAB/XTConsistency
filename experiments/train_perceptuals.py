@@ -1,4 +1,4 @@
-from experiments.plotting_fns import jointplot1, jointplot2, jointplot3
+from experiments.plotting_fns import *
 from experiments.standardization_loss_fn import get_standardization_mixed_loss_fn
 from fire import Fire
 from logger import VisdomLogger
@@ -51,12 +51,22 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     jointplot1_w_logger = partial(jointplot1, logger=logger)
     jointplot2_w_logger = partial(jointplot2, logger=logger)
     jointplot3_w_logger = partial(jointplot3, logger=logger)
+    mseplots_w_logger = partial(mseplots, logger=logger)
+    curvatureplots_w_logger = partial(curvatureplots, logger=logger)
+    depthplots_w_logger = partial(depthplots, logger=logger)
+    covarianceplot_w_logger = partial(covarianceplot, logger=logger)
 
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
-    logger.add_hook(jointplot1_w_logger, feature="val_mse_loss", freq=1)
-    logger.add_hook(jointplot2_w_logger, feature="val_curvature_loss", freq=1)
-    logger.add_hook(jointplot3_w_logger, feature="val_depth_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
+    if should_standardize:  # TODO(nikhil,rohan): do we want these plots for the non-standardization jobs as well?
+        logger.add_hook(mseplots_w_logger, feature="val_mse_loss", freq=1)
+        logger.add_hook(curvatureplots_w_logger, feature="val_curvature_loss", freq=1)
+        logger.add_hook(depthplots_w_logger, feature="val_depth_loss", freq=1)
+        logger.add_hook(covarianceplot_w_logger, feature="val_depth_loss", freq=1)
+    else:
+        logger.add_hook(jointplot1_w_logger, feature="val_mse_loss", freq=1)
+        logger.add_hook(jointplot2_w_logger, feature="val_curvature_loss", freq=1)
+        logger.add_hook(jointplot3_w_logger, feature="val_depth_loss", freq=1)
 
     ### DATA LOADING ###
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
