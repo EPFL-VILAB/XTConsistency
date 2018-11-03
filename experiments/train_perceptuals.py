@@ -1,5 +1,5 @@
 from experiments.plotting_fns import jointplot1, jointplot2, jointplot3
-from experiments.train_standardization import get_standardization_mixed_loss_fn
+from experiments.standardization_loss_fn import get_standardization_mixed_loss_fn
 from fire import Fire
 from logger import VisdomLogger
 from models import DataParallelModel

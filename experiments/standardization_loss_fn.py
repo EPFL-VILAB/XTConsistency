@@ -9,7 +9,7 @@ def get_standardization_mixed_loss_fn(curvature_model, depth_model, logger, incl
                    logger=logger,
                    include_depth=include_depth,
                    standardization_window_size=standardization_window_size,
-            )
+                   )
 
 
 def mixed_loss(pred, target, curvature_model, depth_model, logger, include_depth, standardization_window_size):
