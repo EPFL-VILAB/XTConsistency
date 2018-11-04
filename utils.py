@@ -5,6 +5,8 @@ import random, sys, os, time, glob, math, itertools
 
 from sklearn.model_selection import train_test_split
 
+import PIL
+
 EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
@@ -32,6 +34,7 @@ try:
     from torch.autograd import Variable
 
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    dtype = torch.cuda.FloatTensor
 except:
     pass
 
@@ -69,6 +72,13 @@ def cycle(iterable):
         for i in iterable:
             yield i
 
+# Cycles through iterable without making extra copies
+def random_resize(iterable, vals=[128, 192, 256, 320]):
+    from transforms import resize
+    while True:
+        for X, Y in iterable:
+            val = random.choice(vals)
+            yield resize(X.to(DEVICE), val=val).detach(), resize(Y.to(DEVICE), val=val).detach()
 
 def build_mask(target, val=0.0, tol=1e-3):
     if target.shape[1] == 1:
@@ -78,12 +88,12 @@ def build_mask(target, val=0.0, tol=1e-3):
     mask2 = (target[:, 1, :, :] >= val - tol) & (target[:, 1, :, :] <= val + tol)
     mask3 = (target[:, 2, :, :] >= val - tol) & (target[:, 2, :, :] <= val + tol)
     mask = (mask1 & mask2 & mask3).unsqueeze(1)
-    mask = F.conv2d(mask.float(), torch.ones(1, 1, 7, 7, device=mask.device), padding=3) != 0
+    mask = F.conv2d(mask.float(), torch.ones(1, 1, 5, 5, device=mask.device), padding=2) != 0
     mask = (~mask).expand_as(target)
     return mask
 
 
-def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, resize=256):
+def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, resize=256, batch_transforms=cycle):
     from datasets import ImageTaskDataset, ImageDataset
     from torchvision import transforms
 
@@ -98,16 +108,17 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
+
     source_transforms = source_transforms or (lambda x: x)
     dest_transforms = dest_transforms or (lambda x: x)
-    source_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), source_transforms])
-    dest_transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor(), dest_transforms])
+    source_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), source_transforms])
+    dest_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), dest_transforms])
 
     train_loader = torch.utils.data.DataLoader(
         ImageTaskDataset(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=32,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
@@ -115,7 +126,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         ImageTaskDataset(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
-        num_workers=32,
+        num_workers=64,
         shuffle=True,
         pin_memory=True
     )
@@ -147,7 +158,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     print("Train step: ", train_step)
     print("Val step: ", val_step)
 
-    train_loader, val_loader = cycle(train_loader), cycle(val_loader)
+    train_loader, val_loader = batch_transforms(train_loader), batch_transforms(val_loader)
     test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
     ood_images = list(itertools.islice(ood_loader, 1))
@@ -161,6 +172,7 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     logger.images(test_masks.float(), "masks", resize=256)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
     logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
+    logger.images(targets.clamp(min=0, max=1)*test_masks.float() + (1-mask_val)*(1 - test_masks.float()), "targets_masked", nrow=2, resize=256)
 
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
@@ -172,3 +184,4 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
             curvature_targets = loss_model(targets)
             logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions", resize=128)
             logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize=128)
+

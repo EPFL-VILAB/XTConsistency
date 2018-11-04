@@ -20,10 +20,6 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     print(model.forward(torch.randn(8, 3, 256, 256)).shape)
-
-    # for i in range(20):
-    #     print (model.forward(torch.randn(160 + (8*i), 3, 256, 256)).shape)
-
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
@@ -56,7 +52,6 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     depthplots_w_logger = partial(depthplots, logger=logger)
     covarianceplot_w_logger = partial(covarianceplot, logger=logger)
 
-    logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
     if should_standardize:  # TODO(nikhil,rohan): do we want these plots for the non-standardization jobs as well?
         logger.add_hook(mseplots_w_logger, feature="val_mse_loss", freq=1)
@@ -73,12 +68,11 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
-    plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                loss_models={"curvature": curvature_model})  # , "depth": depth_model})
 
     ### TRAINING ###
     if should_standardize:
         mixed_loss = get_standardization_mixed_loss_fn(curvature_model, depth_model, logger, False, 10)
+
 
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
@@ -99,11 +93,12 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         logger.update("val_curvature_loss", np.mean(curvature_data))
         logger.update("val_depth_loss", np.mean(depth_data))
 
-        # if epochs > 250:
-        #     curvature_weight = curvature_step
+        if epochs > 75:
+            depth_weight = 10.0
 
         curvature_weight += curvature_step
         depth_weight += depth_step
+
         logger.text(f"Increasing curvature weight: {curvature_weight}")
         logger.text(f"Increasing depth weight: {depth_weight}")
 

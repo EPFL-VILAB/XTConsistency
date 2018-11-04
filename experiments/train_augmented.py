@@ -20,6 +20,7 @@ from sklearn.model_selection import train_test_split
 from fire import Fire
 
 
+
 def main(curvature_step=0, depth_step=0):
     curvature_weight = 0.0
     depth_weight = 0.0
@@ -46,13 +47,13 @@ def main(curvature_step=0, depth_step=0):
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
-        mse = F.mse_loss(pred * mask.float(), target * mask.float())
-        curvature = F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
-        depth = F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
+        mse = F.mse_loss(pred*mask.float(), target*mask.float())
+        curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
+            F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
+        depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
+            F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
-        final_loss = mse + curvature_weight * curvature + depth_weight * depth
-        metrics_to_return = (mse.detach(), curvature.detach(), depth.detach())
-        return final_loss, metrics_to_return
+        return mse + curvature_weight*curvature  + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
     def jointplot1(data):
         data = np.stack((logger.data["train_mse_loss"], logger.data["val_mse_loss"]), axis=1)
@@ -78,7 +79,7 @@ def main(curvature_step=0, depth_step=0):
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
     def plot():
-        for resize in range(320, 512, 64):
+        for resize in range(256, 512, 64):
             # DATA LOADING
             train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
                 load_data("rgb", "normal", batch_size=48, resize=resize)
@@ -87,13 +88,7 @@ def main(curvature_step=0, depth_step=0):
             ood_preds = model.predict(ood_images)
             logger.images(ood_preds, f"ood_predictions_{resize}", nrow=2, resize=resize)
 
-            if resize == 256:
-                logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
-
             scheduler.step()
-
-        plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                    loss_models={"curvature": curvature_model, "depth": depth_model})
 
     plot()
     # TRAINING

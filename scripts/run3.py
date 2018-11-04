@@ -36,7 +36,7 @@ def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
         cmd.insert(0, "sudo")
     cmd = " ".join(cmd)
 
-    with open('/Users/rohan/.sshrc', 'w') as outfile:
+    with open('../../.sshrc', 'w') as outfile:
         print (f"gsutil -m cp -r gs://taskonomy-code/{exp_id}/* .", file=outfile)
         print (f"""sudo /home/shared/anaconda3/bin/python -m scripts.run2 run --config "{config}" --experiment-id "{exp_id}" --shutdown {shutdown} "{cmd}" """, file=outfile)
     
