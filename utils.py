@@ -28,7 +28,7 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3"]
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
@@ -109,7 +109,7 @@ def build_file_map(data_dirs=DATA_DIRS):
         for file in glob.glob(f'{data_dir}/*'):
             res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
             if res is not None:
-                file_map[res["building"]] = data_dir
+                file_map[file[len(data_dir)+1:]] = data_dir
     return file_map
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 

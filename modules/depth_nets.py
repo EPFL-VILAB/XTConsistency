@@ -153,8 +153,6 @@ class UNetDepth(TrainableModel):
 
 
 
-
-
 class ConvBlock(nn.Module):
     def __init__(self, f1, f2, use_groupnorm=True, groups=8, dilation=1, transpose=False):
         super().__init__()

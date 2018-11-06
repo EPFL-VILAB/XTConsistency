@@ -14,7 +14,7 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
-from modules.depth_nets import UNetDepth
+from modules.unet import UNet
 
 import IPython
 
@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     # MODEL
     print ("Using PyramidNet")
-    model = DataParallelModel(UNetDepth())
-    model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
+    model = DataParallelModel(UNet())
+    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
     def loss(pred, target):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     plot_images(model, logger, test_set, mask_val=0.0)
 
     # TRAINING
-    for epochs in range(0, 200):
+    for epochs in range(0, 800):
         
         logger.update('epoch', epochs)
         

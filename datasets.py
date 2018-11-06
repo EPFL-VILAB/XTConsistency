@@ -63,13 +63,15 @@ class ImageTaskDataset(Dataset):
         try:
             image = Image.open(source_file)
             image = self.source_transforms(image).float()
-            # print(f"{self.file_map[building]}/{dest_file}")
-            task = Image.open(f"{self.file_map[building]}/{dest_file}")
+            print("trying to open: ")
+            print(f"{self.file_map[building]}/{dest_file}")
+            data_dir = self.file_map[f"{building}_{self.dest_task}"]
+            task = Image.open(f"{data_dir}/{dest_file}")
             task = self.dest_transforms(task).float()
             return image, task
         except Exception as e:
-            # print(e)
-            # print ("Error in file pair: ", source_file, dest_file)
+            print(e)
+            print ("Error in file pair: ", source_file, dest_file)
             time.sleep(0.1)
             return self.__getitem__(random.randrange(0, len(self.source_files)))
 
@@ -117,7 +119,8 @@ class ImageMultiTaskDataset(Dataset):
             task_data = []
             for task2 in self.dest_tasks:
                 dest_file = f"{building}_{task2}/{task2}/{view}_domain_{task2}.png"
-                task = Image.open(f"{self.file_map[building]}/{dest_file}")
+                data_dir = self.file_map[f"{building}_{task2}"]
+                task = Image.open(f"{data_dir}/{dest_file}")
                 task = self.dest_transforms(task).float()
                 task_data.append(task)
         

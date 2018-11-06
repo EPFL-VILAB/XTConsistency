@@ -74,7 +74,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
         return x[0]
-    dest_transforms(torch.randn(3, 512, 512))
+
     print("about to load data...")
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
         load_data("normal", "edge_texture", batch_size=64, dest_transforms=dest_transforms)
