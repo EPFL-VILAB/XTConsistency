@@ -36,7 +36,7 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
     if cmd[0] == "python" and debug:
         cmd[0] = "ipython"
         cmd.insert(1, "-i")
-    elif cmd[0] == "python":
+    elif "python" in cmd[0]:
         cmd.insert(1, "-u")
 
     print(" ".join(cmd))

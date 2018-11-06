@@ -25,7 +25,7 @@ from fire import Fire
 import IPython
 
 
-def main(curvature_step=0, depth_step=0):
+def main(curvature_step=0, depth_step=0, method=1):
 
     curvature_weight = curvature_step/100.0
     depth_weight = depth_step/100.0
@@ -55,8 +55,17 @@ def main(curvature_step=0, depth_step=0):
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         mse = F.mse_loss(pred*mask.float(), target*mask.float())
+
+        compare = None
+        if method == 1:
+            compare = depth_model(target)
+        elif method == 2:
+            compare = depth_cycle(target)
+        elif method == 3:
+            compare = depth_model(pred)
+
         curvature = F.mse_loss(curvature_model(pred)*mask.float(), curvature_model(target)*mask.float())
-        depth = F.mse_loss(depth_cycle(pred)*mask.float(), depth_model(pred)*mask.float())
+        depth = F.mse_loss(depth_cycle(pred)*mask.float(), compare*mask.float())
 
         return mse + curvature_weight*curvature + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
