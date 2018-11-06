@@ -181,7 +181,7 @@ class BaseNet(TrainableModel):
             ConvBlock(3, 32, use_groupnorm=False), 
             ConvBlock(32, 32, use_groupnorm=False),
             ConvBlock(32, 32, use_groupnorm=False),
-            ConvBlock(32, 3, use_groupnorm=False),
+            ConvBlock(32, 1, use_groupnorm=False),
         )
 
     def forward(self, x):

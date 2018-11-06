@@ -1,14 +1,18 @@
+
 # utils.py
 
 import numpy as np
 import random, sys, os, time, glob, math, itertools
 from sklearn.model_selection import train_test_split
+import parse
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
+
+import IPython
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 dtype = torch.cuda.FloatTensor
@@ -19,11 +23,11 @@ EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().sp
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/shared/models"
-DATA_DIR = f"{BASE_DIR}/data/taskonomy3"
+DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 
 if BASE_DIR == "/":
-    DATA_DIR = "/data"
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
@@ -32,7 +36,7 @@ else:
 
 print("Models dir: ", MODELS_DIR)
 print("Results dir: ", RESULTS_DIR)
-print("Data dir: ", DATA_DIR)
+print("Data dirs: ", DATA_DIRS)
 
 
 def batch(datagen, batch_size=32):
@@ -88,6 +92,24 @@ def build_mask(target, val=0.0, tol=1e-3):
     mask = (~mask).expand_as(target)
     return mask
 
+def get_files(exp, data_dirs=DATA_DIRS):
+    files = []
+    seen = set()
+    for data_dir in data_dirs:
+        for file in glob.glob(f'{data_dir}/{exp}'):
+            if file[len(data_dir):] not in seen:
+                files.append(file)
+                seen.add(file[len(data_dir):])
+    return files
+
+def build_file_map(data_dirs=DATA_DIRS):
+    file_map = {}
+    for data_dir in data_dirs:
+        for file in glob.glob(f'{data_dir}/*'):
+            res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
+            if res is not None:
+                file_map[res["building"]] = data_dir
+    return file_map
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
                 dataset_class=None,
@@ -98,9 +120,9 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
     dataset_class = dataset_class or ImageTaskDataset
     test_buildings = ["almena", "albertville"]
-    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
+    buildings = list({file.split("/")[-1][:-7] for file in get_files('*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-
+    file_map = build_file_map()
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 
     # test_buildings = ["almena", "mifflintown"]
@@ -115,7 +137,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
     train_loader = torch.utils.data.DataLoader(
         dataset_class(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+                         source_task=source_task, dest_task=dest_task, file_map=file_map),
         batch_size=batch_size,
         num_workers=64,
         shuffle=True,
@@ -123,7 +145,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     )
     val_loader = torch.utils.data.DataLoader(
         dataset_class(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+                         source_task=source_task, dest_task=dest_task, file_map=file_map),
         batch_size=batch_size,
         num_workers=64,
         shuffle=True,
@@ -131,7 +153,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     )
     test_loader1 = torch.utils.data.DataLoader(
         dataset_class(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+                         source_task=source_task, dest_task=dest_task, file_map=file_map),
         batch_size=6,
         num_workers=12,
         shuffle=False,
@@ -139,7 +161,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     )
     test_loader2 = torch.utils.data.DataLoader(
         dataset_class(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task),
+                         source_task=source_task, dest_task=dest_task, file_map=file_map),
         batch_size=6,
         num_workers=6,
         shuffle=False,

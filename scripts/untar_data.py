@@ -2,7 +2,7 @@
 import subprocess, glob, os
 from multiprocessing import Pool
 from fire import Fire
-
+import IPython
 def process_file(file, result_loc="/result"):
 	try:
 		*rest, task, archive = file.split('/')
@@ -17,14 +17,14 @@ def process_file(file, result_loc="/result"):
 		return "error"
 
 def main(filename="data/alllinks.txt", 
-		tasks=['segment_semantic']):
+		tasks=['edge_occlusion', 'edge_texture']):
 	
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]
 	total_tasks = [task for (file, (*rest, task, archive)) in links]
 	links = [file for (file, (*rest, task, archive)) in links if task in tasks]
-
-	print (len(links))
+	# links[719:719 + 119] , links[719+119:719 + 119 + 119], links[719+119+119:]
+	# links = links[719+119+119:]
 	print("total length of links")
 	with Pool() as pool:
 		for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):

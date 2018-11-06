@@ -25,23 +25,30 @@ class ImageTaskDataset(Dataset):
     def __init__(
         self,
         buildings,
-        data_dir=DATA_DIR,
+        data_dirs=DATA_DIRS,
         source_task="rgb",
         dest_task="normal",
         source_transforms=transforms.ToTensor(),
         dest_transforms=transforms.ToTensor(),
+        file_map=None
     ):
-        self.data_dir = data_dir
+        self.data_dirs = data_dirs
         self.source_task, self.dest_task, self.buildings = (source_task, dest_task, buildings)
         self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
-        self.source_files = [
-            sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
-        ]
+        # self.source_files = [
+        #     sorted(get_files(f"{building}_{source_task}/{source_task}/*.png", data_dirs)) for building in buildings
+        #     # sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
+        # ]
+        self.file_map = file_map
         self.source_files = []
         for building in buildings:
-            self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
+            self.source_files += sorted(get_files(f"{building}_{source_task}/{source_task}/*.png", data_dirs))
+            # self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
         # self.source_files = [y for x in self.source_files for y in x]
         print ("Source files len: ", len(self.source_files))
+        target_files = []
+        for building in buildings:
+            target_files += sorted(get_files(f"{building}_{dest_task}/{dest_task}/*.png", data_dirs))
 
     def __len__(self):
         return len(self.source_files)
@@ -49,18 +56,19 @@ class ImageTaskDataset(Dataset):
     def __getitem__(self, idx):
 
         source_file = self.source_files[idx]
-        result = parse.parse(self.data_dir + "/{building}_{task}/{task}/{view}_domain_{task2}.png", source_file)
-        data_dir, building, task, view = (self.data_dir, result["building"], result["task"], result["view"])
-        dest_file = f"{data_dir}/{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
+        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
+        building, task, view = (result["building"], result["task"], result["view"])
+        dest_file = f"{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
 
         try:
             image = Image.open(source_file)
             image = self.source_transforms(image).float()
-
-            task = Image.open(dest_file)
+            # print(f"{self.file_map[building]}/{dest_file}")
+            task = Image.open(f"{self.file_map[building]}/{dest_file}")
             task = self.dest_transforms(task).float()
             return image, task
-        except:
+        except Exception as e:
+            # print(e)
             # print ("Error in file pair: ", source_file, dest_file)
             time.sleep(0.1)
             return self.__getitem__(random.randrange(0, len(self.source_files)))
@@ -73,21 +81,23 @@ class ImageMultiTaskDataset(Dataset):
     def __init__(
         self,
         buildings,
-        data_dir=DATA_DIR,
+        data_dirs=DATA_DIRS,
         source_task="rgb",
         dest_task=["normal", "principal_curvature"],
         source_transforms=transforms.ToTensor(),
         dest_transforms=transforms.ToTensor(),
+        file_map=None
     ):
-        self.data_dir = data_dir
+        self.data_dirs = data_dirs
         self.source_task, self.dest_tasks, self.buildings = (source_task, dest_task, buildings)
         self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
-        self.source_files = [
-            sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
-        ]
+        # self.source_files = [
+        #     sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
+        # ]
+        self.file_map = file_map
         self.source_files = []
         for building in buildings:
-            self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
+            self.source_files += sorted(get_files(f"{building}_{source_task}/{source_task}/*.png", data_dirs))
         # self.source_files = [y for x in self.source_files for y in x]
         print ("Source files len: ", len(self.source_files))
 
@@ -97,8 +107,8 @@ class ImageMultiTaskDataset(Dataset):
     def __getitem__(self, idx):
 
         source_file = self.source_files[idx]
-        result = parse.parse(self.data_dir + "/{building}_{task}/{task}/{view}_domain_{task2}.png", source_file)
-        data_dir, building, task, view = (self.data_dir, result["building"], result["task"], result["view"])
+        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
+        building, task, view = (result["building"], result["task"], result["view"])
 
         try:
             image = Image.open(source_file)
@@ -106,13 +116,13 @@ class ImageMultiTaskDataset(Dataset):
 
             task_data = []
             for task2 in self.dest_tasks:
-                dest_file = f"{data_dir}/{building}_{task2}/{task2}/{view}_domain_{task2}.png"
-                task = Image.open(dest_file)
+                dest_file = f"{building}_{task2}/{task2}/{view}_domain_{task2}.png"
+                task = Image.open(f"{self.file_map[building]}/{dest_file}")
                 task = self.dest_transforms(task).float()
                 task_data.append(task)
         
         except Exception as e:
-            # print (e)
+            print (e)
             return self.__getitem__(random.randrange(0, len(self.source_files)))
         
         return image, tuple(task_data)
@@ -125,7 +135,7 @@ class ImageDataset(Dataset):
 
     def __init__(
         self,
-        data_dir=f"{DATA_DIR}/ood_images",
+        data_dir=f"data/ood_images",
         resize=(256, 256),
     ):
 
