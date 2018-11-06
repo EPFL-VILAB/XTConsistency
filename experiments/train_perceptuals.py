@@ -1,13 +1,23 @@
-from plotting_fns import *
-from experiments.standardization_loss_fn import get_standardization_mixed_loss_fn
+
+import torch
+from torch import nn
+import torch.nn.functional as F
+import torchvision
+
 from fire import Fire
+
 from logger import VisdomLogger
 from models import DataParallelModel
 from modules.percep_nets import Dense1by1Net
+from modules.depth_nets import UNetDepth
 from modules.unet import UNet
+
+from utils import *
+from plotting_fns import *
+from experiments.standardization_loss_fn import get_standardization_mixed_loss_fn
+
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.checkpoint import checkpoint
-from utils import *
 from functools import partial
 
 
@@ -23,7 +33,7 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     scheduler = MultiStepLR(model.optimizer, milestones=[5 * i + 1 for i in range(0, 80)], gamma=0.95)
 
     curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
-    depth_model_base = None  # DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet.pth")
+    depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth")
 
     def curvature_model(pred):
         return checkpoint(curvature_model_base, pred)
@@ -53,7 +63,7 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     covarianceplot_w_logger = partial(covarianceplot, logger=logger)
 
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
-    if should_standardize:  # TODO(nikhil,rohan): do we want these plots for the non-standardization jobs as well?
+    if should_standardize:
         logger.add_hook(mseplots_w_logger, feature="val_mse_loss", freq=1)
         logger.add_hook(curvatureplots_w_logger, feature="val_curvature_loss", freq=1)
         logger.add_hook(depthplots_w_logger, feature="val_depth_loss", freq=1)
@@ -68,6 +78,9 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
+
+    plot_images(model, logger, test_set, ood_images, mask_val=0.502,
+                    loss_models={"curvature": curvature_model, "depth": depth_model})
 
     ### TRAINING ###
     if should_standardize:
@@ -100,7 +113,7 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         logger.text(f"Increasing depth weight: {depth_weight}")
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                    loss_models={"curvature": curvature_model})  # , "depth": depth_model})
+                    loss_models={"curvature": curvature_model, "depth": depth_model})
 
         scheduler.step()
 

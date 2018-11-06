@@ -64,12 +64,22 @@ def main(curvature_step=0, depth_step=0, method=1):
         elif method == 3:
             compare = curvature_model(pred)
 
-        curvature = F.mse_loss(curve_cycle(pred)*mask.float(), compare*mask.float())
-        depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
+        # print ("Mean curve_cycle: ", curve_cycle(pred).mean().data.cpu().numpy())
+        # print ("Mean curvature_model: ", curvature_model(pred).mean().data.cpu().numpy())
+        # print ("Mean compare: ", compare.mean().data.cpu().numpy())
 
-        print ("Mse: ", mse.data.cpu().numpy().mean())
-        print ("Curvature: ", curvature.data.cpu().numpy().mean())
-        print ("Depth: ", depth.data.cpu().numpy().mean())
+        # print ("Max curve_cycle: ", curve_cycle(pred).max().data.cpu().numpy())
+        # print ("Max curvature_model: ", curvature_model(pred).max().data.cpu().numpy())
+        # print ("Max compare: ", compare.max().data.cpu().numpy())
+
+        # print ("Min curve_cycle: ", curve_cycle(pred).min().data.cpu().numpy())
+        # print ("Min curvature_model: ", curvature_model(pred).min().data.cpu().numpy())
+        # print ("Min compare: ", compare.min().data.cpu().numpy())
+
+        # print ("MSE compare: ",  .data.cpu().numpy())
+
+        curvature = ((compare*mask.float() - curve_cycle(pred)*mask.float())**2).mean()
+        depth = F.mse_loss(depth_model(pred)*mask.float(), depth_model(target)*mask.float())
 
         return mse + curvature_weight*curvature + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 

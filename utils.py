@@ -25,6 +25,7 @@ JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 MODELS_DIR = f"{BASE_DIR}/shared/models"
 DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
+SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
     DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3"]

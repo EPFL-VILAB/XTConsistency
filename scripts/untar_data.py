@@ -3,6 +3,7 @@ import subprocess, glob, os
 from multiprocessing import Pool
 from fire import Fire
 import IPython
+
 def process_file(file, result_loc="/result"):
 	try:
 		*rest, task, archive = file.split('/')
@@ -16,8 +17,8 @@ def process_file(file, result_loc="/result"):
 		print (e)
 		return "error"
 
-def main(filename="data/alllinks.txt", 
-		tasks=['edge_occlusion', 'edge_texture']):
+def main(filename="data/alllinks.txt", tasks=['edge_occlusion', 'edge_texture']):
+
 	
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]
