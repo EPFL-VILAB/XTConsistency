@@ -64,7 +64,6 @@ class ImageTaskDataset(Dataset):
             image = Image.open(source_file)
             image = self.source_transforms(image).float()
             print("trying to open: ")
-            print(f"{self.file_map[building]}/{dest_file}")
             data_dir = self.file_map[f"{building}_{self.dest_task}"]
             task = Image.open(f"{data_dir}/{dest_file}")
             task = self.dest_transforms(task).float()

@@ -124,6 +124,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     buildings = list({file.split("/")[-1][:-7] for file in get_files('*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
     file_map = build_file_map()
+    print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 
     # test_buildings = ["almena", "mifflintown"]

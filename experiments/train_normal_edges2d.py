@@ -20,7 +20,7 @@ import IPython
 
 def gaussian_filter(kernel_size=5, sigma=1.0, device=0):
 
-    channels = 3
+    channels = 1
     # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
     x_cord = torch.arange(kernel_size).float().to(device)
     x_grid = x_cord.repeat(kernel_size).view(kernel_size, kernel_size)
@@ -52,6 +52,13 @@ if __name__ == "__main__":
     model.compile(torch.optim.Adam, lr=2e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 
+    def dest_transforms(x):
+        x = x.unsqueeze(0)
+        filter = gaussian_filter(kernel_size=5, sigma=2, device=x.device).float()
+        with torch.no_grad():
+            x = F.conv2d(x.float(), weight=filter.to(x.device), bias=None, groups=1, padding=2, stride=1)
+        return x[0]
+
     def loss(pred, target):
         mse = F.mse_loss(pred, target)
         unmask_mse = F.mse_loss(pred, target)
@@ -68,16 +75,9 @@ if __name__ == "__main__":
     logger.add_hook(jointplot1, feature='val_loss', freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/basenet.pth"), feature='loss', freq=400)
 
-    def dest_transforms(x):
-        x = x.unsqueeze(0)
-        filter = gaussian_filter(kernel_size=5, sigma=2, device=x.device)
-        with torch.no_grad():
-            x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=2)
-        return x[0]
-
     print("about to load data...")
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("normal", "edge_texture", batch_size=64, dest_transforms=dest_transforms)
+        load_data("normal", "edge_texture", batch_size=64)
     logger.images(test_images, "images", resize=128)
     plot_images(model, logger, test_set, mask_val=0.0)
     print("starting training...")
