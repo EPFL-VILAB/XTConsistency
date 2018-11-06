@@ -17,12 +17,15 @@ def process_file(file, result_loc="/result"):
 		return "error"
 
 def main(filename="data/alllinks.txt", 
-		tasks=['reshade',]):
+		tasks=['segment_semantic']):
 	
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]
+	total_tasks = [task for (file, (*rest, task, archive)) in links]
 	links = [file for (file, (*rest, task, archive)) in links if task in tasks]
 
+	print (len(links))
+	
 	with Pool() as pool:
 		for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):
 			print (f"Downloaded {result_dir}: {i}/{len(links)} files")

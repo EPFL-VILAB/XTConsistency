@@ -10,6 +10,7 @@ from torchvision import datasets, transforms, utils
 import visdom
 
 from utils import *
+from utils import elapsed
 import IPython
 
 class BaseLogger(object):

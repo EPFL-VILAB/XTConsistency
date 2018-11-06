@@ -66,6 +66,60 @@ class ImageTaskDataset(Dataset):
             return self.__getitem__(random.randrange(0, len(self.source_files)))
 
 
+
+class ImageMultiTaskDataset(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(
+        self,
+        buildings,
+        data_dir=DATA_DIR,
+        source_task="rgb",
+        dest_task=["normal", "principal_curvature"],
+        source_transforms=transforms.ToTensor(),
+        dest_transforms=transforms.ToTensor(),
+    ):
+        self.data_dir = data_dir
+        self.source_task, self.dest_tasks, self.buildings = (source_task, dest_task, buildings)
+        self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
+        self.source_files = [
+            sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
+        ]
+        self.source_files = []
+        for building in buildings:
+            self.source_files += sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png"))
+        # self.source_files = [y for x in self.source_files for y in x]
+        print ("Source files len: ", len(self.source_files))
+
+    def __len__(self):
+        return len(self.source_files)
+
+    def __getitem__(self, idx):
+
+        source_file = self.source_files[idx]
+        result = parse.parse(self.data_dir + "/{building}_{task}/{task}/{view}_domain_{task2}.png", source_file)
+        data_dir, building, task, view = (self.data_dir, result["building"], result["task"], result["view"])
+
+        try:
+            image = Image.open(source_file)
+            image = self.source_transforms(image).float()
+
+            task_data = []
+            for task2 in self.dest_tasks:
+                dest_file = f"{data_dir}/{building}_{task2}/{task2}/{view}_domain_{task2}.png"
+                task = Image.open(dest_file)
+                task = self.dest_transforms(task).float()
+                task_data.append(task)
+        
+        except Exception as e:
+            # print (e)
+            return self.__getitem__(random.randrange(0, len(self.source_files)))
+        
+        return image, tuple(task_data)
+
+
+
+
 class ImageDataset(Dataset):
     """Face Landmarks dataset."""
 
@@ -102,11 +156,15 @@ if __name__ == "__main__":
     ood_images = torch.cat(list(itertools.islice(ood_loader, 1)), dim=0)
     logger.images(ood_images, "ood_images", resize=128)
 
+    test_buildings = ["almena", "albertville"]
+    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
+
     transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
     data_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_transforms=transform, dest_transforms=transform, source_task="rgb", dest_task="normal"),
+        ImageMultiTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform),
         batch_size=64,
-        num_workers=32,
+        num_workers=0,
         shuffle=True,
     )
     logger.add_hook(lambda data: logger.step(), freq=32)

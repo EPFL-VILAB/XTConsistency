@@ -93,9 +93,6 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         logger.update("val_curvature_loss", np.mean(curvature_data))
         logger.update("val_depth_loss", np.mean(depth_data))
 
-        if epochs > 75:
-            depth_weight = 10.0
-
         curvature_weight += curvature_step
         depth_weight += depth_step
 

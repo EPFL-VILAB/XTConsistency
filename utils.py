@@ -2,8 +2,16 @@
 
 import numpy as np
 import random, sys, os, time, glob, math, itertools
-
 from sklearn.model_selection import train_test_split
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+dtype = torch.cuda.FloatTensor
 
 import PIL
 
@@ -25,18 +33,6 @@ else:
 print("Models dir: ", MODELS_DIR)
 print("Results dir: ", RESULTS_DIR)
 print("Data dir: ", DATA_DIR)
-
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    import torch.optim as optim
-    from torch.autograd import Variable
-
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    dtype = torch.cuda.FloatTensor
-except:
-    pass
 
 
 def batch(datagen, batch_size=32):
@@ -93,10 +89,14 @@ def build_mask(target, val=0.0, tol=1e-3):
     return mask
 
 
-def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, batch_size=32, resize=256, batch_transforms=cycle):
-    from datasets import ImageTaskDataset, ImageDataset
+def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
+                dataset_class=None,
+                batch_size=32, resize=256, batch_transforms=cycle):
+    
     from torchvision import transforms
+    from datasets import ImageTaskDataset, ImageDataset, ImageMultiTaskDataset
 
+    dataset_class = dataset_class or ImageTaskDataset
     test_buildings = ["almena", "albertville"]
     buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
@@ -108,14 +108,13 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
-
     source_transforms = source_transforms or (lambda x: x)
     dest_transforms = dest_transforms or (lambda x: x)
     source_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), source_transforms])
     dest_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), dest_transforms])
 
     train_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
+        dataset_class(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=64,
@@ -123,7 +122,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
+        dataset_class(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=64,
@@ -131,7 +130,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True
     )
     test_loader1 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
+        dataset_class(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=12,
@@ -139,7 +138,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        ImageTaskDataset(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
+        dataset_class(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
                          source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
@@ -147,7 +146,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True
     )
     ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir="data/ood_images"),
+        ImageDataset(data_dir="data/ood_images", resize=(resize, resize)),
         batch_size=10,
         num_workers=10,
         shuffle=False,
@@ -166,13 +165,14 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     return train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step
 
 
+
 def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}):
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     logger.images(test_masks.float(), "masks", resize=256)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
     logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
-    logger.images(targets.clamp(min=0, max=1)*test_masks.float() + (1-mask_val)*(1 - test_masks.float()), "targets_masked", nrow=2, resize=256)
+    logger.images(targets.clamp(min=0, max=1)*test_masks.float() + (1 - mask_val)*(1 - test_masks.float()), "targets_masked", nrow=2, resize=256)
 
     if ood_images is not None:
         ood_preds = model.predict(ood_images)

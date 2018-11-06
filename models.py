@@ -61,7 +61,10 @@ class AbstractModel(nn.Module):
         self.optimizer.zero_grad()
 
         pred = self.forward(data)
-        loss, metrics = loss_fn(pred, target.to(pred.device))
+        if isinstance(target, list):
+            target = tuple(t.to(pred.device) for t in target)
+        else: target = target.to(pred.device)
+        loss, metrics = loss_fn(pred, target)
 
         if train:
             loss.backward()
@@ -107,7 +110,7 @@ class TrainableModel(AbstractModel):
             y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
             if logger is not None:
                 logger.update("loss", loss)
-            yield ((y_pred.detach(), y.detach(), loss, metric_data))
+            yield ((y_pred.detach(), y, loss, metric_data))
 
     def fit(self, datagen, loss_fn=None, logger=None):
         for x in self._process_data(datagen, loss_fn=loss_fn, train=train, logger=logger):
@@ -136,6 +139,7 @@ class TrainableModel(AbstractModel):
                 *self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)
             )
             preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
+            # preds = torch.cat(preds, dim=0)
             metrics = zip(*metrics)
         return preds, targets, losses, metrics
 

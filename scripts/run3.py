@@ -23,12 +23,12 @@ def delete(env):
     link = visdom.Visdom(server="http://35.229.22.191", port=7000, env=env)
     link.delete_env(env)
 
-def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
+def run(cmd, instance="cloud1", zone="us-west1-b", config="job", shutdown=False, debug=False):
     exp_id = experiment_id(config)
     print ("Experiment ID: ", exp_id)
     upload(exp_id)
 
-    subprocess.run(f"gcloud compute instances start {instance} --zone us-west1-b".split())
+    subprocess.run(f"gcloud compute instances start {instance} --zone {zone}".split())
 
     cmd = shlex.split(cmd)
     if cmd[0] == "python":
@@ -41,7 +41,7 @@ def run(cmd, instance="cloud1", config="job", shutdown=False, debug=False):
         print (f"""sudo /home/shared/anaconda3/bin/python -m scripts.run2 run --config "{config}" --experiment-id "{exp_id}" --shutdown {shutdown} "{cmd}" """, file=outfile)
     
     print (cmd)
-    subprocess.run(["sshrc", f"{instance}.us-west1-b.chaos-theory-201106"])
+    subprocess.run(["sshrc", f"{instance}.{zone}.chaos-theory-201106"])
 
 
 

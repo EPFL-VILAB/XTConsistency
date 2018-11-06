@@ -26,7 +26,7 @@ import IPython
 
 def main():
 
-    model = DataParallelModel.load(UNet().cuda(), f"/home/rohan/scaling/mount/shared/models/rgb2normal_precep0.1_1x1.pth")
+    model = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/augmented_base2.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
