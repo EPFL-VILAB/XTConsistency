@@ -1,4 +1,4 @@
-from experiments.plotting_fns import *
+from plotting_fns import *
 from experiments.standardization_loss_fn import get_standardization_mixed_loss_fn
 from fire import Fire
 from logger import VisdomLogger
