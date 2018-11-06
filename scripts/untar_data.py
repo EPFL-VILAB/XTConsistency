@@ -25,7 +25,7 @@ def main(filename="data/alllinks.txt",
 	links = [file for (file, (*rest, task, archive)) in links if task in tasks]
 
 	print (len(links))
-	
+	print("total length of links")
 	with Pool() as pool:
 		for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):
 			print (f"Downloaded {result_dir}: {i}/{len(links)} files")
