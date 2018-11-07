@@ -60,55 +60,46 @@ class UNet_down_block(nn.Module):
 
 
 class UNet(TrainableModel):
-    def __init__(self):
+    def __init__(self,  downsample=6, in_channels=3, out_channels=3):
         super().__init__()
 
-        self.down_block1 = UNet_down_block(3, 16, False) #   256
-        self.down_block2 = UNet_down_block(16, 32, True) #   128
-        self.down_block3 = UNet_down_block(32, 64, True) #   64
-        self.down_block4 = UNet_down_block(64, 128, True) #  32
-        self.down_block5 = UNet_down_block(128, 256, True) # 16
-        self.down_block6 = UNet_down_block(256, 512, True) # 8
-        self.down_block7 = UNet_down_block(512, 1024, True)# 4 
+        self.in_channels, self.out_channels, self.downsample = in_channels, out_channels, downsample
+        self.down1 = UNet_down_block(in_channels, 16, False)
+        self.down_blocks = nn.ModuleList(
+            [UNet_down_block(2**(4+i), 2**(5+i), True) for i in range(0, downsample)]
+        )
 
-        self.mid_conv1 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn1 = nn.GroupNorm(8, 1024)
-        self.mid_conv2 = nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn2 = nn.GroupNorm(8, 1024)
-        self.mid_conv3 = torch.nn.Conv2d(1024, 1024, 3, padding=1)
-        self.bn3 = nn.GroupNorm(8, 1024)
+        bottleneck = 2**(4 + downsample)
+        self.mid_conv1 = nn.Conv2d(bottleneck, bottleneck, 3, padding=1)
+        self.bn1 = nn.GroupNorm(8, bottleneck)
+        self.mid_conv2 = nn.Conv2d(bottleneck, bottleneck, 3, padding=1)
+        self.bn2 = nn.GroupNorm(8, bottleneck)
+        self.mid_conv3 = torch.nn.Conv2d(bottleneck, bottleneck, 3, padding=1)
+        self.bn3 = nn.GroupNorm(8, bottleneck)
 
-        self.up_block1 = UNet_up_block(512, 1024, 512)
-        self.up_block2 = UNet_up_block(256, 512, 256)
-        self.up_block3 = UNet_up_block(128, 256, 128)
-        self.up_block4 = UNet_up_block(64, 128, 64)
-        self.up_block5 = UNet_up_block(32, 64, 32)
-        self.up_block6 = UNet_up_block(16, 32, 16)
+        self.up_blocks = nn.ModuleList(
+            [UNet_up_block(2**(4+i), 2**(5+i), 2**(4+i)) for i in range(0, downsample)]
+        )
 
         self.last_conv1 = nn.Conv2d(16, 16, 3, padding=1)
         self.last_bn = nn.GroupNorm(8, 16)
-        self.last_conv2 = nn.Conv2d(16, 3, 1, padding=0)
+        self.last_conv2 = nn.Conv2d(16, out_channels, 1, padding=0)
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        self.x1 = self.down_block1(x)
-        self.x2 = self.down_block2(self.x1)
-        self.x3 = self.down_block3(self.x2)
-        self.x4 = self.down_block4(self.x3)
-        self.x5 = self.down_block5(self.x4)
-        self.x6 = self.down_block6(self.x5)
-        self.x7 = self.down_block7(self.x6)
+        x = self.down1(x)
+        xvals = [x]
+        for i in range(0, self.downsample):
+            x = self.down_blocks[i](x)
+            xvals.append(x)
 
-        self.x7 = self.relu(self.bn1(self.mid_conv1(self.x7)))
-        self.x7 = self.relu(self.bn2(self.mid_conv2(self.x7)))
-        self.x7 = self.relu(self.bn3(self.mid_conv3(self.x7)))
+        x = self.relu(self.bn1(self.mid_conv1(x)))
+        x = self.relu(self.bn2(self.mid_conv2(x)))
+        x = self.relu(self.bn3(self.mid_conv3(x)))
 
-        x = self.up_block1(self.x6, self.x7)
-        x = self.up_block2(self.x5, x)
-        x = self.up_block3(self.x4, x)
-        x = self.up_block4(self.x3, x)
-        x = self.up_block5(self.x2, x)
-        x = self.up_block6(self.x1, x)
+        for i in range(0, self.downsample)[::-1]:
+            x = self.up_blocks[i](xvals[i], x)
+
         x = self.relu(self.last_bn(self.last_conv1(x)))
         x = self.relu(self.last_conv2(x))
         return x

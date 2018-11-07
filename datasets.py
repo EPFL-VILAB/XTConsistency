@@ -54,7 +54,6 @@ class ImageTaskDataset(Dataset):
         return len(self.source_files)
 
     def __getitem__(self, idx):
-
         source_file = self.source_files[idx]
         result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
         building, task, view = (result["building"], result["task"], result["view"])
@@ -63,16 +62,33 @@ class ImageTaskDataset(Dataset):
         try:
             image = Image.open(source_file)
             image = self.source_transforms(image).float()
-            print("trying to open: ")
             data_dir = self.file_map[f"{building}_{self.dest_task}"]
             task = Image.open(f"{data_dir}/{dest_file}")
             task = self.dest_transforms(task).float()
             return image, task
         except Exception as e:
-            print(e)
-            print ("Error in file pair: ", source_file, dest_file)
-            time.sleep(0.1)
+            # time.sleep(0.1)
             return self.__getitem__(random.randrange(0, len(self.source_files)))
+
+        # for i in range(100):
+        #     source_file = self.source_files[idx]
+        #     result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
+        #     building, task, view = (result["building"], result["task"], result["view"])
+        #     dest_file = f"{building}_{self.dest_task}/{self.dest_task}/{view}_domain_{self.dest_task}.png"
+
+        #     try:
+        #         image = Image.open(source_file)
+        #         image = self.source_transforms(image).float()
+        #         data_dir = self.file_map[f"{building}_{self.dest_task}"]
+        #         task = Image.open(f"{data_dir}/{dest_file}")
+        #         task = self.dest_transforms(task).float()
+        #         return image, task
+        #     except Exception as e:
+        #         idx = random.randrange(0, len(self.source_files))
+        #         if i > 5:
+        #             print(i, e)
+                # time.sleep(0.1)
+                # return self.__getitem__(random.randrange(0, len(self.source_files)))
 
 
 

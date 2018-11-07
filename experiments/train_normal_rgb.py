@@ -26,7 +26,7 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     depth_weight = 0.0
 
     ### MODEL ###
-    model = DataParallelModel(UNet())
+    model = DataParallelModel(UNet(out_channels=1))
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     print(model.forward(torch.randn(8, 3, 256, 256)).shape)
@@ -41,8 +41,9 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     def depth_model(pred):
         return checkpoint(depth_model_base, pred)
 
-    def mixed_loss(pred, target):
-        mask = build_mask(target.detach(), val=0.502)
+    def mixed_loss(pred, target, data):
+        mask = build_mask(data.detach(), val=0.502).cuda()
+        mask = (mask[0]).unsqueeze(0)
         mse = F.mse_loss(pred * mask.float(), target * mask.float())
         curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
             F.mse_loss(curvature_model(pred) * mask.float(), curvature_model(target) * mask.float())
@@ -62,7 +63,6 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
     covarianceplot_w_logger = partial(covarianceplot, logger=logger)
 
     logger.add_hook(lambda x: logger.step(), feature='loss', freq=25)
-
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
     if should_standardize:
         logger.add_hook(mseplots_w_logger, feature="val_mse_loss", freq=1)
@@ -75,13 +75,17 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         logger.add_hook(jointplot3_w_logger, feature="val_depth_loss", freq=1)
 
     ### DATA LOADING ###
+    def convert_to_gs(x):
+        x = x.mean(dim=0)
+        return x.unsqueeze(0)
+
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=48)
+        load_data("normal", "rgb", batch_size=48, dest_transforms=convert_to_gs)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
     plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                    loss_models={"curvature": curvature_model, "depth": depth_model})
+                    loss_models={})
 
     ### TRAINING ###
     if should_standardize:
@@ -114,7 +118,7 @@ def main(curvature_step=0, depth_step=0, should_standardize=False):
         logger.text(f"Increasing depth weight: {depth_weight}")
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502,
-                    loss_models={"curvature": curvature_model, "depth": depth_model})
+                    loss_models={})
 
         scheduler.step()
 

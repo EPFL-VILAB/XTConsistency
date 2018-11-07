@@ -15,7 +15,7 @@ from datasets import ImageTaskDataset
 from torch.optim.lr_scheduler import MultiStepLR
 
 from modules.percep_nets import Dense1by1Net, DeepNet, BaseNet, ResidualsNet, WideNet, PyramidNet
-
+from modules.unet import UNet
 import IPython
 
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # MODEL
     print ("Using PyramidNet")
-    model = DataParallelModel(Dense1by1Net())
+    model = DataParallelModel(UNet(downsample=4))
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     print (model.forward(torch.randn(1, 3, 512, 512)).shape)
 

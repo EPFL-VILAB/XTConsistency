@@ -93,6 +93,33 @@ def build_mask(target, val=0.0, tol=1e-3):
     mask = (~mask).expand_as(target)
     return mask
 
+def gaussian_filter(kernel_size=5, sigma=1.0, device=0):
+
+    channels = 1
+    # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
+    x_cord = torch.arange(kernel_size).float()
+    x_grid = x_cord.repeat(kernel_size).view(kernel_size, kernel_size)
+    y_grid = x_grid.t()
+    xy_grid = torch.stack([x_grid, y_grid], dim=-1)
+
+    mean = (kernel_size - 1) / 2.
+    variance = sigma ** 2.
+
+    # Calculate the 2-dimensional gaussian kernel which is
+    # the product of two gaussian distributions for two different
+    # variables (in this case called x and y)
+    gaussian_kernel = (1. / (2. * math.pi * variance)) * torch.exp(
+        -torch.sum((xy_grid - mean) ** 2., dim=-1) / (2 * variance)
+    )
+    # Make sure sum of values in gaussian kernel equals 1.
+    gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
+
+    # Reshape to 2d depthwise convolutional weight
+    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
+    gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
+
+    return gaussian_kernel
+
 def get_files(exp, data_dirs=DATA_DIRS):
     files = []
     seen = set()
@@ -124,7 +151,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     buildings = list({file.split("/")[-1][:-7] for file in get_files('*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
     file_map = build_file_map()
-    print(file_map)
+    # print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 
     # test_buildings = ["almena", "mifflintown"]

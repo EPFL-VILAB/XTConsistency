@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib as mpl
 
 from sklearn.utils import shuffle
+from inspect import signature
 
 import torch
 import torch.nn as nn
@@ -64,7 +65,11 @@ class AbstractModel(nn.Module):
         if isinstance(target, list):
             target = tuple(t.to(pred.device) for t in target)
         else: target = target.to(pred.device)
-        loss, metrics = loss_fn(pred, target)
+
+        if len(signature(loss_fn).parameters) == 3:
+            loss, metrics = loss_fn(pred, target, data)
+        else:
+            loss, metrics = loss_fn(pred, target)
 
         if train:
             loss.backward()
