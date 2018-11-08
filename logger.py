@@ -28,6 +28,7 @@ class BaseLogger(object):
         self.hooks.append((hook, feature, freq))
 
     def update(self, feature, x):
+
         if isinstance(x, torch.Tensor):
             x = x.data.cpu().numpy().mean()
 

@@ -67,6 +67,34 @@ def elapsed(times=[time.time()]):
     return times[-1] - times[-2]
 
 
+def gaussian_filter(kernel_size=5, sigma=1.0, device=0):
+
+    channels = 1
+    # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
+    x_cord = torch.arange(kernel_size).float()
+    x_grid = x_cord.repeat(kernel_size).view(kernel_size, kernel_size)
+    y_grid = x_grid.t()
+    xy_grid = torch.stack([x_grid, y_grid], dim=-1)
+
+    mean = (kernel_size - 1) / 2.
+    variance = sigma ** 2.
+
+    # Calculate the 2-dimensional gaussian kernel which is
+    # the product of two gaussian distributions for two different
+    # variables (in this case called x and y)
+    gaussian_kernel = (1. / (2. * math.pi * variance)) * torch.exp(
+        -torch.sum((xy_grid - mean) ** 2., dim=-1) / (2 * variance)
+    )
+    # Make sure sum of values in gaussian kernel equals 1.
+    gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
+
+    # Reshape to 2d depthwise convolutional weight
+    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
+    gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
+
+    return gaussian_kernel
+
+
 # Cycles through iterable without making extra copies
 def cycle(iterable):
     while True:
@@ -217,7 +245,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
 
 
-def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}):
+def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}, loss_targets=True):
     preds, targets, losses, _ = model.predict_with_data(test_set)
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     logger.images(test_masks.float(), "masks", resize=256)
@@ -232,7 +260,8 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
     for name, loss_model in loss_models.items():
         with torch.no_grad():
             curvature_preds = loss_model(preds)
-            curvature_targets = loss_model(targets)
             logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions", resize=128)
-            logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize=128)
+            if loss_targets:
+                curvature_targets = loss_model(targets)
+                logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets", resize=128)
 

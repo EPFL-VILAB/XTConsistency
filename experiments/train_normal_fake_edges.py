@@ -18,6 +18,7 @@ from modules.percep_nets import DenseNet, DeepNet, BaseNet, ResidualsNet, WideNe
 from modules.unet import UNet
 from skimage import feature
 from scipy import ndimage
+
 import IPython
 
 
@@ -30,8 +31,6 @@ if __name__ == "__main__":
     
     filter = gaussian_filter(kernel_size=5, sigma=2).float()
     def dest_transforms(x):
-
-
         image = x.data.cpu().numpy().mean(axis=0)
         blur = ndimage.filters.gaussian_filter(image, sigma=2, )
         sx = ndimage.sobel(blur, axis=0, mode='constant')
@@ -42,6 +41,7 @@ if __name__ == "__main__":
         edge = torch.FloatTensor(sob).unsqueeze(0)
         # with torch.no_grad():
         #     edge = F.conv2d(edge.unsqueeze(0), weight=filter, bias=None, groups=1, padding=2, stride=1)[0]
+
         return edge
 
     print (dest_transforms(torch.randn(3, 256, 256)).shape)

@@ -37,7 +37,11 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
         cmd[0] = "ipython"
         cmd.insert(1, "-i")
     elif "python" in cmd[0]:
+        print ("No buffering")
         cmd.insert(1, "-u")
+    elif "python" in cmd[1]:
+        print ("No buffering")
+        cmd.insert(2, "-u")
 
     print(" ".join(cmd))
     process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, universal_newlines=True)
