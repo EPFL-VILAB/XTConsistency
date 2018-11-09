@@ -66,7 +66,7 @@ class AbstractModel(nn.Module):
             target = tuple(t.to(pred.device) for t in target)
         else: target = target.to(pred.device)
 
-        if len(signature(loss_fn).parameters) == 3:
+        if len(signature(loss_fn).parameters) > 2:
             loss, metrics = loss_fn(pred, target, data)
         else:
             loss, metrics = loss_fn(pred, target)

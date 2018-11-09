@@ -27,10 +27,10 @@ from functools import partial
 import IPython
 
 
-def main(curvature_step=0, depth_step=0, method=1):
+def main(curvature_step=0, depth_step=0, curvature_weight=0, depth_weight=0, freq=20):
 
-    curvature_weight = 0.0
-    depth_weight = 0.0
+    curvature_weight += curvature_step
+    depth_weight += depth_step
 
     # MODEL
     print ("Using UNet")
@@ -38,17 +38,19 @@ def main(curvature_step=0, depth_step=0, method=1):
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    def mixed_loss(pred, target, data):
+    def mixed_loss(pred, target, data, num=[0]):
+
         mask = build_mask(target.detach(), val=0.502)
-
         mse_loss = lambda x, y: ((x-y)**2).mean()
-        mse = mse_loss(pred*mask.float(), target*mask.float())
+        mse = 0.0*pred.mean() if num[0] % freq != 0 else \
+                    mse_loss(pred*mask.float(), target*mask.float())
         # inverse = mse_loss(normal2rgb(pred)*mask.float(), data.to(pred.device)*mask.float())
-        curvature = torch.tensor(0.0, device=pred.device) if curvature_weight == 0.0 else \
-                    mse_loss(curve_cycle(pred)*mask.float(), curvature_model(pred)*mask.float())
-        depth = torch.tensor(0.0, device=pred.device) if depth_weight == 0.0 else \
-                    mse_loss(depth_cycle(pred)*mask.float(), depth_model(pred)*mask.float())
 
+        curvature = 0.0*mse if curvature_weight == 0.0 else \
+                    mse_loss(curve_cycle(pred)*mask.float(), curvature_model(target)*mask.float())
+        depth = 0.0*mse if depth_weight == 0.0 else \
+                    mse_loss(depth_cycle(pred)*mask.float(), depth_model(pred)*mask.float())
+        num[0] += 1
         return mse + curvature_weight*curvature + depth_weight*depth, (mse.detach(), curvature.detach(), depth.detach())
 
     # LOGGING
@@ -59,21 +61,9 @@ def main(curvature_step=0, depth_step=0, method=1):
     logger.add_hook(partial(jointplot, logger=logger, loss_type="depth_loss"), feature="val_depth_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
-    filter = gaussian_filter(channels=3, kernel_size=5, sigma=3.0)
-    def dest_transforms(x):
-        with torch.no_grad():
-            x = F.max_pool2d(x.unsqueeze(0), 2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.upsample(x.unsqueeze(0), scale_factor=2, mode='bilinear')[0]
-        return x
-
-    print ("Dest transforms: ", dest_transforms(torch.randn(3, 256, 256)).shape)
-
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=32, dest_transforms=dest_transforms)
+        load_data("rgb", "normal", batch_size=32)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
