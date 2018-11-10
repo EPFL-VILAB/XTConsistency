@@ -27,7 +27,7 @@ from functools import partial
 import IPython
 
 
-def main(curvature_step=0, depth_step=0, method=1):
+def main(curvature_step=0, depth_step=0):
 
     curvature_weight = 0.0
     depth_weight = 0.0
@@ -59,25 +59,14 @@ def main(curvature_step=0, depth_step=0, method=1):
     logger.add_hook(partial(jointplot, logger=logger, loss_type="depth_loss"), feature="val_depth_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
-    filter = gaussian_filter(channels=3, kernel_size=5, sigma=3.0)
-    def dest_transforms(x):
-        with torch.no_grad():
-            x = F.max_pool2d(x.unsqueeze(0), 2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.conv2d(x.unsqueeze(0), weight=filter, bias=None, groups=3, padding=2)[0]
-            x = F.upsample(x.unsqueeze(0), scale_factor=2, mode='bilinear')[0]
-        return x
-
-    print ("Dest transforms: ", dest_transforms(torch.randn(3, 256, 256)).shape)
-
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=32, dest_transforms=dest_transforms)
+        load_data("rgb", "normal", batch_size=64)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-        loss_models={"curvature": curvature_model, "depth": depth_model, "depth_cycle": depth_cycle})
+        loss_models={"curvature": curvature_model, "depth": depth_model,
+            "curvature_cycle": curve_cycle, "depth_cycle": depth_cycle})
 
     # TRAINING
     for epochs in range(0, 800):
@@ -105,7 +94,8 @@ def main(curvature_step=0, depth_step=0, method=1):
         logger.text (f"Increasing depth weight: {depth_weight}")
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-                        loss_models={"curvature": curvature_model, "depth": depth_model, "depth_cycle": depth_cycle})
+            loss_models={"curvature": curvature_model, "depth": depth_model, 
+                "curvature_cycle": curve_cycle, "depth_cycle": depth_cycle})
 
         scheduler.step()
 

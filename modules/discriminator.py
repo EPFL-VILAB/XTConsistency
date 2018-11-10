@@ -20,7 +20,7 @@ class ResNetDisc(TrainableModel):
 
     def forward(self, x):
         x = self.resnet(x)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x)
 
     def loss(self, pred, target):
         loss = F.nll_loss(pred, target)

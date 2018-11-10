@@ -23,6 +23,41 @@ from functools import partial
 
 import IPython
 
+# # Loads pretrained transfer models when requested and applies checkpointing
+# def build_model(model, file):
+
+# 	def closure(pred, checkpoint=True, model=[model], loaded=[False]):
+# 		if not loaded[0]:
+# 			model[0] = DataParallelModel.load(model, file)
+# 			loaded[0] = True
+# 		if checkpoint:
+# 			return util_checkpoint(model[0], pred)
+# 		return model[0](pred)
+
+# 	return closure
+
+# curvature_model = build_model(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
+# curve2depth = build_model(UNetOld().cuda(), f"{MODELS_DIR}/alpha_train_triangle_curve2depth.pth")
+# depth_model = build_model(UNetDepth().cuda(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth")
+# depth2curve = build_model(UNetOld().cuda(), f"{MODELS_DIR}/alpha_train_triangle_depth2curve.pth")
+# normal2edge = build_model(UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d_sobel_unet4.pth")
+# normal2gray = build_model(UNet(out_channels=1, downsample=6).cuda(), f"{MODELS_DIR}/normals2gray_unet.pth")
+
+# def curve_cycle(pred, checkpoint=True):
+#     return depth2curve(depth_model(pred, checkpoint=checkpoint).expand(-1, 3, -1, -1), checkpoint=checkpoint)
+
+# def depth_cycle(pred, checkpoint=True):
+#     return curve2depth(curvature_model(pred, checkpoint=checkpoint), checkpoint=checkpoint).mean(dim=1, keepdim=True)
+
+# # normal2edge = build_model(UNetOld(out_channels=1).cuda(), f"{MODELS_DIR}/normal2fakeedges.pth")
+# # def normal2edge(pred):
+# #     return checkpoint(normal2edge, pred)
+
+
+# # normal2rgb = build_model(UNet(downsample=6).cuda(), "mount/shared/results_normals2rgb_unet_5/model.pth")
+# # def normal2rgb(pred):
+# #     return checkpoint(normal2rgb, pred)
+
 
 def api(model):
 	def closure(pred, checkpoint=True):
