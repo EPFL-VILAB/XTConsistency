@@ -39,19 +39,21 @@ def main(curvature_step=0, depth_step=0):
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
-    loss_names = ["gt_percep",]
+    loss_names = ["inversecurve_edge_loss", "curve_edge_loss", "edge_loss"]
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         F, G, f, s, H_g, h_f = curvature2normal, depth2normal, curvature_model, normal2edge, curve_cycle, depth_cycle
         CE, EC = curvature2edges, edges2curvature
-        y, y_hat = pred, target
+        ax, y, y_hat = target, pred, target
         mse_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()
 
         losses = [
-            mse_loss(f(y), f(y_hat)),
+            mse_loss(y, F(EC(ax))),
+            mse_loss(f(y), EC(ax)),
+            mse_loss(CE(f(y)), ax)
         ]
-
+        losses = [1/loss.detach() * loss for loss in losses]
         return sum(losses), (loss.detach() for loss in losses)
 
     # LOGGING
@@ -61,8 +63,17 @@ def main(curvature_step=0, depth_step=0):
         logger.add_hook(partial(jointplot, logger=logger, loss_type=f"{loss}"), feature=f"val_{loss}", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
+    def dest_transforms(x):
+        image = x.data.cpu().numpy().mean(axis=0)
+        blur = ndimage.filters.gaussian_filter(image, sigma=2)
+        sx = ndimage.sobel(blur, axis=0, mode='constant')
+        sy = ndimage.sobel(blur, axis=1, mode='constant')
+        image = np.hypot(sx, sy)
+        edge = torch.FloatTensor(image).unsqueeze(0)
+        return edge
+
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=48)
+        load_data("rgb", "rgb", batch_size=32, dest_transforms=dest_transforms)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
@@ -74,6 +85,14 @@ def main(curvature_step=0, depth_step=0):
                 "f(y) curve": curvature_model, 
                 "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x)),
             },
+            loss_targets=False,
+        )
+        plot_images(model, logger, test_set, mask_val=-1.0, 
+            loss_models={
+                "EC(a(x)) inverse curvature edges": lambda x: edges2curvature(x),
+                "F(EC(a(x))) inverse curvature normals": lambda x: curvature2normal(edges2curvature(x)),
+            },
+            loss_preds=False,
         )
         logger.update("epoch", epochs)
 
