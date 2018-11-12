@@ -22,20 +22,19 @@ from sklearn.model_selection import train_test_split
 from fire import Fire
 
 from torch.utils.checkpoint import checkpoint
-from task_configs import *
+import task_configs
 import IPython
 
 
 def main(src_task, dest_task):
 
     # MODEL
-    task_map = create_tasks()
+    task_map = task_configs.create_tasks()
 
     src_task = task_map[src_task]
     dest_task = task_map[dest_task]
 
-    transfer = Transfer(src_task, dest_task)
-    model = DataParallelModel((transfer.get_model()).cuda())
+    model = DataParallelModel((task_configs.get_model(src_task, dest_task)).cuda())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     # def loss(pred, target):

@@ -162,17 +162,20 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     
     from torchvision import transforms
     from datasets import ImageTaskDataset, ImageDataset, ImageMultiTaskDataset
+    import task_configs
+    
+    if isinstance(source_task, str) and isinstance(dest_task, str):
+        task_map = task_configs.create_tasks()
+        source_task = task_map[source_task]
+        dest_task = task_map[dest_task]
 
     dataset_class = dataset_class or ImageTaskDataset
     # test_buildings = ["almena", "albertville"]
     buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-    counts ={}
+    counts = defaultdict(int)
     for f, x in FILE_MAP.items():
-        if x not in counts:
-            counts[x] = 1
-        else:
-            counts[x] += 1
+        counts[x] += 1
     print(counts)
     # print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
