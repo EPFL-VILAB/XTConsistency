@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     # DATA LOADING
     def dest_transforms(x):
-        x = x.unsqueeze(0)
+        x = x.unsqueeze(0).float()
         mask = build_mask(x, 65535.0, tol=1000)
         x[~mask] = 8000.0
         x = x/8000.0

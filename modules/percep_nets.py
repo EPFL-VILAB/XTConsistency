@@ -246,4 +246,18 @@ class ResidualsNet(TrainableModel):
         loss = torch.tensor(0.0, device=pred.device)
         return loss, (loss.detach(),)
 
+class ResNet50(TrainableModel):
+    def __init__(self, num_classes=365, in_channels=3):
+        super().__init__()
+        self.resnet = models.resnet18(num_classes=num_classes)
+        self.resnet.fc = nn.Linear(in_features=8192, out_features=num_classes, bias=True)
+        self.resnet.conv1 = nn.Conv2d(in_channels, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+
+    def forward(self, x):
+        x = self.resnet(x)
+        return F.log_softmax(x, dim=1)
+
+    def loss(self, pred, target):
+        loss = F.nll_loss(pred, target)
+        return loss, (loss.detach(),)
 

@@ -5,6 +5,7 @@ import numpy as np
 import random, sys, os, time, glob, math, itertools
 from sklearn.model_selection import train_test_split
 import parse
+from collections import defaultdict
 
 import torch
 import torch.nn as nn
@@ -28,11 +29,27 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade"]
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")
+
+def build_file_map(data_dirs=DATA_DIRS, task_list={}):
+    file_map = {}
+    task_count = defaultdict(int)
+    for data_dir in data_dirs:
+        for file in glob.glob(f'{data_dir}/*'):
+            res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
+            if res is None: continue
+            file_map[file[len(data_dir)+1:]] = data_dir
+            if res['task'] in task_list:
+                task_count[res['task']] += len(glob.glob(f'{file}/**', recursive=True))
+    for task, count in task_count.items():
+        print(task, count)
+    return file_map
+
+FILE_MAP = build_file_map()
 
 
 print("Models dir: ", MODELS_DIR)
@@ -130,14 +147,14 @@ def get_files(exp, data_dirs=DATA_DIRS):
                 seen.add(file[len(data_dir):])
     return files
 
-def build_file_map(data_dirs=DATA_DIRS):
-    file_map = {}
-    for data_dir in data_dirs:
-        for file in glob.glob(f'{data_dir}/*'):
-            res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
-            if res is not None:
-                file_map[file[len(data_dir)+1:]] = data_dir
-    return file_map
+def convert_path(source_file, task):
+    result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
+    building, _, view = (result["building"], result["task"], result["view"])
+    dest_file = f"{building}_{task}/{task}/{view}_domain_{task}.png"
+    if f"{building}_{task}" not in FILE_MAP:
+        return ""
+    data_dir = FILE_MAP[f"{building}_{task}"]
+    return f"{data_dir}/{dest_file}"
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
                 dataset_class=None,
@@ -147,10 +164,16 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     from datasets import ImageTaskDataset, ImageDataset, ImageMultiTaskDataset
 
     dataset_class = dataset_class or ImageTaskDataset
-    test_buildings = ["almena", "albertville"]
-    buildings = list({file.split("/")[-1][:-7] for file in get_files('*_normal')})
+    # test_buildings = ["almena", "albertville"]
+    buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-    file_map = build_file_map()
+    counts ={}
+    for f, x in FILE_MAP.items():
+        if x not in counts:
+            counts[x] = 1
+        else:
+            counts[x] += 1
+    print(counts)
     # print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 
@@ -159,14 +182,14 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     #                         if train == "1" and building not in test_buildings]
     # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
 
-    source_transforms = source_transforms or (lambda x: x)
-    dest_transforms = dest_transforms or (lambda x: x)
-    source_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), source_transforms])
-    dest_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), dest_transforms])
+    # source_transforms = source_transforms or (lambda x: x)
+    # dest_transforms = dest_transforms or (lambda x: x)
+    source_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), source_task.transform])
+    dest_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), dest_task.transform])
 
     train_loader = torch.utils.data.DataLoader(
         dataset_class(buildings=train_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task, file_map=file_map),
+                         source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=64,
         shuffle=True,
@@ -174,23 +197,23 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     )
     val_loader = torch.utils.data.DataLoader(
         dataset_class(buildings=val_buildings, source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task, file_map=file_map),
+                         source_task=source_task, dest_task=dest_task),
         batch_size=batch_size,
         num_workers=64,
         shuffle=True,
         pin_memory=True
     )
     test_loader1 = torch.utils.data.DataLoader(
-        dataset_class(buildings=["almena"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task, file_map=file_map),
+        dataset_class(buildings=['almena'], source_transforms=source_transforms, dest_transforms=dest_transforms,
+                         source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=12,
         shuffle=False,
         pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        dataset_class(buildings=["albertville"], source_transforms=source_transforms, dest_transforms=dest_transforms,
-                         source_task=source_task, dest_task=dest_task, file_map=file_map),
+        dataset_class(buildings=['albertville'], source_transforms=source_transforms, dest_transforms=dest_transforms,
+                         source_task=source_task, dest_task=dest_task),
         batch_size=6,
         num_workers=6,
         shuffle=False,
@@ -219,6 +242,8 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
 def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}, loss_preds=True, loss_targets=True):
     preds, targets, losses, _ = model.predict_with_data(test_set)
+    # preds = preds.data.cpu().numpy().argmax(axis=1).astype(float)/16
+    # targets = targets.float()/16
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     # logger.images(test_masks.float(), "masks", resize=64)
     logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
