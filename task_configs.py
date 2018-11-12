@@ -20,6 +20,7 @@ from PIL import Image
 import json
 from scipy import ndimage
 
+
 model_types = {
     ('normal', 'principal_curvature'): lambda : Dense1by1Net(),
     ('normal', 'depth_zbuffer'): lambda : UNetDepth(),
@@ -31,23 +32,9 @@ model_types = {
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
 }
 
-edges = {
-    ('normal', 'principal_curvature'): 
-        (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth"),
-    ('normal', 'depth_zbuffer'): 
-        (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth"),
-    ('principal_curvature', 'normal'): 
-        (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
-    ('depth_zbuffer', 'normal'): 
-        (lambda: UNet(in_channels=1, downsample=4), f"{MODELS_DIR}/depth2normal_unet4.pth"),
-    ('principal_curvature', 'sobel_edges'): 
-        (lambda: UNet(downsample=4, out_channels=1), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth"),
-    ('sobel_edges', 'principal_curvature'): 
-        (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
-}
 
 # Task output space
-class Task:
+class Task(object):
     def __init__(self, name, shape=(3, 256, 256), mask_val=-1, file_name=None,
                     transform=None, file_loader=None, is_image=True, loss_func=None):
         self.name = name
@@ -70,37 +57,7 @@ class Task:
         self.is_image = is_image
         # output_shape, mask_val, transform
 
-class Transfer:
-    def __init__(self, src_task, dest_task, checkpoint=True, name=""):
-        if isinstance(src_task, str) and isinstance(dest_task, str):
-            src_task = TASK_MAP[src_task]
-            dest_task = TASK_MAP[dest_task]
 
-        self.src_task = src_task
-        self.dest_task = dest_task
-        self.name = name
-        if name == "":
-            self.name = f"{src_task.name}2{dest_task.name}"
-        model_type, path = edges[(src_task.name, dest_task.name)]
-        self.model = DataParallelModel.load(model_type().cuda(), path)
-    
-    def __call__(self, argv, prefix="", plot_dict=None):
-        x = argv
-        num_args = 1
-        if isinstance(argv, tuple):
-            num_args = len(argv)
-            if num_args >= 1: x = argv[0]
-            if num_args >= 2: prefix = argv[1]
-            if num_args >= 3: plot_dict = argv[2]
-
-        preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
-        total_name = f'{self.name}({prefix})'     
-        if plot_dict is not None:
-            plot_dict[total_name] = preds
-        res = [x]
-        if num_args >= 2: res.append(total_name)
-        if num_args >= 3: res.append(plot_dict)
-        return tuple(res)
 
 def get_model(src_task, dest_task):
     
@@ -112,10 +69,12 @@ def get_model(src_task, dest_task):
         return model_types[(src_task.name, dest_task.name)]()
     if src_task.is_image and dest_task.is_image:
         return UNet(downsample=5, in_channels=src_task.shape[0], out_channels=dest_task.shape[0])
+    
     # if src_task.is_image and dest_task.name == 'class_scene':
 
-    # # if src_task.is_image and not dest_task.is_image:
-    # #     return 
+    # if src_task.is_image and not dest_task.is_image:
+    #     return 
+    
     return None
 
 def load_points(path):
@@ -175,7 +134,7 @@ def create_tasks():
             transform=zdepth_transform),
         Task('reshading', 
             mask_val=0.0507),
-        Task('edge_occlussion',
+        Task('edge_occlusion',
             shape=(1, 256, 256),
             ),
         Task('edge_texture',

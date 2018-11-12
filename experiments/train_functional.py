@@ -12,7 +12,7 @@ from torch.utils.checkpoint import checkpoint
 
 from utils import *
 from plotting import *
-from transfers import *
+from transfers import functional_transfers
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
@@ -41,17 +41,14 @@ def main(curvature_step=0, depth_step=0):
 
     loss_names = ["gt_percep",]
 
-    def mixed_loss(pred, target):
-        mask = build_mask(target.detach(), val=0.502)
-        F, G, f, s, H_g, h_f = curvature2normal, depth2normal, curvature_model, normal2edge, curve_cycle, depth_cycle
-        CE, EC = curvature2edges, edges2curvature
-        y, y_hat = pred, target
-        mse_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()
-
+    def mixed_loss(y, y_hat, x):
+        mask = build_mask(y_hat.detach(), val=0.502)
+        mse_loss = lambda x, y: ((x*mask.float() - y*mask.float())**2).mean()
+        (f, F, g, G, s, CE, EC, DE, a) = functional_transfers
+        print ("Sobel: ", a(x).shape)
         losses = [
             mse_loss(f(y), f(y_hat)),
         ]
-
         return sum(losses), (loss.detach() for loss in losses)
 
     # LOGGING
@@ -69,10 +66,12 @@ def main(curvature_step=0, depth_step=0):
     # TRAINING
     for epochs in range(0, 800):
 
+        (f, F, g, G, s, CE, EC, DE, a) = functional_transfers
         plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
             loss_models={
-                "f(y) curve": curvature_model, 
-                "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x)),
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "f(y_hat)": lambda y, y_hat, x: f(y_hat), 
+                "F(f(y))": lambda y, y_hat, x: F(f(y)), 
             },
         )
         logger.update("epoch", epochs)

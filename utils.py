@@ -13,6 +13,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
+from skimage import feature
+from functools import partial
+from scipy import ndimage
+
 import IPython
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -110,6 +114,19 @@ def gaussian_filter(channels=3, kernel_size=5, sigma=1.0, device=0):
 
     return gaussian_kernel
 
+def sobel_kernel(x):
+
+    def dest_transforms(image):
+        image = image.data.cpu().numpy().mean(axis=0)
+        blur = ndimage.filters.gaussian_filter(image, sigma=2)
+        sx = ndimage.sobel(blur, axis=0, mode='constant')
+        sy = ndimage.sobel(blur, axis=1, mode='constant')
+        image = np.hypot(sx, sy)
+        edge = torch.FloatTensor(image, device=x.device).unsqueeze(0)
+        return edge
+
+    edges = torch.stack([dest_transforms(image) for image in x], dim=0)
+    return edges
 
 # Cycles through iterable without making extra copies
 def cycle(iterable):
@@ -244,6 +261,8 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
 
 def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}, loss_preds=True, loss_targets=True):
+    
+    test_images = torch.cat([x for x, y in test_set], dim=0)
     preds, targets, losses, _ = model.predict_with_data(test_set)
     # preds = preds.data.cpu().numpy().argmax(axis=1).astype(float)/16
     # targets = targets.float()/16
@@ -259,10 +278,8 @@ def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_m
 
     for name, loss_model in loss_models.items():
         with torch.no_grad():
-            if loss_preds:
-                curvature_preds = loss_model(preds)
-                logger.images(curvature_preds.clamp(min=0, max=1), f"{name}_predictions (y=y)", resize=128)
-            if loss_targets:
-                curvature_targets = loss_model(targets)
-                logger.images(curvature_targets.clamp(min=0, max=1), f"{name}_targets (y=y_hat)", resize=128)
+            output = loss_model(preds, targets, test_images)
+            logger.images(output.clamp(min=0, max=1), name, resize=128)
+
+
 
