@@ -41,79 +41,65 @@ def main(curvature_step=0, depth_step=0):
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
-        F, G, f, s, H_g, h_f = curvature2normal, depth2normal, curvature_model, normal2edge, curve_cycle, depth_cycle
+        F, f, s, H_g = curvature2normal, curvature_model, normal2edge, curve_cycle
         ax, y, y_hat = target, pred, target
         mse_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()
-        norm_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()/y.mean()
 
-        cycle = mse_loss(G(h_f(y)), y)
-        edge = mse_loss(ax, s(y))
+
+        cycle = mse_loss(F(H_g(y)), y)
+        gt_cycle = mse_loss(F(H_g(y)), F(H_g(y_hat)))
+        mse = mse_loss(y, y_hat)
         
         # curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
         #     F.mse_loss(curvature_model(pred) * mask.float(), (target) * mask.float())
         # depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
         #     F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        return cycle + edge, (cycle.detach(), edge.detach())
+        return mse + cycle + gt_cycle, (mse.detach(), cycle.detach(), gt_cycle.detach())
 
-    # LOGGING
+    ### LOGGING ###
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=10)
-    logger.add_hook(partial(jointplot, logger=logger, loss_type="cycle_loss"), feature="val_cycle_loss", freq=1)
-    logger.add_hook(partial(jointplot, logger=logger, loss_type="edge_loss"), feature="val_edge_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
-    def dest_transforms(x):
-        image = x.data.cpu().numpy().mean(axis=0)
-        blur = ndimage.filters.gaussian_filter(image, sigma=2)
-        sx = ndimage.sobel(blur, axis=0, mode='constant')
-        sy = ndimage.sobel(blur, axis=1, mode='constant')
-        image = np.hypot(sx, sy)
-        edge = torch.FloatTensor(image).unsqueeze(0)
-        return edge
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="mse_loss"), feature="val_mse_loss", freq=1)
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="cycle_loss"), feature="val_cycle_loss", freq=1)
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="gt_cycle_loss"), feature="val_gt_cycle_loss", freq=1)
 
+    ### DATA LOADING ###
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "rgb", batch_size=32, dest_transforms=dest_transforms)
+        load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
-        loss_models={
-            "f(y) curve": curvature_model, 
-            "h(f(y)) depth2curve": depth_cycle,
-            "s(y) edges": normal2edge,
-            "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
-        },
-        loss_targets=False
-    )
+            loss_models={"depth": depth_model, 
+                        "depth2curve": curve_cycle,
+                        "cycle": lambda x: curvature2normal(curve_cycle(x))}, loss_targets=False)
 
-    # TRAINING
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)
-        (cycle_data, edge_data) = model.fit_with_metrics(
+        (cycle_data, gt_cycle_data) = model.fit_with_metrics(
             train_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("train_cycle_loss", np.mean(cycle_data))
-        logger.update("train_edge_loss", np.mean(edge_data))
+        logger.update("train_gt_cycle_loss", np.mean(gt_cycle_data))
 
         val_set = itertools.islice(val_loader, val_step)
-        (cycle_data, edge_data) = model.predict_with_metrics(
+        (cycle_data, gt_cycle_data) = model.predict_with_metrics(
             val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_cycle_loss", np.mean(cycle_data))
-        logger.update("val_edge_loss", np.mean(edge_data))
+        logger.update("val_gt_cycle_loss", np.mean(gt_cycle_data))
 
         plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
-            loss_models={
-                "f(y) curve": curvature_model, 
-                "h(f(y)) depth2curve": depth_cycle,
-                "s(y) edges": normal2edge,
-                "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
-            },
-            loss_targets=False
-        )
+            loss_models={"depth": depth_model, 
+                        "depth2curve": curve_cycle,
+                        "cycle": lambda x: curvature2normal(curve_cycle(x))}, loss_targets=False)
+
         scheduler.step()
+        logger.step()
 
 
 if __name__ == "__main__":

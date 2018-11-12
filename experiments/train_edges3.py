@@ -41,12 +41,12 @@ def main(curvature_step=0, depth_step=0):
 
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
-        F, G, f, s, H_g, h_f = curvature2normal, depth2normal, curvature_model, normal2edge, curve_cycle, depth_cycle
+        F, f, s, H_g = curvature2normal, curvature_model, normal2edge, curve_cycle
         ax, y, y_hat = target, pred, target
         mse_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()
-        norm_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()/y.mean()
+        norm_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()/(y.mean()**2)
 
-        cycle = mse_loss(G(h_f(y)), y)
+        cycle = norm_loss(F(f(y)), y)
         edge = mse_loss(ax, s(y))
         
         # curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
@@ -78,10 +78,9 @@ def main(curvature_step=0, depth_step=0):
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
         loss_models={
-            "f(y) curve": curvature_model, 
-            "h(f(y)) depth2curve": depth_cycle,
-            "s(y) edges": normal2edge,
-            "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
+            "f(y) curvature": curvature_model,
+            "NI(y) edge": normal2edge,
+            "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x))
         },
         loss_targets=False
     )
@@ -106,10 +105,9 @@ def main(curvature_step=0, depth_step=0):
 
         plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
             loss_models={
-                "f(y) curve": curvature_model, 
-                "h(f(y)) depth2curve": depth_cycle,
-                "s(y) edges": normal2edge,
-                "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
+                "f(y) curvature": curvature_model,
+                "NI(y) edge": normal2edge,
+                "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x))
             },
             loss_targets=False
         )

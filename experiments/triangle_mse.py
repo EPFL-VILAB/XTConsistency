@@ -42,6 +42,8 @@ def main(curvature_step=0, depth_step=0):
         mask = build_mask(target.detach(), val=0.502)
 
         mse_loss = lambda x, y: ((x-y)**2).mean()
+        L=MSE[(f(y)),F(f(y^))]+MSE[F(f(y)),y]
+
         mse = mse_loss(pred*mask.float(), target*mask.float())
         # inverse = mse_loss(normal2rgb(pred)*mask.float(), data.to(pred.device)*mask.float())
         curvature = torch.tensor(0.0, device=pred.device) if curvature_weight == 0.0 else \
@@ -65,8 +67,7 @@ def main(curvature_step=0, depth_step=0):
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
     plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-        loss_models={"curvature": curvature_model, "depth": depth_model,
-            "curvature_cycle": curve_cycle, "depth_cycle": depth_cycle})
+        loss_models={"curvature": curvature_model, "depth": depth_model})
 
     # TRAINING
     for epochs in range(0, 800):
@@ -94,8 +95,7 @@ def main(curvature_step=0, depth_step=0):
         logger.text (f"Increasing depth weight: {depth_weight}")
 
         plot_images(model, logger, test_set, ood_images, mask_val=0.502, 
-            loss_models={"curvature": curvature_model, "depth": depth_model, 
-                "curvature_cycle": curve_cycle, "depth_cycle": depth_cycle})
+            loss_models={"curvature": curvature_model, "depth": depth_model})
 
         scheduler.step()
 

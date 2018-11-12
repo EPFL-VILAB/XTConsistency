@@ -46,11 +46,6 @@ def main(disc_step=0.0):
     def mixed_loss(pred, target, data):
         mask = build_mask(target.detach(), val=0.502)
 
-        labels = torch.tensor(0, device=pred.device).expand(pred.shape[0]*2)
-        labels[:pred.shape[0]] = 1
-        predhat, disc_loss, _ = disc.fit_on_batch(torch.cat([pred.detach(), target]), labels, train=(pred.requires_grad))
-        accuracy = (torch.argmax(predhat, dim=1) == labels).sum()/(1.0*labels.shape[0])
-
         mse_loss = lambda x, y: ((x-y)**2).mean()
         mse = mse_loss(pred*mask.float(), target*mask.float())
         # inverse = mse_loss(normal2rgb(pred)*mask.float(), data.to(pred.device)*mask.float())
@@ -61,6 +56,12 @@ def main(disc_step=0.0):
         #             mse_loss(curve_cycle(pred)*mask.float(), curvature_model(pred)*mask.float())
         # depth = torch.tensor(0.0, device=pred.device) if depth_weight == 0.0 else \
         #             mse_loss(depth_cycle(pred)*mask.float(), depth_model(pred)*mask.float())
+
+        labels = torch.tensor(0, device=pred.device).expand(pred.shape[0]*2)
+        labels[:pred.shape[0]] = 1
+        predhat, disc_loss, _ = disc.fit_on_batch(torch.cat([pred.detach(), target]), labels, train=(pred.requires_grad))
+        accuracy = (torch.argmax(predhat, dim=1) == labels).sum()/(1.0*labels.shape[0])
+        
         return mse + disc_weight*disc_loss, (mse.detach(), disc_loss.detach(), accuracy.detach())
 
     # LOGGING
@@ -98,9 +99,13 @@ def main(disc_step=0.0):
         logger.update("val_disc_loss", np.mean(disc_data))
         logger.update("val_accuracy", np.mean(accuracy_data))
 
-        if epochs > 20:
+        if epochs > 100:
             disc_step = 0.001
-            logger.text ("Starting discriminator now")
+            logger.text ("Starting discriminator step")
+
+        if epochs > 200:
+            disc_step = 0
+
         disc_weight += disc_step
         logger.text (f"Increasing discriminator weight: {disc_weight}")
 

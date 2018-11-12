@@ -14,7 +14,7 @@ from models import TrainableModel, DataParallelModel
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
-from modules.unet import UNet, UNetOld
+from modules.unet import UNet, UNetOld, UNetOld2
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
@@ -69,8 +69,8 @@ def api(model):
 curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")
 curvature_model = api(curvature_model_base)
 
-# curvature2normal_base = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth")
-# curvature2normal = api(curvature2normal_base)
+curvature2normal_base = DataParallelModel.load(UNetOld2().cuda(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth")
+curvature2normal = api(curvature2normal_base)
 
 curve2depth_base = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/alpha_train_triangle_curve2depth.pth")
 curve2depth = api(curve2depth_base)
@@ -79,7 +79,25 @@ depth_model_base = DataParallelModel.load(UNetDepth().cuda(), f"{MODELS_DIR}/nor
 depth_model = api(depth_model_base)
 
 depth2curve_base = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/alpha_train_triangle_depth2curve.pth")
-depth2curve = api(depth_model_base)
+depth2curve = api(depth2curve_base)
+
+depth2normal_base = DataParallelModel.load(UNet(in_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/depth2normal_unet4.pth")
+depth2normal = api(depth2normal_base)
+
+# normal2reshade_base = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/normal2reshade_unet.pth")
+# normal2reshade = api(normal2reshade_base)
+
+# reshade2normal_base = DataParallelModel.load(UNet(downsample=5).cuda(), f"{MODELS_DIR}/reshading2normal_unet5.pth")
+# reshade2normal = api(normal2reshade_base)
+
+curvature2edges_base = DataParallelModel.load(UNet(downsample=4, out_channels=1).cuda(), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth")
+curvature2edges = api(curvature2edges_base)
+
+depth2edges_base = DataParallelModel.load(UNet(downsample=4, in_channels=1, out_channels=1).cuda(), f"{MODELS_DIR}/depth_zbuffer2sobel_edges.pth")
+depth2edges = api(depth2edges_base)
+
+edges2curvature_base = DataParallelModel.load(UNet(downsample=5, in_channels=1, out_channels=3).cuda(), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth")
+edges2curvature = api(edges2curvature_base)
 
 def curve_cycle(pred, checkpoint=True):
     return depth2curve(depth_model(pred, checkpoint=checkpoint).expand(-1, 3, -1, -1), checkpoint=checkpoint)

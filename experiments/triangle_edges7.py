@@ -42,25 +42,29 @@ def main(curvature_step=0, depth_step=0):
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
         F, G, f, s, H_g, h_f = curvature2normal, depth2normal, curvature_model, normal2edge, curve_cycle, depth_cycle
+        CE, EC = curvature2edges, edges2curvature
         ax, y, y_hat = target, pred, target
         mse_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()
-        norm_loss = lambda x, y: ((x*mask.float() -y*mask.float())**2).mean()/y.mean()
 
-        cycle = mse_loss(G(h_f(y)), y)
-        edge = mse_loss(ax, s(y))
+        cycle = mse_loss(F(f(y)), y)
+        curve_edge = mse_loss(ax, CE(f(y)))
+        inversecurve_edge = mse_loss(EC(ax), f(y))
+
+        c1, c2, c3 = 1/cycle.detach(), 1/curve_edge.detach(), 1/inversecurve_edge.detach()
         
         # curvature = torch.tensor(0.0, device=mse.device) if curvature_weight == 0.0 else \
         #     F.mse_loss(curvature_model(pred) * mask.float(), (target) * mask.float())
         # depth = torch.tensor(0.0, device=mse.device) if depth_weight == 0.0 else \
         #     F.mse_loss(depth_model(pred) * mask.float(), depth_model(target) * mask.float())
 
-        return cycle + edge, (cycle.detach(), edge.detach())
+        return c1*cycle + c2*curve_edge + c3*inversecurve_edge, (cycle.detach(), curve_edge.detach(), inversecurve_edge.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=10)
     logger.add_hook(partial(jointplot, logger=logger, loss_type="cycle_loss"), feature="val_cycle_loss", freq=1)
-    logger.add_hook(partial(jointplot, logger=logger, loss_type="edge_loss"), feature="val_edge_loss", freq=1)
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="curve_edge_loss"), feature="val_curve_edge_loss", freq=1)
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="inversecurve_edge_loss"), feature="val_inversecurve_edge_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     def dest_transforms(x):
@@ -79,11 +83,17 @@ def main(curvature_step=0, depth_step=0):
     plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
         loss_models={
             "f(y) curve": curvature_model, 
-            "h(f(y)) depth2curve": depth_cycle,
+            "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x)),
             "s(y) edges": normal2edge,
-            "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
+            "CE(f(y)) curvature edges": lambda x: curvature2edges(curvature_model(x)),
         },
         loss_targets=False
+    )
+    plot_images(model, logger, test_set, mask_val=-1.0, 
+        loss_models={
+            "EC(a(x)) inverse curvature edges": lambda x: edges2curvature(x),
+        },
+        loss_preds=False,
     )
 
     # TRAINING
@@ -91,27 +101,35 @@ def main(curvature_step=0, depth_step=0):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)
-        (cycle_data, edge_data) = model.fit_with_metrics(
+        (cycle_data, curve_edge_data, inversecurve_edge_data) = model.fit_with_metrics(
             train_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("train_cycle_loss", np.mean(cycle_data))
-        logger.update("train_edge_loss", np.mean(edge_data))
+        logger.update("train_curve_edge_loss", np.mean(curve_edge_data))
+        logger.update("train_inversecurve_edge_loss", np.mean(inversecurve_edge_data))
 
         val_set = itertools.islice(val_loader, val_step)
-        (cycle_data, edge_data) = model.predict_with_metrics(
+        (cycle_data, curve_edge_data, inversecurve_edge_data) = model.predict_with_metrics(
             val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_cycle_loss", np.mean(cycle_data))
-        logger.update("val_edge_loss", np.mean(edge_data))
+        logger.update("val_curve_edge_loss", np.mean(curve_edge_data))
+        logger.update("val_inversecurve_edge_loss", np.mean(inversecurve_edge_data))
 
         plot_images(model, logger, test_set, ood_images, mask_val=-1.0, 
             loss_models={
                 "f(y) curve": curvature_model, 
-                "h(f(y)) depth2curve": depth_cycle,
+                "F(f(y)) cycle": lambda x: curvature2normal(curvature_model(x)),
                 "s(y) edges": normal2edge,
-                "G(h(f(y)) cycle": lambda x: depth2normal(depth_cycle(x))
+                "CE(f(y)) curvature edges": lambda x: curvature2edges(curvature_model(x)),
             },
             loss_targets=False
+        )
+        plot_images(model, logger, test_set, mask_val=-1.0, 
+            loss_models={
+                "EC(a(x)) inverse curvature edges": lambda x: edges2curvature(x),
+            },
+            loss_preds=False,
         )
         scheduler.step()
 
