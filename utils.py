@@ -49,16 +49,9 @@ def build_file_map(data_dirs=DATA_DIRS, task_list={}):
             file_map[file[len(data_dir)+1:]] = data_dir
             if res['task'] in task_list:
                 task_count[res['task']] += len(glob.glob(f'{file}/**', recursive=True))
-    for task, count in task_count.items():
-        print(task, count)
     return file_map
 
 FILE_MAP = build_file_map()
-
-
-print("Models dir: ", MODELS_DIR)
-print("Results dir: ", RESULTS_DIR)
-print("Data dirs: ", DATA_DIRS)
 
 
 def batch(datagen, batch_size=32):
@@ -188,15 +181,9 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
     dataset_class = dataset_class or ImageTaskDataset
     # test_buildings = ["almena", "albertville"]
-    print ("Normal files: ", len(get_files(f'*_normal')))
     buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
-    print ("Num buildings: ", len(buildings))
-    print ("Building: ", buildings[0])
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-    counts = defaultdict(int)
-    for f, x in FILE_MAP.items():
-        counts[x] += 1
-    print(counts)
+    
     # print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 
