@@ -12,7 +12,8 @@ from torch.autograd import Variable
 from torch.utils.checkpoint import checkpoint as util_checkpoint
 
 from utils import *
-from modules.unet import UNet, UNetOld2
+from models import DataParallelModel
+from modules.unet import UNet, UNetOld2, UNetOld
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
 
@@ -31,33 +32,6 @@ model_types = {
     ('depth_zbuffer', 'principal_curvature'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
 }
-
-
-# Task output space
-class Task(object):
-    def __init__(self, name, shape=(3, 256, 256), mask_val=-1, file_name=None,
-                    transform=None, file_loader=None, is_image=True, loss_func=None):
-        self.name = name
-        self.shape = shape
-        self.mask_val = mask_val
-        if transform is None: transform = (lambda x: x)
-        self.transform = transform
-        if file_loader is None:
-            self.file_loader = lambda path: Image.open(path)
-        self.file_name = file_name
-        if file_name == None: self.file_name = lambda : self.name
-        def mse_loss(pred, target):
-            mask = build_mask(target.detach(), val=self.mask_val)
-            mse = F.mse_loss(pred*mask.float(), target*mask.float())
-            return mse, (mse.detach(),)
-
-        self.loss_func = loss_func
-        if loss_func is None:
-            self.loss_func = mse_loss 
-        self.is_image = is_image
-        # output_shape, mask_val, transform
-
-
 
 def get_model(src_task, dest_task):
     
@@ -156,7 +130,6 @@ def create_tasks():
             shape=(356,),
             file_loader=(lambda x: np.load(x)),
             is_image=False,
-
             ),
         Task('point_info',
             shape=(9,),

@@ -52,7 +52,8 @@ pretrained_transfers = {
         (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/principal_curvature2depth_zbuffer.pth"),
     ('depth_zbuffer', 'principal_curvature'):
         (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
-
+    ('rgb', 'normal'):
+        (lambda: UNetOld(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth")
 }
 
 class Transfer(object):
@@ -92,8 +93,9 @@ functional_transfers = (
     Transfer('sobel_edges', 'depth_zbuffer', checkpoint=True),
     Transfer('principal_curvature', 'depth_zbuffer', checkpoint=True),
     Transfer('depth_zbuffer', 'principal_curvature', checkpoint=True),
+    Transfer('rgb', 'normal', checkpoint=True),
 )
-(f, F, g, G, s, CE, EC, DE, a, ED, h, H) = functional_transfers
+(f, F, g, G, s, CE, EC, DE, a, ED, h, H, n) = functional_transfers
 
 
 

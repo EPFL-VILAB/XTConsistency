@@ -11,6 +11,7 @@ def process_file(file, result_loc="/result", flags="-C"):
 		os.makedirs(result_dir, exist_ok=True)
 		curl = subprocess.Popen(["curl", "-s", file], stdout=subprocess.PIPE)
 		tar = subprocess.Popen(["tar", "xf", "-", flags, result_dir, "--no-same-owner"], stdin=curl.stdout, stdout=subprocess.PIPE)
+		print (f"{tar.returncode} Downloaded {result_dir}")
 		tar.wait()
 		return tar.returncode, result_dir
 	except Exception as e:
@@ -31,7 +32,14 @@ def process_file(file, result_loc="/result", flags="-C"):
 # 		print (e, file)
 # 		return 1, result_dir
 
-def main(filename="data/alllinks.txt", tasks=['segment_semantic']):
+def check_dir(data_dirs):
+	count = 0
+	for data_dir in data_dirs:
+		files = glob.glob(f"{data_dir}/{res['building']}_{res['task']}/**", recursive=True)
+		print(f"{data_dir}: {len(files)}")
+		count += len(files)
+
+def main(filename="data/alllinks.txt", tasks=['keypoints2d']):
 
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]
@@ -43,23 +51,25 @@ def main(filename="data/alllinks.txt", tasks=['segment_semantic']):
 	for i, link in enumerate(links):
 		res = parse.parse("http://downloads.cs.stanford.edu/downloads/taskonomy_data/{extra}/{building}_{task}.tar", link)
 
-		if len(glob.glob(f"/semantic2/{res['building']}_{res['task']}/**", recursive=True)) > 1:
-			print(f"files found in {res['building']}_{res['task']}, skipping!")
-			continue
+		# if check_dir(['/semantic2', '/semantic3']) > 1:
+		# 	print(f"files found in {res['building']}_{res['task']}, skipping!")
+		# 	continue
 		exit_code, result_dir = process_file(link)
-		i = 0
-		while exit_code != 0 and i < 10:
-			print(f"{i} non zero exit code, trying to unzip and compress, trying again")
-			if i > 5:
-				exit_code, result_dir = process_file(link)
-			else:
-				exit_code, result_dir = process_file(link, flags="-zC")
-			i += 1
+		j = 0
+		while exit_code != 0 and j < 10:
+			print(f"{j} non zero exit code ({exit_code}), trying to unzip and compress, trying again")
+			exit_code, result_dir = process_file(link)
+			j += 1
 
-		print (f"Downloaded {result_dir}: {i}/{len(links)} files {exit_code}")
+	# 	print (f"Downloaded {result_dir}: {i}/{len(links)} files {exit_code}")
 	# with Pool() as pool:
-	# 	for i, result_dir in enumerate(pool.imap_unordered(process_file, links)):
-			# print (f"Downloaded {result_dir}: {i}/{len(links)} files")
+	# 	for i, res in enumerate(pool.imap_unordered(process_file, links)):
+	# 		return_code, result_dir = res
+	# 		if return_code != 0:
+	# 			print(f"{result_dir} non zero exit code ({return_code}), trying to unzip and compress, trying again")
+	# 			pool.apply_async(process_file, (links[i],))
+
+	# 		print (f"Downloaded {result_dir}: {i}/{len(links)} files")
 
 if __name__ == "__main__":
 	Fire(main)
