@@ -95,6 +95,7 @@ functional_transfers = (
     Transfer('depth_zbuffer', 'principal_curvature', checkpoint=True),
     Transfer('rgb', 'normal', checkpoint=True),
 )
+
 (f, F, g, G, s, CE, EC, DE, a, ED, h, H, n) = functional_transfers
 
 
