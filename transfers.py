@@ -45,7 +45,14 @@ pretrained_transfers = {
     ('sobel_edges', 'principal_curvature'): 
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
     ('rgb', 'sobel_edges'):
-        (lambda: sobel_kernel, None)
+        (lambda: sobel_kernel, None),
+    ('sobel_edges', 'depth_zbuffer'):
+        (lambda: UNet(downsample=6, in_channels=1, out_channels=1), f"{MODELS_DIR}/sobel_edges2depth_zbuffer.pth"),
+    ('principal_curvature', 'depth_zbuffer'):
+        (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/principal_curvature2depth_zbuffer.pth"),
+    ('depth_zbuffer', 'principal_curvature'):
+        (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
+
 }
 
 class Transfer(object):
@@ -82,8 +89,11 @@ functional_transfers = (
     Transfer('sobel_edges', 'principal_curvature', checkpoint=True),
     Transfer('depth_zbuffer', 'sobel_edges', checkpoint=True),
     Transfer('rgb', 'sobel_edges', checkpoint=True),
+    Transfer('sobel_edges', 'depth_zbuffer', checkpoint=True),
+    Transfer('principal_curvature', 'depth_zbuffer', checkpoint=True),
+    Transfer('depth_zbuffer', 'principal_curvature', checkpoint=True),
 )
-(f, F, g, G, s, CE, EC, DE, a) = functional_transfers
+(f, F, g, G, s, CE, EC, DE, a, ED, h, H) = functional_transfers
 
 
 

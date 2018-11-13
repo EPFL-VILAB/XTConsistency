@@ -32,6 +32,7 @@ def main(loss_config="F_gt_mse", mode="standard"):
 
     # FUNCTIONAL LOSS
     functional = get_functional_loss(config=loss_config, mode=mode)
+    print ("Losses: ", functional.losses.keys())
 
     # MODEL
     model = DataParallelModel(UNet())
