@@ -60,9 +60,8 @@ def main(src_task, dest_task):
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
         load_data(src_task, dest_task, batch_size=48)
     logger.images(test_images, "images", resize=128)
-    def plot():
-        plot_images(model, logger, test_set, mask_val=dest_task.mask_val)
-    plot()
+
+    plot_images(model, logger, test_set, mask_val=dest_task.mask_val)
     # TRAINING
     for epochs in range(0, 800):
 
@@ -77,7 +76,7 @@ def main(src_task, dest_task):
         (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=dest_task.loss_func, logger=logger)
         logger.update("val_mse_loss", np.mean(val_mse_data))
 
-        plot()
+        plot_images(model, logger, test_set, mask_val=dest_task.mask_val)
 
 
 if __name__ == "__main__":

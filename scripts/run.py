@@ -46,7 +46,7 @@ def experiment_id(config):
     return config + "_" + str(i)
 
 
-def run(cmd, config="job", sync_code=True, datasets={"data": 11449, "models": 11863, "snapshots": 12920}, resume=0, return_command=False):
+def run(cmd, instance="ngc", config="job", sync_code=True, datasets={"data": 11449, "models": 11863, "snapshots": 12920}, resume=0, return_command=False):
     
     datasets = {"data": 11449, "models": 11863, "snapshots": 12920, "edge_1":16413, \
                     "edges_1":16436, "edges_2":16437, "edges_3":16438, "reshade":16380, \

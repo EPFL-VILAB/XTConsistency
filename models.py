@@ -67,7 +67,7 @@ class AbstractModel(nn.Module):
         else: target = target.to(pred.device)
 
         if len(signature(loss_fn).parameters) > 2:
-            loss, metrics = loss_fn(pred, target, data)
+            loss, metrics = loss_fn(pred, target, data.to(pred.device))
         else:
             loss, metrics = loss_fn(pred, target)
 

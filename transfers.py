@@ -43,7 +43,7 @@ pretrained_transfers = {
     ('depth_zbuffer', 'sobel_edges'): 
         (lambda: UNet(downsample=4, in_channels=1, out_channels=1).cuda(), f"{MODELS_DIR}/depth_zbuffer2sobel_edges.pth"),
     ('sobel_edges', 'principal_curvature'): 
-        (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
     ('rgb', 'sobel_edges'):
         (lambda: sobel_kernel, None)
 }
@@ -62,23 +62,26 @@ class Transfer(object):
     
     def __call__(self, x):
         
-        if self.model is None and self.path is not None:
-            self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
+        if self.model is None:
+            if self.path is not None:
+                self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
+            else:
+                self.model = self.model_type()
 
         preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
         return preds
 
 
 functional_transfers = (
-    Transfer('normal', 'principal_curvature'),
-    Transfer('principal_curvature', 'normal'),
-    Transfer('normal', 'depth_zbuffer'),
-    Transfer('depth_zbuffer', 'normal'),
-    Transfer('normal', 'sobel_edges'),
-    Transfer('principal_curvature', 'sobel_edges'),
-    Transfer('sobel_edges', 'principal_curvature'),
-    Transfer('depth_zbuffer', 'sobel_edges'),
-    Transfer('rgb', 'sobel_edges'),
+    Transfer('normal', 'principal_curvature', checkpoint=True),
+    Transfer('principal_curvature', 'normal', checkpoint=True),
+    Transfer('normal', 'depth_zbuffer', checkpoint=True),
+    Transfer('depth_zbuffer', 'normal', checkpoint=True),
+    Transfer('normal', 'sobel_edges', checkpoint=True),
+    Transfer('principal_curvature', 'sobel_edges', checkpoint=True),
+    Transfer('sobel_edges', 'principal_curvature', checkpoint=True),
+    Transfer('depth_zbuffer', 'sobel_edges', checkpoint=True),
+    Transfer('rgb', 'sobel_edges', checkpoint=True),
 )
 (f, F, g, G, s, CE, EC, DE, a) = functional_transfers
 

@@ -125,7 +125,7 @@ def sobel_kernel(x):
         edge = torch.FloatTensor(image, device=x.device).unsqueeze(0)
         return edge
 
-    edges = torch.stack([dest_transforms(image) for image in x], dim=0)
+    edges = torch.stack([dest_transforms(image) for image in x], dim=0).to(x.device)
     return edges
 
 # Cycles through iterable without making extra copies
@@ -188,7 +188,10 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
     dataset_class = dataset_class or ImageTaskDataset
     # test_buildings = ["almena", "albertville"]
+    print ("Normal files: ", len(get_files(f'*_normal')))
     buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
+    print ("Num buildings: ", len(buildings))
+    print ("Building: ", buildings[0])
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
     counts = defaultdict(int)
     for f, x in FILE_MAP.items():
