@@ -47,7 +47,7 @@ class ImageTaskDataset(Dataset):
         target_files_set = {convert_path(x, source_task.file_name()) for x in target_files}
         source_files_set = set(self.source_files)
         source_files_set = source_files_set.intersection(target_files_set)
-        self.source_files = list(source_files_set)
+        self.source_files = sorted(list(source_files_set))
         print("Filtered files len: ", len(self.source_files))
 
     def __len__(self):
