@@ -33,7 +33,7 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints"]
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints", "/temp"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
@@ -167,7 +167,7 @@ def convert_path(source_file, task):
     return f"{data_dir}/{dest_file}"
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
-                dataset_class=None,
+                dataset_class=None, ood_path="data/ood_images",
                 batch_size=32, resize=256, batch_transforms=cycle):
     
     from torchvision import transforms
@@ -233,7 +233,7 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         pin_memory=True
     )
     ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir="data/ood_images", resize=(resize, resize)),
+        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
         batch_size=10,
         num_workers=10,
         shuffle=False,

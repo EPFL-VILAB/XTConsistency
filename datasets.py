@@ -133,9 +133,11 @@ class ImageDataset(Dataset):
         data_dir=f"data/ood_images",
         resize=(256, 256),
     ):
-
-        self.transforms = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
-        self.files = glob.glob(f"{data_dir}/*.png")
+        def crop(x):
+            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
+        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
+        self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
+        print("num files = ", len(self.files))
 
     def __len__(self):
         return len(self.files)
@@ -143,8 +145,13 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
 
         file = self.files[idx]
-        image = Image.open(file)
-        image = self.transforms(image).float()[0:3, :, :]
+        try:
+            image = Image.open(file)
+            image = self.transforms(image).float()[0:3, :, :]
+            if image.shape[0] == 1: image = image.expand(3, -1, -1)
+        except Exception as e:
+            return self.__getitem__(random.randrange(0, len(self.files)))
+        # print(image.shape, file)
         return image
 
 

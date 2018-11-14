@@ -12,7 +12,8 @@ from torch.autograd import Variable
 from torch.utils.checkpoint import checkpoint as util_checkpoint
 
 from utils import *
-from modules.unet import UNet, UNetOld2
+from models import DataParallelModel
+from modules.unet import UNet, UNetOld2, UNetOld
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
 
@@ -31,10 +32,8 @@ model_types = {
     ('depth_zbuffer', 'principal_curvature'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
 }
-
-
 # Task output space
-class Task(object):
+class Task:
     def __init__(self, name, shape=(3, 256, 256), mask_val=-1, file_name=None,
                     transform=None, file_loader=None, is_image=True, loss_func=None):
         self.name = name
@@ -56,9 +55,9 @@ class Task(object):
             self.loss_func = mse_loss 
         self.is_image = is_image
         # output_shape, mask_val, transform
-
-
-
+    def __eq__(self, other):
+        return self.name == other.name
+        
 def get_model(src_task, dest_task):
     
     if isinstance(src_task, str) and isinstance(dest_task, str):
@@ -102,6 +101,11 @@ def zdepth_transform(x):
 def keypoints_transform(x):
     x = x.unsqueeze(0).float()
     x = x / 64131.0
+    return x[0].clamp(min=0, max=1)
+
+def keypoints2d_transform(x):
+    x = x.unsqueeze(0).float()
+    x = x / 2400.0
     return x[0].clamp(min=0, max=1)
 
 def semantic_loss(pred, target):
@@ -152,11 +156,14 @@ def create_tasks():
             shape=(1, 256, 256),
             transform=keypoints_transform
             ),
+        Task('keypoints2d',
+            shape=(1, 256, 256),
+            transform=keypoints2d_transform
+            ),
         Task('class_scene',
             shape=(356,),
             file_loader=(lambda x: np.load(x)),
             is_image=False,
-
             ),
         Task('point_info',
             shape=(9,),

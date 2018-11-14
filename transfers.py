@@ -52,7 +52,14 @@ pretrained_transfers = {
         (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/principal_curvature2depth_zbuffer.pth"),
     ('depth_zbuffer', 'principal_curvature'):
         (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
-
+    ('rgb', 'normal'):
+        (lambda: UNetOld(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth"),
+    ('rgb', 'principal_curvature'):
+        (lambda: UNet(downsample=5), f"{BASE_DIR}/shared/results_transfer_rgb2curv_3/rgb2principal_curvature.pth"),
+    ('rgb', 'keypoints2d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d.pth"),
+    ('keypoints2d', 'principal_curvature'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_temp.pth")
 }
 
 class Transfer(object):
@@ -80,20 +87,25 @@ class Transfer(object):
 
 
 functional_transfers = (
-    Transfer('normal', 'principal_curvature', checkpoint=True),
-    Transfer('principal_curvature', 'normal', checkpoint=True),
-    Transfer('normal', 'depth_zbuffer', checkpoint=True),
-    Transfer('depth_zbuffer', 'normal', checkpoint=True),
-    Transfer('normal', 'sobel_edges', checkpoint=True),
-    Transfer('principal_curvature', 'sobel_edges', checkpoint=True),
-    Transfer('sobel_edges', 'principal_curvature', checkpoint=True),
-    Transfer('depth_zbuffer', 'sobel_edges', checkpoint=True),
-    Transfer('rgb', 'sobel_edges', checkpoint=True),
-    Transfer('sobel_edges', 'depth_zbuffer', checkpoint=True),
-    Transfer('principal_curvature', 'depth_zbuffer', checkpoint=True),
-    Transfer('depth_zbuffer', 'principal_curvature', checkpoint=True),
+    Transfer('normal', 'principal_curvature', name='f'),
+    Transfer('principal_curvature', 'normal', name='F'),
+    Transfer('normal', 'depth_zbuffer', name='g'),
+    Transfer('depth_zbuffer', 'normal', name='G'),
+    Transfer('normal', 'sobel_edges', name='s'),
+    Transfer('principal_curvature', 'sobel_edges', name='CE'),
+    Transfer('sobel_edges', 'principal_curvature', name='EC'),
+    Transfer('depth_zbuffer', 'sobel_edges', name='DE'),
+    Transfer('rgb', 'sobel_edges', name='a'),
+    Transfer('sobel_edges', 'depth_zbuffer', name='ED'),
+    Transfer('principal_curvature', 'depth_zbuffer', name='h'),
+    Transfer('depth_zbuffer', 'principal_curvature', name='H'),
+    Transfer('rgb', 'normal', name='n'),
+    Transfer('rgb', 'keypoints2d', name='k'),
+    Transfer('keypoints2d', 'principal_curvature', name='KC'),
+    Transfer('rgb', 'principal_curvature', name='RC'),
 )
-(f, F, g, G, s, CE, EC, DE, a, ED, h, H) = functional_transfers
+
+# (f, F, g, G, s, CE, EC, DE, a, ED, h, H, n) = functional_transfers
 
 
 
