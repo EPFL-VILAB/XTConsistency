@@ -155,7 +155,7 @@ functional_transfers = (
     Transfer('sobel_edges', 'reshading', name='Er'),
 )
 
-(f, F, g, G, s, CE, EC, DE, a, ED, h, H, n, k, KC, RC) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
 
 

@@ -32,8 +32,7 @@ def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
 
 
 ### FUNCTIONAL LOSS CONFIGS
-
-(f, F, g, G, s, CE, EC, DE, a, ED, h, H, n, k, KC, RC) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
 loss_configs = {
     "gt_mse": 
@@ -406,7 +405,7 @@ class CurriculumFunctionalLoss(FunctionalLoss):
         return final_loss, [loss.detach() for loss in loss_values]
 
     def logger_update(self, logger, train_metrics, val_metrics):
-        super().logger_update(logger, train_metrics val_metrics)
+        super().logger_update(logger, train_metrics, val_metrics)
         self.loss_coeffs = [loss + step for loss, step in zip(self.loss_coeffs, self.step)]
         print ("Updating loss coefficients: ", self.loss_coeffs)
 
