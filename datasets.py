@@ -54,7 +54,8 @@ class ImageTaskDataset(Dataset):
         return len(self.source_files)
 
     def __getitem__(self, idx):
-        for i in range(20):
+
+        for i in range(200):
             source_file = self.source_files[idx]
             dest_file = convert_path(source_file, self.dest_task.file_name())
             try:
@@ -68,8 +69,7 @@ class ImageTaskDataset(Dataset):
                 # print(i, e)
                 idx = random.randrange(0, len(self.source_files))
                 # return self.__getitem__(random.randrange(0, len(self.source_files)))
-        print('error, error, could not open file')
-        return (None, None)
+        raise Exception('Error, could not open image or target file')
 
 class ImageMultiTaskDataset(Dataset):
     """Face Landmarks dataset."""

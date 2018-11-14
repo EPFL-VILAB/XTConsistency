@@ -2,7 +2,7 @@
 # utils.py
 
 import numpy as np
-import random, sys, os, time, glob, math, itertools
+import random, sys, os, time, glob, math, itertools, yaml
 from sklearn.model_selection import train_test_split
 import parse
 from collections import defaultdict
@@ -180,10 +180,13 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         dest_task = task_map[dest_task]
 
     dataset_class = dataset_class or ImageTaskDataset
-    # test_buildings = ["almena", "albertville"]
+    test_buildings = ["almena", "albertville"]
     buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-    
+    train_buildings = [building for building in train_buildings if building not in test_buildings]
+    # yaml.dump({"train_buildings": train_buildings, "val_buildings": val_buildings}, open(f"{RESULTS_DIR}/split.txt", 'w'))
+    # sys.exit(0)
+
     # print(file_map)
     # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
 

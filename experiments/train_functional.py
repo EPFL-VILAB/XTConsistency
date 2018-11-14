@@ -28,7 +28,7 @@ from scipy import ndimage
 import IPython
 
 
-def main(loss_config="F_gt_mse", mode="standard"):
+def main(loss_config="gt_mse", mode="standard"):
 
     # FUNCTIONAL LOSS
     functional = get_functional_loss(config=loss_config, mode=mode)
