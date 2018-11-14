@@ -55,6 +55,11 @@ def get_standardization_mixed_loss_fn(curvature_model, depth_model, logger, incl
                    standardization_window_size=standardization_window_size,
                    )
 
+def get_angular_distances(pred, target):
+    num_channels = pred.shape[-1]
+
+    output = cosine_similarity(pred.view([-1, num_channels]), target.view([-1, num_channels]))
+    return torch.acos(output) * 180 / math.pi
 
 def mixed_loss(pred, target, curvature_model, depth_model, logger, include_depth, standardization_window_size):
     mask = build_mask(target.detach(), val=0.502)
