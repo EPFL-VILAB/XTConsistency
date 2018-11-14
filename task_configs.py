@@ -55,6 +55,8 @@ class Task:
             self.loss_func = mse_loss 
         self.is_image = is_image
         # output_shape, mask_val, transform
+    def __eq__(self, other):
+        return self.name == other.name
         
 def get_model(src_task, dest_task):
     
@@ -99,6 +101,11 @@ def zdepth_transform(x):
 def keypoints_transform(x):
     x = x.unsqueeze(0).float()
     x = x / 64131.0
+    return x[0].clamp(min=0, max=1)
+
+def keypoints2d_transform(x):
+    x = x.unsqueeze(0).float()
+    x = x / 2400.0
     return x[0].clamp(min=0, max=1)
 
 def semantic_loss(pred, target):
@@ -148,6 +155,10 @@ def create_tasks():
         Task('keypoints3d',
             shape=(1, 256, 256),
             transform=keypoints_transform
+            ),
+        Task('keypoints2d',
+            shape=(1, 256, 256),
+            transform=keypoints2d_transform
             ),
         Task('class_scene',
             shape=(356,),

@@ -145,9 +145,12 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
 
         file = self.files[idx]
-        image = Image.open(file)
-        image = self.transforms(image).float()[0:3, :, :]
-        if image.shape[0] == 1: image = image.expand(3, -1, -1)
+        try:
+            image = Image.open(file)
+            image = self.transforms(image).float()[0:3, :, :]
+            if image.shape[0] == 1: image = image.expand(3, -1, -1)
+        except Exception as e:
+            return self.__getitem__(random.randrange(0, len(self.files)))
         # print(image.shape, file)
         return image
 
