@@ -59,7 +59,7 @@ pretrained_transfers = {
     ('rgb', 'normal'):
         (lambda: UNetOld(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth"),
     ('rgb', 'principal_curvature'):
-        (lambda: UNet(downsample=5), f"{BASE_DIR}/shared/results_transfer_rgb2curv_3/rgb2principal_curvature.pth"),
+        (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d.pth"),
     ('rgb', 'reshading'):
@@ -155,7 +155,7 @@ functional_transfers = (
     Transfer('sobel_edges', 'reshading', name='Er'),
 )
 
-# (f, F, g, G, s, CE, EC, DE, a, ED, h, H, n) = functional_transfers
+(f, F, g, G, s, CE, EC, DE, a, ED, h, H, n, k, KC, RC) = functional_transfers
 
 
 

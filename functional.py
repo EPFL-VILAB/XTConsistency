@@ -20,15 +20,20 @@ from functools import partial
 import IPython
 
 
-def get_functional_loss(config="F_gt_mse", mode='standard'):
+def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
     if isinstance(mode, str):
-        mode = {"standard": FunctionalLoss, "mixing": MixingFunctionalLoss, "normalized": NormalizedFunctionalLoss}[mode]
-    return mode(config=config)
+        mode = {
+            "standard": FunctionalLoss, 
+            "mixing": MixingFunctionalLoss, 
+            "normalized": NormalizedFunctionalLoss,
+            "curriculum": CurriculumFunctionalLoss,
+        }[mode]
+    return mode(config=config, **kwargs)
 
 
 ### FUNCTIONAL LOSS CONFIGS
 
-(f, F, g, G, s, CE, EC, DE, a, ED, h, H) = functional_transfers
+(f, F, g, G, s, CE, EC, DE, a, ED, h, H, n, k, KC, RC) = functional_transfers
 
 loss_configs = {
     "gt_mse": 
@@ -266,6 +271,37 @@ loss_configs = {
                 "g(F(EC[a(x)]))": lambda y, y_hat, x: g(F(EC(a(x)))),
             }
         ),
+    "wGTinflux_2dkeypt_A": 
+        (
+            {
+                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
+            },
+            {
+                "k(x)": lambda y, y_hat, x: k(x), 
+                "KC[k(x)]": lambda y, y_hat, x: KC(k(x)),
+                "F(KC[k(x)])": lambda y, y_hat, x: F(KC(k(x))),
+            }
+        ),
+    "wGTinflux_curvature_A": 
+        (
+            {
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+            },
+            {
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
+            }
+        ),
+    "wGTinflux_curvature_B": 
+        (
+            {
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+            },
+            {
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
+            }
+        ),
 }
 
 
@@ -275,7 +311,7 @@ loss_configs = {
 
 class FunctionalLoss(object):
     
-    def __init__(self, config=None, losses={}, plot_losses={}, src_task="rgb", dest_task="normal"):
+    def __init__(self, config=None, losses={}, metrics={}, plot_losses={}, src_task="rgb", dest_task="normal"):
 
         self.losses = losses
         self.plot_losses = plot_losses
@@ -351,7 +387,26 @@ class MixingFunctionalLoss(FunctionalLoss):
         logger.add_hook(partial(jointplot, logger=logger, loss_type="c"), feature=f"val_c", freq=1)
 
     def logger_update(self, logger, train_metrics, val_metrics):
-        super().logger_update(logger)
+        super().logger_update(logger, train_metrics[:-1], val_metrics[:-1])
         logger.update(f"train_c", np.mean(train_metrics[-1]))
         logger.update(f"val_c", np.mean(val_metrics[-1]))
+
+
+class CurriculumFunctionalLoss(FunctionalLoss):
+    
+    def __init__(self, config=None, losses={}, plot_losses={}, initial_coeffs=[1.0, 0.0], step=[0.0, 0.1]):
+        super().__init__(config=config, losses=losses, plot_losses=plot_losses)
+        
+        self.loss_coeffs = initial_coeffs
+        self.step = step
+
+    def __call__(self, y, y_hat, x):
+        loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
+        final_loss = sum(c*loss for loss, c in zip(loss_values, self.loss_coeffs))
+        return final_loss, [loss.detach() for loss in loss_values]
+
+    def logger_update(self, logger, train_metrics, val_metrics):
+        super().logger_update(logger, train_metrics val_metrics)
+        self.loss_coeffs = [loss + step for loss, step in zip(self.loss_coeffs, self.step)]
+        print ("Updating loss coefficients: ", self.loss_coeffs)
 
