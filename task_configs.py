@@ -26,7 +26,7 @@ model_types = {
     ('normal', 'principal_curvature'): lambda : Dense1by1Net(),
     ('normal', 'depth_zbuffer'): lambda : UNetDepth(),
     ('normal', 'reshading'): lambda : UNet(downsample=4),
-    ('depth_zbuffer', 'normal'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),
+    ('depth_zbuffer', 'normal'): lambda : UNet(downsample=6, in_channels=1, out_channels=3),
     ('reshading', 'normal'): lambda : UNet(downsample=4, in_channels=3, out_channels=3),
     ('sobel_edges', 'principal_curvature'): lambda : UNet(downsample=5, in_channels=1, out_channels=3),
     ('depth_zbuffer', 'principal_curvature'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),

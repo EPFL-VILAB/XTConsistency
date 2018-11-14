@@ -134,6 +134,17 @@ class VisdomLogger(BaseLogger):
         
         self.windows[plot_name] = window
 
+    def bar(self, data, plot_name, opts={}):
+        window = self.windows.get(plot_name, None)
+        options = {'title': plot_name}
+        options.update(opts)
+        if window is not None and self.visdom.win_exists(window):
+            window = self.visdom.bar(np.array(data), opts=options, win=window)
+        else:
+            window = self.visdom.bar(np.array(data), opts=options)
+        
+        self.windows[plot_name] = window
+
     def images(self, data, image_name, opts={}, nrow=2, normalize=False, resize=64):
 
         transform = transforms.Compose([

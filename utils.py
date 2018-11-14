@@ -28,7 +28,7 @@ EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().sp
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/shared/models"
-DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3"]
+DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/small_data"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 

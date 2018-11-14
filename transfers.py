@@ -30,8 +30,12 @@ pretrained_transfers = {
         (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth"),
     ('normal', 'depth_zbuffer'): 
         (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth"),
+    
     ('normal', 'sobel_edges'): 
         (lambda: UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d_sobel_unet4.pth"),
+    ('sobel_edges', 'normal'): 
+        (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
+
     ('normal', 'grayscale'): 
         (lambda: UNet(out_channels=1, downsample=6).cuda(), f"{MODELS_DIR}/normals2gray_unet.pth"),
     ('principal_curvature', 'normal'): 
@@ -58,8 +62,32 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5), f"{BASE_DIR}/shared/results_transfer_rgb2curv_3/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d.pth"),
+    ('rgb', 'reshading'):
+        (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
+    ('rgb', 'depth_zbuffer'):
+        (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_buffer.pth"),
+
     ('keypoints2d', 'principal_curvature'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_temp.pth")
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_temp.pth"),
+    
+
+    ('keypoints3d', 'principal_curvature'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2principal_curvature.pth"),
+    ('principal_curvature', 'keypoints3d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/principal_curvature2keypoints3d.pth"),
+
+    ('normal', 'reshading'):
+        (lambda: UNet(downsample=4), f"{MODELS_DIR}/normal2reshading_unet4.pth"),
+    ('reshading', 'normal'):
+        (lambda: UNet(downsample=4), f"{MODELS_DIR}/reshading2normal.pth"),
+
+    ('sobel_edges', 'reshading'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2reshading.pth"),
+
+    ('normal', 'keypoints3d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
+    ('keypoints3d', 'normal'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),  
 }
 
 class Transfer(object):
@@ -74,14 +102,15 @@ class Transfer(object):
         self.model_type, self.path = pretrained_transfers[(src_task.name, dest_task.name)]
         self.model = None
     
-    def __call__(self, x):
-        
+    def load_model(self):
         if self.model is None:
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
             else:
                 self.model = self.model_type()
 
+    def __call__(self, x):
+        self.load_model()
         preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
         return preds
 
@@ -89,20 +118,41 @@ class Transfer(object):
 functional_transfers = (
     Transfer('normal', 'principal_curvature', name='f'),
     Transfer('principal_curvature', 'normal', name='F'),
+
     Transfer('normal', 'depth_zbuffer', name='g'),
     Transfer('depth_zbuffer', 'normal', name='G'),
+
     Transfer('normal', 'sobel_edges', name='s'),
+    Transfer('sobel_edges', 'normal', name='S'),
+    
     Transfer('principal_curvature', 'sobel_edges', name='CE'),
     Transfer('sobel_edges', 'principal_curvature', name='EC'),
+
     Transfer('depth_zbuffer', 'sobel_edges', name='DE'),
-    Transfer('rgb', 'sobel_edges', name='a'),
     Transfer('sobel_edges', 'depth_zbuffer', name='ED'),
+
     Transfer('principal_curvature', 'depth_zbuffer', name='h'),
     Transfer('depth_zbuffer', 'principal_curvature', name='H'),
+
     Transfer('rgb', 'normal', name='n'),
-    Transfer('rgb', 'keypoints2d', name='k'),
-    Transfer('keypoints2d', 'principal_curvature', name='KC'),
     Transfer('rgb', 'principal_curvature', name='RC'),
+    Transfer('rgb', 'keypoints2d', name='k'),
+    Transfer('rgb', 'sobel_edges', name='a'),
+    Transfer('rgb', 'reshading', name='r'),
+    Transfer('rgb', 'depth_zbuffer', name='d'),
+
+    Transfer('keypoints2d', 'principal_curvature', name='KC'),
+
+    Transfer('keypoints3d', 'principal_curvature', name='k3C'),
+    Transfer('principal_curvature', 'keypoints3d', name='Ck3'),
+
+    Transfer('normal', 'reshading', name='nr'),
+    Transfer('reshading', 'normal', name='rn'),
+
+    Transfer('keypoints3d', 'normal', name='k3N'),
+    Transfer('normal', 'keypoints3d', name='Nk3'),
+
+    Transfer('sobel_edges', 'reshading', name='Er'),
 )
 
 # (f, F, g, G, s, CE, EC, DE, a, ED, h, H, n) = functional_transfers

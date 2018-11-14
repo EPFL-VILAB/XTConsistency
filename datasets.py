@@ -91,9 +91,10 @@ class ImageMultiTaskDataset(Dataset):
         # ]
         self.source_files = []
         for building in buildings:
-            self.source_files += sorted(get_files(f"{building}_{source_task}/{source_task}/*.png", data_dirs))
-        # self.source_files = [y for x in self.source_files for y in x]
+            self.source_files += sorted(get_files(f"{building}_{source_task.file_name()}/{source_task.file_name()}/*.png", data_dirs))
         print ("Source files len: ", len(self.source_files))
+
+
 
     def __len__(self):
         return len(self.source_files)
@@ -122,6 +123,51 @@ class ImageMultiTaskDataset(Dataset):
         
         return image, tuple(task_data)
 
+
+class GeneralTaskLoader(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(
+        self,
+        buildings,
+        tasks,
+        data_dirs=DATA_DIRS,
+        resize=256,
+    ):
+        self.data_dirs = data_dirs
+        self.buildings = buildings
+        self.tasks = tasks
+        self.base_transform = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
+
+        assert(len(tasks) > 0)
+        filtered_files = set()
+        for i, task in enumerate(tasks):
+            task_files = []
+            for building in buildings:
+                task_files += sorted(get_files(f"{building}_{task.file_name()}/{task.file_name()}/*.png", data_dirs))
+            print(f"{task.name} file len: {len(task_files)}")
+            task_set = {convert_path(x, tasks[0].file_name()) for x in task_files}
+            filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
+        self.idx_files = list(filtered_files)
+
+        print ("Intersection files len: ", len(self.idx_files))
+
+    def __len__(self):
+        return len(self.idx_files)
+
+    def __getitem__(self, idx):
+        try:
+            res = []
+            for task in self.tasks:
+                file_name = convert_path(self.idx_files[idx], task.file_name())
+                image = task.file_loader(file_name)
+                image = self.base_transform(image)
+                image = task.transform(image).float()
+                res.append(image)
+            return tuple(res)
+        except Exception as e:
+            # print (e)
+            return self.__getitem__(random.randrange(0, len(self.idx_files)))
 
 
 
