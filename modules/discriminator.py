@@ -19,6 +19,19 @@ class ResNetDisc(TrainableModel):
         self.resnet.fc = nn.Linear(in_features=2048, out_features=2, bias=True)
 
     def forward(self, x):
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.max_pool2d(x, 2)
+        x = F.dropout(x, 0.3)
+        x = F.upsample(x, scale_factor=64, mode='bilinear')
         x = self.resnet(x)
         return F.log_softmax(x)
 

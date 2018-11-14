@@ -30,39 +30,34 @@ import IPython
 
 def main(disc_step=0.0):
 
-    disc_weight = 0.0
+    disc_weight = 1e-2
 
     # MODEL
     print ("Using UNet")
-    model = DataParallelModel(UNet())
+    # model = DataParallelModel(UNet())
+    model = DataParallelModel.load(UNet().cuda(), f"{SHARED_DIR}/results_alpha_baseline1_trainperceptuals_1/model.pth")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
     # use discriminator
     disc = DataParallelModel(ResNetDisc())
     disc.compile(torch.optim.Adam, lr=1e-5, weight_decay=2e-6, amsgrad=True)
-    # print(disc.forward(torch.randn(8, 3, 256, 256)))
 
     def mixed_loss(pred, target, data):
         mask = build_mask(target.detach(), val=0.502)
 
+        labels = torch.tensor(0, device=pred.device).expand(pred.shape[0]*2)
+        labels[:pred.shape[0]] = 1 # fake = 1, real = 0
+        predhat, nll, _ = disc.fit_on_batch(torch.cat([pred.detach(), target]), labels, train=(pred.requires_grad))
+        accuracy = (torch.argmax(predhat, dim=1) == labels).sum()/(1.0*labels.shape[0])
+
         mse_loss = lambda x, y: ((x-y)**2).mean()
         mse = mse_loss(pred*mask.float(), target*mask.float())
-        # inverse = mse_loss(normal2rgb(pred)*mask.float(), data.to(pred.device)*mask.float())
-        
-        predhat = disc.forward(pred)
-        disc_loss, _ = disc.loss(predhat, torch.tensor(0, device=pred.device).expand(pred.shape[0]))
-        # curvature = torch.tensor(0.0, device=pred.device) if curvature_weight == 0.0 else \
-        #             mse_loss(curve_cycle(pred)*mask.float(), curvature_model(pred)*mask.float())
-        # depth = torch.tensor(0.0, device=pred.device) if depth_weight == 0.0 else \
-        #             mse_loss(depth_cycle(pred)*mask.float(), depth_model(pred)*mask.float())
 
-        labels = torch.tensor(0, device=pred.device).expand(pred.shape[0]*2)
-        labels[:pred.shape[0]] = 1
-        predhat, disc_loss, _ = disc.fit_on_batch(torch.cat([pred.detach(), target]), labels, train=(pred.requires_grad))
-        accuracy = (torch.argmax(predhat, dim=1) == labels).sum()/(1.0*labels.shape[0])
-        
-        return mse + disc_weight*disc_loss, (mse.detach(), disc_loss.detach(), accuracy.detach())
+        predhat = disc.forward(pred) # we want fake to look like real, but as the discriminator becomes better, this just ain't the way
+        disc_loss, _ = disc.loss(predhat, torch.tensor(0, device=pred.device).expand(pred.shape[0]))
+
+        return mse + disc_weight*disc_loss, (mse.detach(), disc_loss.detach(), accuracy.detach(), nll.detach())
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
@@ -70,6 +65,7 @@ def main(disc_step=0.0):
     logger.add_hook(partial(jointplot, logger=logger, loss_type="mse_loss"), feature="val_mse_loss", freq=1)
     logger.add_hook(partial(jointplot, logger=logger, loss_type="disc_loss"), feature="val_disc_loss", freq=1)
     logger.add_hook(partial(jointplot, logger=logger, loss_type="accuracy"), feature="val_accuracy", freq=1)
+    logger.add_hook(partial(jointplot, logger=logger, loss_type="nll"), feature="val_nll", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
 
     # DATA LOADING
@@ -83,28 +79,22 @@ def main(disc_step=0.0):
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
 
-        train_set = itertools.islice(train_loader, train_step)
-        (mse_data, disc_data, accuracy_data) = model.fit_with_metrics(
+        train_set = itertools.islice(train_loader, 10)
+        (mse_data, disc_data, accuracy_data, nll_data) = model.fit_with_metrics(
             train_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("train_mse_loss", np.mean(mse_data))
         logger.update("train_disc_loss", np.mean(disc_data))
         logger.update("train_accuracy", np.mean(accuracy_data))
+        logger.update("train_nll", np.mean(nll_data))
 
-        val_set = itertools.islice(val_loader, val_step)
-        (mse_data, disc_data, accuracy_data) = model.predict_with_metrics(
+        val_set = itertools.islice(val_loader, 2)
+        (mse_data, disc_data, accuracy_data, nll_data) = model.predict_with_metrics(
             val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_disc_loss", np.mean(disc_data))
-        logger.update("val_accuracy", np.mean(accuracy_data))
-
-        if epochs > 100:
-            disc_step = 0.001
-            logger.text ("Starting discriminator step")
-
-        if epochs > 200:
-            disc_step = 0
+        logger.update("val_nll", np.mean(nll_data))
 
         disc_weight += disc_step
         logger.text (f"Increasing discriminator weight: {disc_weight}")
