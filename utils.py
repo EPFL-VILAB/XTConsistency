@@ -180,23 +180,11 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
         dest_task = task_map[dest_task]
 
     dataset_class = dataset_class or ImageTaskDataset
+    
+    data = yaml.load(open("data/split.txt"))
+    train_buildings, val_buildings = data["train_buildings"], data["val_buildings"]
     test_buildings = ["almena", "albertville"]
-    buildings = list({file.split("/")[-1][:-7] for file in get_files(f'*_normal')})
-    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-    train_buildings = [building for building in train_buildings if building not in test_buildings]
-    # yaml.dump({"train_buildings": train_buildings, "val_buildings": val_buildings}, open(f"{RESULTS_DIR}/split.txt", 'w'))
-    # sys.exit(0)
 
-    # print(file_map)
-    # building_tags = np.genfromtxt(open("data/train_val_test_fullplus.csv"), delimiter=",", dtype=str, skip_header=True)
-
-    # test_buildings = ["almena", "mifflintown"]
-    # train_buildings = [building for building, train, test, val in building_tags \
-    #                         if train == "1" and building not in test_buildings]
-    # val_buildings = [building for building, train, test, val in building_tags if val == "1"]
-
-    # source_transforms = source_transforms or (lambda x: x)
-    # dest_transforms = dest_transforms or (lambda x: x)
     source_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), source_task.transform])
     dest_transforms = transforms.Compose([transforms.Resize(resize, interpolation=PIL.Image.NEAREST), transforms.ToTensor(), dest_task.transform])
 
