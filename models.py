@@ -77,7 +77,7 @@ class AbstractModel(nn.Module):
             self.zero_grad()
             self.optimizer.zero_grad()
 
-        return pred, float(loss), metrics
+        return pred, loss, metrics
 
     @classmethod
     def load(cls, weights_file=None):
@@ -114,8 +114,8 @@ class TrainableModel(AbstractModel):
         for batch, y in datagen:
             y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
             if logger is not None:
-                logger.update("loss", loss)
-            yield ((y_pred.detach(), y, loss, metric_data))
+                logger.update("loss", float(loss))
+            yield ((y_pred.detach(), y, float(loss), metric_data))
 
     def fit(self, datagen, loss_fn=None, logger=None):
         for x in self._process_data(datagen, loss_fn=loss_fn, train=train, logger=logger):
