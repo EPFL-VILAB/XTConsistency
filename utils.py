@@ -33,7 +33,7 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints", "/temp"]
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints", "/keypoints2d"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
@@ -245,16 +245,23 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
 
 
 
-def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, loss_models={}, loss_preds=True, loss_targets=True):
+def plot_images(model, logger, test_set, target_plot_func=None, ood_images=None, mask_val=0.502, \
+    loss_models={}, loss_preds=True, loss_targets=True, target_name="targets", preds_name="preds"):
     
     test_images = torch.cat([x for x, y in test_set], dim=0)
     preds, targets, losses, _ = model.predict_with_data(test_set)
+    print(targets.shape)
     # preds = preds.data.cpu().numpy().argmax(axis=1).astype(float)/16
     # targets = targets.float()/16
     test_masks = build_mask(targets, mask_val, tol=1e-3)
     # logger.images(test_masks.float(), "masks", resize=64)
-    logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
-    logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
+    if target_plot_func is None:
+        target_plot_func = lambda x, name, logger: logger.images(x.clamp(min=0, max=1), name, nrow=2, resize=256)
+    target_plot_func(targets, target_name, logger)
+    target_plot_func(preds, preds_name, logger)
+    
+    # logger.images(preds.clamp(min=0, max=1), "predictions", nrow=2, resize=256)
+    # logger.images(targets.clamp(min=0, max=1), "targets", nrow=2, resize=256)
     # logger.images(targets.clamp(min=0, max=1)*test_masks.float() + (1 - mask_val)*(1 - test_masks.float()), "targets_masked", nrow=2, resize=256)
 
     if ood_images is not None:

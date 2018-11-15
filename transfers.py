@@ -14,7 +14,7 @@ from models import TrainableModel, DataParallelModel
 from modules.resnet import ResNet, ResNetClass
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
-from modules.unet import UNet, UNetOld, UNetOld2
+from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
@@ -44,8 +44,10 @@ pretrained_transfers = {
         (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
     ('principal_curvature', 'sobel_edges'): 
         (lambda: UNet(downsample=4, out_channels=1), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth"),
+    # ('depth_zbuffer', 'normal'): 
+    #     (lambda: UNet(in_channels=1, downsample=4), f"{MODELS_DIR}/depth2normal_unet4.pth"),
     ('depth_zbuffer', 'normal'): 
-        (lambda: UNet(in_channels=1, downsample=4), f"{MODELS_DIR}/depth2normal_unet4.pth"),
+        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal_unet6.pth"),
     ('depth_zbuffer', 'sobel_edges'): 
         (lambda: UNet(downsample=4, in_channels=1, out_channels=1).cuda(), f"{MODELS_DIR}/depth_zbuffer2sobel_edges.pth"),
     ('sobel_edges', 'principal_curvature'): 
@@ -65,7 +67,7 @@ pretrained_transfers = {
     ('rgb', 'keypoints2d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d.pth"),
     ('rgb', 'reshading'):
-        (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
+        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
     ('rgb', 'depth_zbuffer'):
         (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_buffer.pth"),
 
@@ -78,13 +80,15 @@ pretrained_transfers = {
     ('principal_curvature', 'keypoints3d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/principal_curvature2keypoints3d.pth"),
 
+    # ('normal', 'reshading'):
+    #     (lambda: UNetReshade(downsample=4), f"{MODELS_DIR}/normal2reshading_unet4.pth"),
     ('normal', 'reshading'):
-        (lambda: UNet(downsample=4), f"{MODELS_DIR}/normal2reshading_unet4.pth"),
+        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/normal2reshade_unet5.pth"),
     ('reshading', 'normal'):
         (lambda: UNet(downsample=4), f"{MODELS_DIR}/reshading2normal.pth"),
 
     ('sobel_edges', 'reshading'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2reshading.pth"),
+        (lambda: UNetReshade(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2reshading.pth"),
 
     ('normal', 'keypoints3d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),

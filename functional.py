@@ -449,9 +449,6 @@ loss_configs = {
         ),
 }
 
-
-
-
 ### FUNCTIONAL LOSSES
 
 class FunctionalLoss(object):

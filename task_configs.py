@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.checkpoint import checkpoint as util_checkpoint
+from torchvision import transforms
 
 from utils import *
 from models import DataParallelModel
@@ -25,7 +26,7 @@ from scipy import ndimage
 model_types = {
     ('normal', 'principal_curvature'): lambda : Dense1by1Net(),
     ('normal', 'depth_zbuffer'): lambda : UNetDepth(),
-    ('normal', 'reshading'): lambda : UNet(downsample=4),
+    ('normal', 'reshading'): lambda : UNet(downsample=5),
     ('depth_zbuffer', 'normal'): lambda : UNet(downsample=6, in_channels=1, out_channels=3),
     ('reshading', 'normal'): lambda : UNet(downsample=4, in_channels=3, out_channels=3),
     ('sobel_edges', 'principal_curvature'): lambda : UNet(downsample=5, in_channels=1, out_channels=3),
@@ -34,13 +35,14 @@ model_types = {
 }
 # Task output space
 class Task:
-    def __init__(self, name, shape=(3, 256, 256), mask_val=-1, file_name=None,
+    def __init__(self, name, shape=(3, 256, 256), mask_val=-1, file_name=None, plot_func=None,
                     transform=None, file_loader=None, is_image=True, loss_func=None):
         self.name = name
         self.shape = shape
         self.mask_val = mask_val
         if transform is None: transform = (lambda x: x)
         self.transform = transform
+        self.file_loader = file_loader
         if file_loader is None:
             self.file_loader = lambda path: Image.open(path)
         self.file_name = file_name
@@ -49,6 +51,11 @@ class Task:
             mask = build_mask(target.detach(), val=self.mask_val)
             mse = F.mse_loss(pred*mask.float(), target*mask.float())
             return mse, (mse.detach(),)
+
+        self.plot_func = plot_func
+        if plot_func == None:
+            self.plot_func = lambda x, name, logger: logger.images(x.clamp(min=0, max=1), name, nrow=2, resize=256)
+
 
         self.loss_func = loss_func
         if loss_func is None:
@@ -90,6 +97,19 @@ def load_classes(path):
 
 def load_edges(path):
     Image.open(convert_path(path, 'rgb'))
+
+def load_curv_norm(path):
+    curv = transforms.ToTensor()(transforms.Resize(256, interpolation=PIL.Image.NEAREST)(Image.open(convert_path(path, 'principal_curvature'))))
+    norm = transforms.ToTensor()(transforms.Resize(256, interpolation=PIL.Image.NEAREST)(Image.open(convert_path(path, 'normal'))))
+    res =  (torch.cat([curv, norm]))
+    # print(res.shape)
+    return res
+
+def plot_curv_norm(x, name, logger):
+    print(x.shape)
+    curv, norm = x[:,:3,:,:], x[:,3:,:,:]
+    logger.images(curv.clamp(min=0, max=1), f'{name}_curv', nrow=2, resize=256)
+    logger.images(norm.clamp(min=0, max=1), f'{name}_norm', nrow=2, resize=256)
 
 def zdepth_transform(x):
     x = x.unsqueeze(0).float()
@@ -177,6 +197,12 @@ def create_tasks():
             ),
         Task('random_network', 
             mask_val=-1.0),
+        Task('curv_norm',
+            file_loader=load_curv_norm,
+            shape=(6, 256, 256),
+            plot_func=plot_curv_norm,
+            file_name=(lambda: 'principal_curvature')
+            ),
         ]
     task_map = {}
     for task in tasks:

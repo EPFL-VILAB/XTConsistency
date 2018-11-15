@@ -62,7 +62,9 @@ class ImageTaskDataset(Dataset):
                 image = self.source_task.file_loader(source_file)
                 image = self.source_transforms(image).float()
                 task = self.dest_task.file_loader(dest_file)
+                ######### TODO CHANGE CHANGE CHANGE CHANGE ###########
                 task = self.dest_transforms(task).float()
+                # task = task.float()
                 return image, task
             except Exception as e:
                 # time.sleep(0.1)
@@ -148,7 +150,7 @@ class GeneralTaskLoader(Dataset):
             print(f"{task.name} file len: {len(task_files)}")
             task_set = {convert_path(x, tasks[0].file_name()) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-        self.idx_files = list(filtered_files)
+        self.idx_files = sorted(list(filtered_files))
 
         print ("Intersection files len: ", len(self.idx_files))
 
