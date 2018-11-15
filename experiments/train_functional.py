@@ -28,10 +28,10 @@ from scipy import ndimage
 import IPython
 
 
-def main(loss_config="gt_mse", mode="standard"):
+def main(loss_config="gt_mse", mode="standard", **kwargs):
 
     # FUNCTIONAL LOSS
-    functional = get_functional_loss(config=loss_config, mode=mode)
+    functional = get_functional_loss(config=loss_config, mode=mode, **kwargs)
     print ("Losses: ", functional.losses.keys())
 
     # MODEL
@@ -48,7 +48,7 @@ def main(loss_config="gt_mse", mode="standard"):
 
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=64)
+        load_data("rgb", "normal", batch_size=48)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
@@ -60,8 +60,8 @@ def main(loss_config="gt_mse", mode="standard"):
         )
         logger.update("epoch", epochs)
 
-        train_set = itertools.islice(train_loader, 10)
-        val_set = itertools.islice(val_loader, 2)
+        train_set = itertools.islice(train_loader, train_step)
+        val_set = itertools.islice(val_loader, val_step)
 
         train_metrics = model.fit_with_metrics(train_set, loss_fn=functional, logger=logger)
         val_metrics = model.predict_with_metrics(val_set, loss_fn=functional, logger=logger)

@@ -170,6 +170,13 @@ def create_tasks():
             file_loader=load_points,
             is_image=False
             ),
+        Task('imagenet_percep',
+            shape=(2048,),
+            file_loader=None,
+            is_image=False
+            ),
+        Task('random_network', 
+            mask_val=-1.0),
         ]
     task_map = {}
     for task in tasks:

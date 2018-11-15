@@ -32,7 +32,7 @@ def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
 
 
 ### FUNCTIONAL LOSS CONFIGS
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = functional_transfers
 
 loss_configs = {
     "gt_mse": 
@@ -122,6 +122,19 @@ loss_configs = {
             {
                 "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
                 "F(f(y)) -> y_frozen": lambda y, y_hat, x, norm: norm(F(f(y)), y.detach()),
+                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
+            },
+            {
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "f(y^)": lambda y, y_hat, x: f(y_hat), 
+                "F(f(y))": lambda y, y_hat, x: F(f(y)), 
+            }
+        ),
+    "delayed_GT_curvpercep_cycle_split_branch1": 
+        (
+            {
+                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
+                # "F(f(y)) -> y_frozen": lambda y, y_hat, x, norm: norm(F(f(y)), y.detach()),
                 "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
             },
             {
@@ -291,14 +304,147 @@ loss_configs = {
                 "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
             }
         ),
-    "wGTinflux_curvature_B": 
+    "wGTinflux_depthAB": 
         (
             {
-                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+                "y -> G(ED(a(x)))": lambda y, y_hat, x, norm: norm(y, G(ED(a(x)))),
+                "g(y) -> ED(a(x))": lambda y, y_hat, x, norm: norm(g(y), ED(a(x))),
             },
             {
-                "RC(x)": lambda y, y_hat, x: RC(x), 
-                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "G(ED[a(x)])": lambda y, y_hat, x: G(ED(a(x))), 
+                "g(y)": lambda y, y_hat, x: g(y), 
+            }
+        ),
+    "wGTinflux_curvA_depthB": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "g(y) -> ED(a(x))": lambda y, y_hat, x, norm: norm(g(y), ED(a(x))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "g(y)": lambda y, y_hat, x: g(y), 
+            }
+        ),
+    "wGTinflux_curvA_depthB_trianglecurv2depth_gt": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "g(y) -> ED(a(x))": lambda y, y_hat, x, norm: norm(g(y), ED(a(x))),
+                "h(f(y)) -> ED(a(x))": lambda y, y_hat, x, norm: norm(h(f(y)), ED(a(x))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "h(f(y))": lambda y, y_hat, x: h(f(y)), 
+                "g(y)": lambda y, y_hat, x: g(y), 
+            }
+        ),
+    "wGTinflux_curvA_depthB_triangledepth2curv_gt": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "g(y) -> ED(a(x))": lambda y, y_hat, x, norm: norm(g(y), ED(a(x))),
+                "f(y) -> H(ED(a(x)))": lambda y, y_hat, x, norm: norm(f(y), H(ED(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "H(ED[a(x)])": lambda y, y_hat, x: H(ED(a(x))), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "g(y)": lambda y, y_hat, x: g(y), 
+            }
+        ),
+    "wGTinflux_curvA_depthI_trianglecurv2depth_gt": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "h(f(y)) -> ED(a(x))": lambda y, y_hat, x, norm: norm(h(f(y)), ED(a(x))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "h(f(y))": lambda y, y_hat, x: h(f(y)), 
+            }
+        ),
+    "wGTinflux_curvA_depthI_triangledepth2curv_gt": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "f(y) -> H(ED(a(x)))": lambda y, y_hat, x, norm: norm(f(y), H(ED(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "H(ED[a(x)])": lambda y, y_hat, x: H(ED(a(x))), 
+                "f(y)": lambda y, y_hat, x: f(y), 
+            }
+        ),
+    "wGTinflux_curvA_depthB_2dkeyptA": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "g(y) -> ED(a(x))": lambda y, y_hat, x, norm: norm(g(y), ED(a(x))),
+                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "ED[a(x)]": lambda y, y_hat, x: ED(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "k(x)": lambda y, y_hat, x: k(x), 
+                "KC[k(x)]": lambda y, y_hat, x: KC(k(x)), 
+                "F(KC[k(x)])": lambda y, y_hat, x: F(KC(k(x))), 
+                "g(y)": lambda y, y_hat, x: g(y), 
+            }
+        ),
+    "wGTinflux_curvA_2dkeyptA": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC[a(x)]": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC[a(x)])": lambda y, y_hat, x: F(EC(a(x))), 
+                "k(x)": lambda y, y_hat, x: k(x), 
+                "KC[k(x)]": lambda y, y_hat, x: KC(k(x)), 
+                "F(KC[k(x)])": lambda y, y_hat, x: F(KC(k(x))), 
+            }
+        ),
+    "percep_imagenet": 
+        (
+            {
+                "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
+                "NIm(y) -> NIm(y^)": lambda y, y_hat, x, norm: norm(NIm(y), NIm(y_hat)),
+            },
+            {}
+        ),
+    "percep_random": 
+        (
+            {
+                "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
+                "RND(y) -> RND(y^)": lambda y, y_hat, x, norm: norm(RND(y), RND(y_hat)),
+            },
+            {
+                "RND(y)": lambda y, y_hat, x: RND(y), 
+                "RND(y^)": lambda y, y_hat, x: RND(y_hat), 
             }
         ),
 }
