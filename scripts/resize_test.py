@@ -16,7 +16,7 @@ from logger import Logger, VisdomLogger
 from datasets import ImageTaskDataset
 
 from modules.resnet import ResNet
-from modules.unet import UNet
+from modules.unet import UNet, UNetOld
 from modules.percep_nets import DenseNet, DeepNet, BaseNet
 from modules.depth_nets import UNetDepth
 from sklearn.model_selection import train_test_split
@@ -26,7 +26,7 @@ import IPython
 
 def main():
 
-    model = DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/augmented_base2.pth")
+    model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/augmented_base.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
     print (model.forward(torch.randn(8, 3, 256, 256)).shape)
