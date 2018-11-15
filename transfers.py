@@ -1,6 +1,7 @@
 
 import os, sys, math, random, itertools
 import numpy as np
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -118,7 +119,7 @@ class Transfer(object):
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
             else:
-                self.model = DataParallelModel(self.model_type().cuda())
+                self.model = self.model_type()
 
     def __call__(self, x):
         self.load_model()
@@ -138,9 +139,18 @@ class FineTunedTransfer(Transfer):
             return
 
         model_path = get_finetuned_model_path(parents + [self])
-        print (f"Retrieving model from {model_path}")
-        self.model = self.cached_models[model_path] = self.cached_models.get(model_path, \
-            DataParallelModel.load(self.model_type().cuda(), model_path))
+
+        my_file = Path(model_path)
+        if not my_file.is_file():
+            print(f"{my_file} not found, loading pretrained")
+            super().load_model()
+            return
+
+        if model_path not in self.cached_models:
+            print (f"Retrieving model from {model_path}")
+            self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
+
+        self.model = self.cached_models[model_path]
 
     def __call__(self, x):
 
@@ -200,6 +210,7 @@ finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_tr
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = functional_transfers
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = finetuned_transfers
 
+TRANSFER_MAP = {t.name:t for t in finetuned_transfers}
 
 if __name__ == "__main__":
     x = torch.randn(1, 3, 256, 256)

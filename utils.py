@@ -168,7 +168,11 @@ def convert_path(source_file, task):
 
 
 def get_finetuned_model_path(parents):
-    return f"{MODELS_DIR}/finetuned/" + "_".join([parent.name for parent in parents[::-1]]) + ".pth"
+    if BASE_DIR == "/":
+        return f"{RESULTS_DIR}/" + "_".join([parent.name for parent in parents[::-1]]) + ".pth"
+    else:
+        return f"{MODELS_DIR}/finetuned/" + "_".join([parent.name for parent in parents[::-1]]) + ".pth"
+
 
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
                 dataset_class=None, ood_path="data/ood_images",
@@ -250,7 +254,6 @@ def plot_images(model, logger, test_set, target_plot_func=None, ood_images=None,
     
     test_images = torch.cat([x for x, y in test_set], dim=0)
     preds, targets, losses, _ = model.predict_with_data(test_set)
-    print(targets.shape)
     # preds = preds.data.cpu().numpy().argmax(axis=1).astype(float)/16
     # targets = targets.float()/16
     test_masks = build_mask(targets, mask_val, tol=1e-3)
