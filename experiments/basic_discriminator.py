@@ -34,8 +34,8 @@ def main(disc_step=0.0):
 
     # MODEL
     print ("Using UNet")
-    # model = DataParallelModel(UNet())
-    model = DataParallelModel.load(UNet().cuda(), f"{SHARED_DIR}/results_alpha_baseline1_trainperceptuals_1/model.pth")
+    model = DataParallelModel(UNet())
+    # model = DataParallelModel.load(UNet().cuda(), f"{SHARED_DIR}/results_alpha_baseline1_trainperceptuals_1/model.pth")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
@@ -79,7 +79,7 @@ def main(disc_step=0.0):
     for epochs in range(0, 800):
         logger.update("epoch", epochs)
 
-        train_set = itertools.islice(train_loader, 10)
+        train_set = itertools.islice(train_loader, train_step)
         (mse_data, disc_data, accuracy_data, nll_data) = model.fit_with_metrics(
             train_set, loss_fn=mixed_loss, logger=logger
         )
@@ -88,12 +88,13 @@ def main(disc_step=0.0):
         logger.update("train_accuracy", np.mean(accuracy_data))
         logger.update("train_nll", np.mean(nll_data))
 
-        val_set = itertools.islice(val_loader, 2)
+        val_set = itertools.islice(val_loader, val_step)
         (mse_data, disc_data, accuracy_data, nll_data) = model.predict_with_metrics(
             val_set, loss_fn=mixed_loss, logger=logger
         )
         logger.update("val_mse_loss", np.mean(mse_data))
         logger.update("val_disc_loss", np.mean(disc_data))
+        logger.update("val_accuracy", np.mean(accuracy_data))
         logger.update("val_nll", np.mean(nll_data))
 
         disc_weight += disc_step
