@@ -48,7 +48,7 @@ def main(loss_config="gt_mse", mode="standard", **kwargs):
 
     # DATA LOADING
     train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data("rgb", "normal", batch_size=48)
+        load_data("rgb", "normal", batch_size=32)
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
@@ -60,8 +60,8 @@ def main(loss_config="gt_mse", mode="standard", **kwargs):
         )
         logger.update("epoch", epochs)
 
-        train_set = itertools.islice(train_loader, train_step)
-        val_set = itertools.islice(val_loader, val_step)
+        train_set = itertools.islice(train_loader, train_step//5)
+        val_set = itertools.islice(val_loader, val_step//5)
 
         train_metrics = model.fit_with_metrics(train_set, loss_fn=functional, logger=logger)
         val_metrics = model.predict_with_metrics(val_set, loss_fn=functional, logger=logger)

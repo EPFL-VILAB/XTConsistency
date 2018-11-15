@@ -130,19 +130,6 @@ loss_configs = {
                 "F(f(y))": lambda y, y_hat, x: F(f(y)), 
             }
         ),
-    "delayed_GT_curvpercep_cycle_split_branch1": 
-        (
-            {
-                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
-                # "F(f(y)) -> y_frozen": lambda y, y_hat, x, norm: norm(F(f(y)), y.detach()),
-                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
-            },
-            {
-                "f(y)": lambda y, y_hat, x: f(y), 
-                "f(y^)": lambda y, y_hat, x: f(y_hat), 
-                "F(f(y))": lambda y, y_hat, x: F(f(y)), 
-            }
-        ),
     "wGTinflux_curvA_depthA": 
         (
             {
@@ -445,6 +432,46 @@ loss_configs = {
             {
                 "RND(y)": lambda y, y_hat, x: RND(y), 
                 "RND(y^)": lambda y, y_hat, x: RND(y_hat), 
+            }
+        ),
+    "cycle_tests": 
+        (
+            {
+                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
+                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
+
+                # "g(y) -> g(y^)": lambda y, y_hat, x, norm: norm(g(y), g(y_hat)),
+                # "G(g(y))_frozen -> y": lambda y, y_hat, x, norm: norm(G(g(y)).detach(), y),
+
+                "s(y) -> s(y^)": lambda y, y_hat, x, norm: norm(s(y), s(y_hat)),
+                "S(s(y))_frozen -> y": lambda y, y_hat, x, norm: norm(S(s(y)), y),
+
+                "nr(y) -> nr(y^)": lambda y, y_hat, x, norm: norm(nr(y), nr(y_hat)),
+                "rn(nr(y)))_frozen -> y^": lambda y, y_hat, x, norm: norm(rn(nr(y)).detach(), y),
+
+                "Nk3(y) -> Nk3(y^)": lambda y, y_hat, x, norm: norm(Nk3(y), Nk3(y_hat)),
+                "k3N(Nk3(y))_frozen -> y^": lambda y, y_hat, x, norm: norm(k3N(Nk3(y)).detach(), y),
+            },
+            {
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "f(y^)": lambda y, y_hat, x: f(y_hat),
+                "F(f(y))": lambda y, y_hat, x: F(f(y)),
+
+                # "g(y)": lambda y, y_hat, x: g(y), 
+                # "g(y^)": lambda y, y_hat, x: g(y_hat),
+                # "G(g(y))": lambda y, y_hat, x: G(g(y)),
+
+                "s(y)": lambda y, y_hat, x: s(y), 
+                "s(y^)": lambda y, y_hat, x: s(y_hat),
+                "S(s(y))": lambda y, y_hat, x: S(s(y)),
+
+                "nr(y)": lambda y, y_hat, x: nr(y), 
+                "nr(y^)": lambda y, y_hat, x: nr(y_hat),
+                "rn(nr(y))": lambda y, y_hat, x: rn(nr(y)),
+
+                "Nk3(y)": lambda y, y_hat, x: Nk3(y), 
+                "Nk3(y^)": lambda y, y_hat, x: Nk3(y_hat),
+                "k3N(Nk3(y))": lambda y, y_hat, x: k3N(Nk3(y)),
             }
         ),
 }

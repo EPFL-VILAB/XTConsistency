@@ -120,6 +120,7 @@ class Transfer(object):
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
             else:
                 self.model = self.model_type()
+        return self.model
 
     def __call__(self, x):
         self.load_model()
@@ -134,23 +135,17 @@ class FineTunedTransfer(Transfer):
         self.cached_models = {}
 
     def load_model(self, parents=[]):
-        if len(parents) == 0:
-            super().load_model()
-            return
 
         model_path = get_finetuned_model_path(parents + [self])
 
-        my_file = Path(model_path)
-        if not my_file.is_file():
-            print(f"{my_file} not found, loading pretrained")
-            super().load_model()
-            return
+        if model_path not in self.cached_models: 
+            if not os.path.exists(model_path):
+                print(f"{model_path} not found, loading pretrained")
+                self.cached_models[model_path] = super().load_model()
+            else:
+                self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
 
-        if model_path not in self.cached_models:
-            print (f"Retrieving model from {model_path}")
-            self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
-
-        self.model = self.cached_models[model_path]
+        return self.cached_models[model_path]
 
     def __call__(self, x):
 
