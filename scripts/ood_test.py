@@ -25,7 +25,7 @@ from modules.depth_nets import UNetDepth
 from sklearn.model_selection import train_test_split
 from fire import Fire
 
-from transfers import functional_transfers
+from transfers import finetuned_transfers
 from task_configs import TASK_MAP
 import IPython
 
@@ -73,7 +73,7 @@ def main():
 
     logger.images(gt['rgb'][:4], f"x", nrow=1, resize=resize)
     # logger.images(ood_images, f"x", nrow=1, resize=resize)
-    edges = functional_transfers
+    edges = finetuned_transfers
 
     def get_nbrs(task, edges):
         res = []
@@ -84,17 +84,17 @@ def main():
     IPython.embed()
     max_depth = 10
     mse_dict = defaultdict(list)
-    for t in functional_transfers:
-        print(t.name)
-        sleep(1)
-        t.load_model()
+    # for t in finetuned_transfers:
+    #     print(t.name)
+    #     sleep(1)
+    #     t.load_model()
 
     def search_small(x, task, prefix, visited, depth, endpoint):
 
         if task.name == 'normal':
             interleave = torch.stack([val for pair in zip(x[:num_plot], gt[task.name][:num_plot]) for val in pair])
             logger.images(interleave.clamp(max=1, min=0), prefix, nrow=2, resize=resize)
-            mse, _ = task.loss_func(preds, gt[task.name])
+            mse, _ = task.loss_func(x, gt[task.name])
             mse_dict[task.name].append((mse.detach().data.cpu().numpy(), prefix))
 
         for transfer in get_nbrs(task, edges):
@@ -139,8 +139,8 @@ def main():
                 visited.remove(transfer.dest_task.name)
 
     with torch.no_grad():
-        search2(gt['rgb'], TASK_MAP['rgb'], 'x', set('rgb'), 1, TASK_MAP['normal'])
-        # search(ood_images, TASK_MAP['rgb'], 'x', set('rgb'), 1)
+        # search_full(gt['rgb'], TASK_MAP['rgb'], 'x', set('rgb'), 1, TASK_MAP['normal'])
+        search(ood_images, TASK_MAP['rgb'], 'x', set('rgb'), 1)
     
     for name, mse_list in mse_dict.items():
         mse_list.sort()

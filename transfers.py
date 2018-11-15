@@ -202,13 +202,13 @@ functional_transfers = (
     Transfer('normal', 'keypoints3d', name='Nk3'),
 
     Transfer('sobel_edges', 'reshading', name='Er'),
-    Transfer('normal', 'imagenet_percep', name='NIm'),
-    Transfer('normal', 'random_network', name='RND'),
+    # Transfer('normal', 'imagenet_percep', name='NIm'),
+    # Transfer('normal', 'random_network', name='RND'),
 )
 
 finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = functional_transfers
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = finetuned_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = finetuned_transfers
 
 TRANSFER_MAP = {t.name:t for t in finetuned_transfers}
 
