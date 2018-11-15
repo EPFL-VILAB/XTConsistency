@@ -11,7 +11,7 @@ from torch.utils.checkpoint import checkpoint as util_checkpoint
 from utils import *
 from models import TrainableModel, DataParallelModel
 
-from modules.resnet import ResNet
+from modules.resnet import ResNet, ResNetClass
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet, UNetOld, UNetOld2
@@ -21,6 +21,8 @@ from fire import Fire
 from skimage import feature
 from functools import partial
 from task_configs import TASK_MAP
+
+from torchvision import models
 
 import IPython
 
@@ -87,7 +89,12 @@ pretrained_transfers = {
     ('normal', 'keypoints3d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
     ('keypoints3d', 'normal'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),  
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
+
+    ('normal', 'imagenet_percep'):
+        (lambda: ResNetClass(), None),
+    ('normal', 'random_network'):
+        (lambda: UNet(downsample=4), None),
 }
 
 class Transfer(object):
@@ -107,12 +114,40 @@ class Transfer(object):
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
             else:
-                self.model = self.model_type()
+                self.model = DataParallelModel(self.model_type().cuda())
 
     def __call__(self, x):
         self.load_model()
         preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
         return preds
+
+
+class FineTunedTransfer(Transfer):
+    
+    def __init__(self, transfer):
+        super().__init__(transfer.src_task, transfer.dest_task, checkpoint=transfer.checkpoint, name=transfer.name)
+        self.cached_models = {}
+
+    def load_model(self, parents=[]):
+        if len(parents) == 0:
+            super().load_model()
+            return
+
+        model_path = get_finetuned_model_path(parents + [self])
+        print (f"Retrieving model from {model_path}")
+        self.model = self.cached_models[model_path] = self.cached_models.get(model_path, \
+            DataParallelModel.load(self.model_type().cuda(), model_path))
+
+    def __call__(self, x):
+
+        if not hasattr(x, "parents"): 
+            x.parents = []
+
+        self.load_model(parents=x.parents)
+        preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
+        preds.parents = x.parents + ([self])
+        return preds
+
 
 
 functional_transfers = (
@@ -153,11 +188,19 @@ functional_transfers = (
     Transfer('normal', 'keypoints3d', name='Nk3'),
 
     Transfer('sobel_edges', 'reshading', name='Er'),
+    Transfer('normal', 'imagenet_percep', name='NIm'),
+    Transfer('normal', 'random_network', name='RND'),
 )
 
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = finetuned_transfers
 
 
+if __name__ == "__main__":
+    x = torch.randn(1, 3, 256, 256)
+    y = g(F(f(x)))
+    print (y.shape)
 
 """
 curvature_model_base = DataParallelModel.load(Dense1by1Net().cuda(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth")

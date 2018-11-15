@@ -166,6 +166,10 @@ def convert_path(source_file, task):
     data_dir = FILE_MAP[f"{building}_{task}"]
     return f"{data_dir}/{dest_file}"
 
+
+def get_finetuned_model_path(parents):
+    return f"{MODELS_DIR}/finetuned/" + "_".join([parent.name for parent in parents[::-1]]) + ".pth"
+
 def load_data(source_task, dest_task, source_transforms=None, dest_transforms=None, 
                 dataset_class=None, ood_path="data/ood_images",
                 batch_size=32, resize=256, batch_transforms=cycle):
