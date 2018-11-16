@@ -143,9 +143,11 @@ class FineTunedTransfer(Transfer):
                 print(f"{model_path} not found, loading pretrained")
                 self.cached_models[model_path] = super().load_model()
             else:
+                print(f"{model_path} found, loading finetuned")
                 self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
-
-        return self.cached_models[model_path]
+        
+        self.model = self.cached_models[model_path]
+        return self.model
 
     def __call__(self, x):
 
