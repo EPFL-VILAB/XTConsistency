@@ -62,7 +62,7 @@ pretrained_transfers = {
     ('depth_zbuffer', 'principal_curvature'):
         (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
     ('rgb', 'normal'):
-        (lambda: UNetOld(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth"),
+        (lambda: UNetOld(), f"{MODELS_DIR}/unet_baseline.pth"),
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
@@ -207,7 +207,7 @@ finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_tr
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = finetuned_transfers
 
-TRANSFER_MAP = {t.name:t for t in finetuned_transfers}
+TRANSFER_MAP = {t.name:t for t in functional_transfers}
 
 if __name__ == "__main__":
     x = torch.randn(1, 3, 256, 256)

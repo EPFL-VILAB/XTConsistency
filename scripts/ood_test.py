@@ -31,17 +31,14 @@ import IPython
 
 def main():
 
-    model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth")
-    model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
+    # model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth")
+    # model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
 
-    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(32, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(8, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(16, 3, 256, 256)).shape)
+    # print (model.forward(torch.randn(32, 3, 256, 256)).shape)
     
-    def mixed_loss(pred, target):
-        mask = build_mask(target.detach(), val=0.502)
-        mse = F.mse_loss(pred*mask.float(), target*mask.float())
-        return mse, (mse.detach(),)
+    prefix_filter = set(['F(EC(a(x)))', 'F(RC(x))', 'F(KC(k(x)))', 'F(f(S(a(x))))', 'rn(nr(F(EC(a(x)))))', 'F(H(g(S(a(x)))))', 'S(a(x))', 'n(x)'])
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
@@ -51,7 +48,7 @@ def main():
     # data_dir = f'{BASE_DIR}/data/taskonomy3/almena_rgb/rgb/'
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir=data_dir, resize=(resize, resize)),
-        batch_size=10,
+        batch_size=112,
         num_workers=10,
         shuffle=False,
         pin_memory=True
@@ -69,10 +66,10 @@ def main():
     )
     imgs = list(itertools.islice(test_loader, 1))[0]
     gt = {tasks[i].name:batch.cuda() for i, batch in enumerate(imgs)}
-    num_plot = 4
+    num_plot = 5
 
-    logger.images(gt['rgb'][:4], f"x", nrow=1, resize=resize)
-    # logger.images(ood_images, f"x", nrow=1, resize=resize)
+    # logger.images(gt['rgb'][:4], f"x", nrow=1, resize=resize)
+    logger.images(ood_images, f"x", nrow=2, resize=resize)
     edges = finetuned_transfers
 
     def get_nbrs(task, edges):
@@ -88,12 +85,12 @@ def main():
     #     print(t.name)
     #     sleep(1)
     #     t.load_model()
-
+    count = 0
     def search_small(x, task, prefix, visited, depth, endpoint):
 
         if task.name == 'normal':
             interleave = torch.stack([val for pair in zip(x[:num_plot], gt[task.name][:num_plot]) for val in pair])
-            logger.images(interleave.clamp(max=1, min=0), prefix, nrow=2, resize=resize)
+            logger.images(interleave.clamp(max=1, min=0), prefix+'.', nrow=2, resize=resize)
             mse, _ = task.loss_func(x, gt[task.name])
             mse_dict[task.name].append((mse.detach().data.cpu().numpy(), prefix))
 
@@ -114,11 +111,12 @@ def main():
             preds = transfer(x)
             next_prefix = f'{transfer.name}({prefix})'
             print(f"{transfer.src_task.name}2{transfer.dest_task.name}", next_prefix)
-            if transfer.dest_task.name == 'normal':
+            if transfer.dest_task.name == 'normal' and next_prefix in prefix_filter:
                 interleave = torch.stack([val for pair in zip(preds[:num_plot], gt[transfer.dest_task.name][:num_plot]) for val in pair])
-                logger.images(interleave.clamp(max=1, min=0), next_prefix, nrow=2, resize=resize)
+                logger.images(interleave.clamp(max=1, min=0), next_prefix+'.', nrow=2, resize=resize)
                 mse, _ = task.loss_func(preds, gt[transfer.dest_task.name])
                 mse_dict[transfer.dest_task.name].append((mse.detach().data.cpu().numpy(), next_prefix))
+
             if transfer.dest_task.name not in visited:
                 visited.add(transfer.dest_task.name)
                 res = search_full(preds, transfer.dest_task, next_prefix, visited, depth+1, endpoint)
@@ -131,8 +129,8 @@ def main():
             preds = transfer(x)
             next_prefix = f'{transfer.name}({prefix})'
             print(f"{transfer.src_task.name}2{transfer.dest_task.name}", next_prefix)
-            if transfer.dest_task.name == 'normal':
-                logger.images(preds.clamp(max=1, min=0), next_prefix, nrow=2, resize=resize)
+            if transfer.dest_task.name == 'normal' and next_prefix in prefix_filter:
+                logger.images(preds.clamp(max=1, min=0), next_prefix+'.', nrow=2, resize=resize)
             if transfer.dest_task.name not in visited:
                 visited.add(transfer.dest_task.name)
                 res = search(preds, transfer.dest_task, next_prefix, visited, depth+1)

@@ -48,6 +48,8 @@ def experiment_id(config):
 
 def run(cmd, instance="ngc", config="job", sync_code=True, datasets={"data": 11449, "models": 11863, "snapshots": 12920}, resume=0, return_command=False):
     
+    # datasets = {"data": 11449, "snapshots": 12920}
+
     datasets = {"data": 11449, "models": 11863, "snapshots": 12920, "edge_1":16413, \
                     "edges_1":16436, "edges_2":16437, "edges_3":16438, "reshade":16380, \
                     "semantic2":17015, "keypoints":16961, "keypoints2d":17405}

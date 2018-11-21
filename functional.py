@@ -32,9 +32,86 @@ def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
 
 
 ### FUNCTIONAL LOSS CONFIGS
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, NIm, RND) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
 loss_configs = {
+    "vid_F_EC_a_x": 
+        (
+            {
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+            }
+        ),
+    "vid_F_RC_x": 
+        (
+            {
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+            },
+            {
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
+            }
+        ),
+    "vid_F_f_S_a_x": 
+        (
+            {
+                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "s(a(x)": lambda y, y_hat, x: S(a(x)), 
+                "f(s(a(x))": lambda y, y_hat, x: f(S(a(x))), 
+                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
+            }
+        ),
+    "vid_all_three": 
+        (
+            {
+                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+                "S(a(x)": lambda y, y_hat, x: S(a(x)), 
+                "f(S(a(x))": lambda y, y_hat, x: f(S(a(x))), 
+                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+            }
+        ),
+    "vid_C_two": 
+        (
+            {
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+
+            }
+        ),
+    "vid_F_KC_k_x": 
+        (
+            {
+                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
+            },
+            {
+                "F(KC(k(x)))": lambda y, y_hat, x: F(KC(k(x))), 
+                "KC(k(x))": lambda y, y_hat, x: KC(k(x)), 
+                "k(x)": lambda y, y_hat, x: k(x), 
+            }
+        ),
     "gt_mse": 
         (
             {

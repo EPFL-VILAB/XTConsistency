@@ -65,16 +65,17 @@ class Task:
     def __eq__(self, other):
         return self.name == other.name
         
-def get_model(src_task, dest_task):
+def get_model(src_task, dest_task, easy=False):
     
     if isinstance(src_task, str) and isinstance(dest_task, str):
         src_task = TASK_MAP[src_task]
         dest_task = TASK_MAP[dest_task]
 
+    downsample = 4 if easy else 5
     if (src_task.name, dest_task.name) in model_types:
         return model_types[(src_task.name, dest_task.name)]()
     if src_task.is_image and dest_task.is_image:
-        return UNet(downsample=5, in_channels=src_task.shape[0], out_channels=dest_task.shape[0])
+        return UNet(downsample=downsample, in_channels=src_task.shape[0], out_channels=dest_task.shape[0])
     
     # if src_task.is_image and dest_task.name == 'class_scene':
 

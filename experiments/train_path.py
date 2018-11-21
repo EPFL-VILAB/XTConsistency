@@ -85,7 +85,7 @@ def main(path_str, src_task='rgb'):
         plot_images(model, logger, test_set, mask_val=dest_task.mask_val, target_name=f"targets_{prefix}", preds_name=f"preds_{prefix}_start")
 
         # TRAINING
-        for epochs in range(0, 20):
+        for epochs in range(0, 10):
 
             logger.update("epoch", epochs)
 

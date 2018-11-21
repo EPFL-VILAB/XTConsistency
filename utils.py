@@ -4,7 +4,7 @@
 import numpy as np
 import random, sys, os, time, glob, math, itertools, yaml
 from sklearn.model_selection import train_test_split
-import parse
+import parse, random
 from collections import defaultdict
 
 import torch
@@ -158,7 +158,7 @@ def get_files(exp, data_dirs=DATA_DIRS):
     return files
 
 def convert_path(source_file, task):
-    result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
+    result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:])) 
     building, _, view = (result["building"], result["task"], result["view"])
     dest_file = f"{building}_{task}/{task}/{view}_domain_{task}.png"
     if f"{building}_{task}" not in FILE_MAP:
@@ -248,9 +248,74 @@ def load_data(source_task, dest_task, source_transforms=None, dest_transforms=No
     return train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step
 
 
+def load_data_vid(source_task, dest_task, source_transforms=None, dest_transforms=None, 
+                dataset_class=None, ood_path="data/ood_images",
+                batch_size=32, resize=256, batch_transforms=cycle):
+    
+    from torchvision import transforms
+    from datasets import ImageTaskDataset, ImageDataset, ImageMultiTaskDataset
+    import task_configs
 
-def plot_images(model, logger, test_set, target_plot_func=None, ood_images=None, mask_val=0.502, \
-    loss_models={}, loss_preds=True, loss_targets=True, target_name="targets", preds_name="preds"):
+    dataset_class = dataset_class or ImageTaskDataset
+
+    all_files = glob.glob(f"{BASE_DIR}/simpsons_imgs/*.png")
+    all_files.sort()
+    random.Random(4).shuffle(all_files)
+    
+    split = int(len(all_files) * 0.2)
+    train_files = all_files[split:]
+    val_files = all_files[:split]
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset_class(files=train_files),
+        batch_size=batch_size,
+        num_workers=1,
+        shuffle=True,
+        pin_memory=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        dataset_class(files=val_files),
+        batch_size=batch_size,
+        num_workers=1,
+        shuffle=True,
+        pin_memory=True
+    )
+    test_loader1 = torch.utils.data.DataLoader(
+        dataset_class(files=val_files[:12]),
+        batch_size=12,
+        num_workers=1,
+        shuffle=False,
+        pin_memory=True
+    )
+    test_loader2 = torch.utils.data.DataLoader(
+        dataset_class(files=val_files[12:24]),
+        batch_size=12,
+        num_workers=1,
+        shuffle=False,
+        pin_memory=True
+    )
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
+        batch_size=10,
+        num_workers=1,
+        shuffle=False,
+        pin_memory=True
+    )
+    train_step = int(2248616 // (100 * batch_size))
+    val_step = int(245592 // (100 * batch_size))
+    print("Train step: ", train_step)
+    print("Val step: ", val_step)
+
+    train_loader, val_loader = batch_transforms(train_loader), batch_transforms(val_loader)
+    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+    ood_images = list(itertools.islice(ood_loader, 1))
+
+    return train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step
+
+
+def plot_images(model, logger, test_set, ood_images=None, mask_val=0.502, \
+    loss_models={}, loss_preds=True, loss_targets=True, target_name="targets", preds_name="preds", target_plot_func=None):
     
     test_images = torch.cat([x for x, y in test_set], dim=0)
     preds, targets, losses, _ = model.predict_with_data(test_set)

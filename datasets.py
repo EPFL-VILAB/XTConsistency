@@ -171,6 +171,67 @@ class GeneralTaskLoader(Dataset):
             # print (e)
             return self.__getitem__(random.randrange(0, len(self.idx_files)))
 
+class ImagePairDataset(Dataset):
+    """Face Landmarks dataset."""
+
+    def __init__(
+        self,
+        files=[]
+    ):
+        data_dir = f"{BASE_DIR}/simpsons_imgs"
+        resize = (256, 256)
+
+        def crop(x):
+            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
+        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
+        self.files = files
+        print("num files = ", len(self.files))
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+
+        file = self.files[idx]
+        try:
+            image = Image.open(file)
+            image = self.transforms(image).float()[0:3, :, :]
+            if image.shape[0] == 1: image = image.expand(3, -1, -1)
+        except Exception as e:
+            return self.__getitem__(random.randrange(0, len(self.files)))
+        # print(image.shape, file)
+        return image, image
+
+
+if __name__ == "__main__":
+
+    logger = VisdomLogger("data", server="35.230.67.129", port=7000, env=JOB)
+
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir="data/ood_images"),
+        batch_size=6,
+        num_workers=6,
+        shuffle=False,
+    )
+    ood_images = torch.cat(list(itertools.islice(ood_loader, 1)), dim=0)
+    logger.images(ood_images, "ood_images", resize=128)
+
+    test_buildings = ["almena", "albertville"]
+    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
+
+    transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
+    data_loader = torch.utils.data.DataLoader(
+        ImageMultiTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform),
+        batch_size=64,
+        num_workers=0,
+        shuffle=True,
+    )
+    logger.add_hook(lambda data: logger.step(), freq=32)
+
+    for i, (X, Y) in enumerate(data_loader):
+        logger.update("epoch", i)
+
 
 
 class ImageDataset(Dataset):

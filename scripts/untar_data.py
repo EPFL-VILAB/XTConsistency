@@ -39,7 +39,7 @@ def check_dir(data_dirs):
 		print(f"{data_dir}: {len(files)}")
 		count += len(files)
 
-def main(filename="data/somelinks.txt", tasks=['reshading', 'segment_semantic', 'keypoints3d', 'keypoints2d']):
+def main(filename="data/somelinks.txt", tasks=['reshading', 'keypoints3d', 'keypoints2d']):
 
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]

@@ -22,7 +22,7 @@ from fire import Fire
 import IPython
 
 
-def main(src_task, dest_task):
+def main(src_task, dest_task, easy=False):
 
     # MODEL
     task_map = task_configs.create_tasks()
@@ -30,7 +30,7 @@ def main(src_task, dest_task):
     src_task = task_map[src_task]
     dest_task = task_map[dest_task]
 
-    model = DataParallelModel((task_configs.get_model(src_task, dest_task)).cuda())
+    model = DataParallelModel((task_configs.get_model(src_task, dest_task, easy)).cuda())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     # LOGGING
@@ -44,7 +44,8 @@ def main(src_task, dest_task):
         load_data(src_task, dest_task, batch_size=48)
     logger.images(test_images, "images", resize=128)
 
-    for epochs in range(0, 800):
+    max_epochs = 300 if not easy else 100
+    for epochs in range(0, max_epochs):
 
         plot_images(model, logger, test_set, mask_val=dest_task.mask_val)
 
