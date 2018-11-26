@@ -107,7 +107,6 @@ def load_curv_norm(path):
     return res
 
 def plot_curv_norm(x, name, logger):
-    print(x.shape)
     curv, norm = x[:,:3,:,:], x[:,3:,:,:]
     logger.images(curv.clamp(min=0, max=1), f'{name}_curv', nrow=2, resize=256)
     logger.images(norm.clamp(min=0, max=1), f'{name}_norm', nrow=2, resize=256)
@@ -125,13 +124,37 @@ def keypoints_transform(x):
     return x[0].clamp(min=0, max=1)
 
 def keypoints2d_transform(x):
-    x = x.unsqueeze(0).float()
-    x = x / 2400.0
-    return x[0].clamp(min=0, max=1)
+    if x.shape[0] == 1:
+        x = x.squeeze(0)
+    image = x.data.cpu().numpy()
+    blur = ndimage.filters.gaussian_filter(image, sigma=2, )
+    norm = torch.FloatTensor(blur).unsqueeze(0)**0.8 / (2000.0**0.8)
+    norm = norm.clamp(min=0, max=1)
+    if norm.shape[0] != 1:
+        norm = norm.unsqueeze(0)
+    return norm
+
+def edge3d_transform(x):
+    if x.shape[0] == 1:
+        x = x.squeeze(0)
+    image = x.data.cpu().numpy()
+    blur = ndimage.filters.gaussian_filter(image, sigma=2, )
+    norm = torch.FloatTensor(blur).unsqueeze(0)**0.8 / (4000.0**0.8)
+    norm = norm.clamp(min=0, max=1)
+    if norm.shape[0] != 1:
+        norm = norm.unsqueeze(0)
+    return norm
 
 def semantic_loss(pred, target):
     bce = F.cross_entropy(pred, target.squeeze(1).long())
     return bce, (bce.detach(),)
+
+def plot_semantic(x, name, logger):
+    x = x.data.cpu().numpy().astype(float)
+    if x.shape[1] == 16:
+        x = x.argmax(axis=1)
+    x = x / 16.0
+    logger.images(x, f'{name}', nrow=2, resize=256)
 
 def class_loss(pred, target):
     loss = F.nll_loss(pred, target)
@@ -161,6 +184,7 @@ def create_tasks():
             mask_val=0.0507),
         Task('edge_occlusion',
             shape=(1, 256, 256),
+            transform=edge3d_transform
             ),
         Task('edge_texture',
             shape=(1, 256, 256)),
@@ -172,6 +196,7 @@ def create_tasks():
         Task('segment_semantic',
             shape=(16, 256, 256),
             loss_func=semantic_loss,
+            plot_func=plot_semantic,
             ),
         Task('keypoints3d',
             shape=(1, 256, 256),
