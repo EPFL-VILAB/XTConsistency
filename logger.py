@@ -108,61 +108,37 @@ class VisdomLogger(BaseLogger):
 
         self.windows["text"] = window, display
 
-    def plot(self, data, plot_name, opts=None):
-        if not opts:
-            opts = {}
-
-        window = self.windows.get(plot_name, None)
-        options = {'title': plot_name}
-        options.update(opts)
-        data = np.array(data)
-        if window is not None and self.visdom.win_exists(window):
-            window = self.visdom.line(data, X=np.array(range(len(data))), opts=options, win=window)
-        else:
-            window = self.visdom.line(data, X=np.array(range(len(data))), opts=options)
+    def window(self, plot_name, plot_func, *args, **kwargs):
         
+        options = {'title': plot_name}
+        options.update(kwargs.pop("opts", {}))
+        window = self.windows.get(plot_name, None)
+        if window is not None and self.visdom.win_exists(window):
+            window = plot_func(*args, **kwargs, opts=options, win=window)
+        else:
+            window = plot_func(*args, **kwargs, opts=options)
+
         self.windows[plot_name] = window
 
+    def plot(self, data, plot_name, opts={}):
+        self.window(plot_name, self.visdom.line, 
+            np.array(data), X=np.array(range(len(data))), opts=opts
+        )
+        
     def histogram(self, data, plot_name, opts={}):
-        window = self.windows.get(plot_name, None)
-        options = {'title': plot_name}
-        options.update(opts)
-        if window is not None and self.visdom.win_exists(window):
-            window = self.visdom.histogram(np.array(data), opts=options, win=window)
-        else:
-            window = self.visdom.histogram(np.array(data), opts=options)
-        
-        self.windows[plot_name] = window
+        self.window(plot_name, self.visdom.histogram, np.array(data), opts=opts)
 
     def bar(self, data, plot_name, opts={}):
-        window = self.windows.get(plot_name, None)
-        options = {'title': plot_name}
-        options.update(opts)
-        if window is not None and self.visdom.win_exists(window):
-            window = self.visdom.bar(np.array(data), opts=options, win=window)
-        else:
-            window = self.visdom.bar(np.array(data), opts=options)
-        
-        self.windows[plot_name] = window
+        self.window(plot_name, self.visdom.bar, np.array(data), opts=opts)
 
-    def images(self, data, image_name, opts={}, nrow=2, normalize=False, resize=64):
+    def images(self, data, plot_name, opts={}, nrow=2, normalize=False, resize=64):
 
         transform = transforms.Compose([
                                     transforms.ToPILImage(),
                                     transforms.Resize(resize),
                                     transforms.ToTensor()])
-        data = torch.stack([transform(x) for x in data.cpu()])
+        data = torch.stack([transform(x.cpu()) for x in data])
         data = utils.make_grid(data, nrow=nrow, normalize=normalize, pad_value=0)
-
-        window = self.windows.get(image_name, None)
-        options = {'title': image_name}
-        options.update(opts)
-
-        if window is not None and self.visdom.win_exists(window):
-            window = self.visdom.image(np.array(data), opts=options, win=window)
-        else:
-            window = self.visdom.image(np.array(data), opts=options)
-                
-        self.windows[image_name] = window
+        self.window(plot_name, self.visdom.image, np.array(data), opts=opts)
 
 

@@ -13,7 +13,7 @@ from torch.utils.checkpoint import checkpoint
 from utils import *
 from plotting import *
 from task_configs import TASK_MAP
-from transfers import functional_transfers
+from transfers import functional_transfers, finetuned_transfers
 
 from functools import partial
 
@@ -33,6 +33,7 @@ def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
 
 ### FUNCTIONAL LOSS CONFIGS
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+# (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er,) = finetuned_transfers
 
 loss_configs = {
     "vid_F_EC_a_x": 
@@ -551,6 +552,42 @@ loss_configs = {
                 "k3N(Nk3(y))": lambda y, y_hat, x: k3N(Nk3(y)),
             }
         ),
+
+        "nontriv_cycle": 
+        (
+            {
+                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
+                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
+
+                # "g(y) -> g(y^)": lambda y, y_hat, x, norm: norm(g(y), g(y_hat)),
+                # "G(g(y))_frozen -> y": lambda y, y_hat, x, norm: norm(G(g(y)).detach(), y),
+
+                "s(y) -> s(y^)": lambda y, y_hat, x, norm: norm(s(y), s(y_hat)),
+                "nr(y) -> nr(y^)": lambda y, y_hat, x, norm: norm(nr(y), nr(y_hat)),
+                "Nk3(y) -> Nk3(y^)": lambda y, y_hat, x, norm: norm(Nk3(y), Nk3(y_hat)),
+            },
+            {
+                "f(y)": lambda y, y_hat, x: f(y), 
+                "f(y^)": lambda y, y_hat, x: f(y_hat),
+                "F(f(y))": lambda y, y_hat, x: F(f(y)),
+
+                # "g(y)": lambda y, y_hat, x: g(y), 
+                # "g(y^)": lambda y, y_hat, x: g(y_hat),
+                # "G(g(y))": lambda y, y_hat, x: G(g(y)),
+
+                "s(y)": lambda y, y_hat, x: s(y), 
+                "s(y^)": lambda y, y_hat, x: s(y_hat),
+                # "S(s(y))": lambda y, y_hat, x: S(s(y)),
+
+                "nr(y)": lambda y, y_hat, x: nr(y), 
+                "nr(y^)": lambda y, y_hat, x: nr(y_hat),
+                # "rn(nr(y))": lambda y, y_hat, x: rn(nr(y)),
+
+                "Nk3(y)": lambda y, y_hat, x: Nk3(y), 
+                "Nk3(y^)": lambda y, y_hat, x: Nk3(y_hat),
+                # "k3N(Nk3(y))": lambda y, y_hat, x: k3N(Nk3(y)),
+            }
+        ),
 }
 
 ### FUNCTIONAL LOSSES
@@ -566,12 +603,9 @@ class FunctionalLoss(object):
         self.loss_names = sorted(self.losses.keys())
         self.src_task, self.dest_task = TASK_MAP[src_task], TASK_MAP[dest_task]
 
-    def norm(self, x, y):
-        mask = build_mask(y, self.dest_task.mask_val)
-        return ((x*mask.float() - y*mask.float())**2).mean()
-
     def __call__(self, y, y_hat, x):
-        loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
+        y.parents = [n]
+        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm) for loss in self.loss_names]
         return sum(loss_values), [loss.detach() for loss in loss_values]
 
     def logger_hooks(self, logger):
@@ -597,6 +631,7 @@ class NormalizedFunctionalLoss(FunctionalLoss):
         self.step_count = 0
 
     def __call__(self, y, y_hat, x):
+        y.parents = [n]
         loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
 
         if self.step_count % self.update_freq == 0:
@@ -620,7 +655,7 @@ class MixingFunctionalLoss(FunctionalLoss):
             model.checkpoint = False
 
     def __call__(self, y, y_hat, x):
-
+        y.parents = [n]
         loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
         c1, c2 = 1, 1
         if y.requires_grad:
@@ -647,6 +682,7 @@ class CurriculumFunctionalLoss(FunctionalLoss):
         self.step = step
 
     def __call__(self, y, y_hat, x):
+        y.parents = [n]
         loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
         final_loss = sum(c*loss for loss, c in zip(loss_values, self.loss_coeffs))
         return final_loss, [loss.detach() for loss in loss_values]

@@ -1,64 +1,39 @@
 
 import os, sys, math, random, itertools
 import numpy as np
-import pickle
 from time import sleep
 from collections import defaultdict
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision import datasets, transforms, models
-from torch.optim.lr_scheduler import MultiStepLR
-
 from utils import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
-from datasets import ImageTaskDataset, ImageDataset, GeneralTaskLoader
+from datasets import TaskDataset
+from datasets import load_sintel_train_val_test, load_video_games, load_ood
 
-from modules.resnet import ResNet
-from modules.unet import UNet, UNetOld
-from modules.percep_nets import DenseNet, DeepNet, BaseNet
-from modules.depth_nets import UNetDepth
-from sklearn.model_selection import train_test_split
 from fire import Fire
+from modules.unet import UNetOld
 
 from transfers import finetuned_transfers
-from task_configs import TASK_MAP
+from task_configs import get_task
+
 import IPython
 
 def main():
 
-    # model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/mixing_percepcurv_norm.pth")
-    # model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
-
-    # print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    # print (model.forward(torch.randn(16, 3, 256, 256)).shape)
-    # print (model.forward(torch.randn(32, 3, 256, 256)).shape)
-    
-    prefix_filter = set(['F(EC(a(x)))', 'F(RC(x))', 'F(KC(k(x)))', 'F(f(S(a(x))))', 'rn(nr(F(EC(a(x)))))', 'F(H(g(S(a(x)))))', 'S(a(x))', 'n(x)'])
-
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
+
     resize = 256
-    data_dir = f'{SHARED_DIR}/ood_images'
-    # data_dir = f'{BASE_DIR}/data/taskonomy3/almena_rgb/rgb/'
-    ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir=data_dir, resize=(resize, resize)),
-        batch_size=112,
-        num_workers=10,
-        shuffle=False,
-        pin_memory=True
-    )
-    ood_images = list(itertools.islice(ood_loader, 1))[0]
-    tasks = [TASK_MAP[name] for name in ['rgb', 'normal', 'principal_curvature', 'depth_zbuffer', 'sobel_edges', 'reshading', 'keypoints3d', 'keypoints2d']]
-    # tasks = [task for name, task in TASK_MAP.items()]
+    ood_images = load_ood()[0]
+    tasks = [get_task(name) for name in ['rgb', 'normal', 'principal_curvature', 'depth_zbuffer', 'sobel_edges', 'reshading', 'keypoints3d', 'keypoints2d']]
 
     test_loader = torch.utils.data.DataLoader(
-        GeneralTaskLoader(['almena'], tasks),
+        TaskDataset(['almena'], tasks),
         batch_size=64,
         num_workers=12,
         shuffle=False,
@@ -66,9 +41,8 @@ def main():
     )
     imgs = list(itertools.islice(test_loader, 1))[0]
     gt = {tasks[i].name:batch.cuda() for i, batch in enumerate(imgs)}
-    num_plot = 5
+    num_plot = 4
 
-    # logger.images(gt['rgb'][:4], f"x", nrow=1, resize=resize)
     logger.images(ood_images, f"x", nrow=2, resize=resize)
     edges = finetuned_transfers
 
@@ -78,19 +52,15 @@ def main():
             if task == e.src_task: 
                 res.append(e)
         return res
-    IPython.embed()
+
     max_depth = 10
     mse_dict = defaultdict(list)
-    # for t in finetuned_transfers:
-    #     print(t.name)
-    #     sleep(1)
-    #     t.load_model()
-    count = 0
+
     def search_small(x, task, prefix, visited, depth, endpoint):
 
         if task.name == 'normal':
             interleave = torch.stack([val for pair in zip(x[:num_plot], gt[task.name][:num_plot]) for val in pair])
-            logger.images(interleave.clamp(max=1, min=0), prefix+'.', nrow=2, resize=resize)
+            logger.images(interleave.clamp(max=1, min=0), prefix, nrow=2, resize=resize)
             mse, _ = task.loss_func(x, gt[task.name])
             mse_dict[task.name].append((mse.detach().data.cpu().numpy(), prefix))
 
@@ -111,12 +81,11 @@ def main():
             preds = transfer(x)
             next_prefix = f'{transfer.name}({prefix})'
             print(f"{transfer.src_task.name}2{transfer.dest_task.name}", next_prefix)
-            if transfer.dest_task.name == 'normal' and next_prefix in prefix_filter:
+            if transfer.dest_task.name == 'normal':
                 interleave = torch.stack([val for pair in zip(preds[:num_plot], gt[transfer.dest_task.name][:num_plot]) for val in pair])
-                logger.images(interleave.clamp(max=1, min=0), next_prefix+'.', nrow=2, resize=resize)
+                logger.images(interleave.clamp(max=1, min=0), next_prefix, nrow=2, resize=resize)
                 mse, _ = task.loss_func(preds, gt[transfer.dest_task.name])
                 mse_dict[transfer.dest_task.name].append((mse.detach().data.cpu().numpy(), next_prefix))
-
             if transfer.dest_task.name not in visited:
                 visited.add(transfer.dest_task.name)
                 res = search_full(preds, transfer.dest_task, next_prefix, visited, depth+1, endpoint)
@@ -129,8 +98,8 @@ def main():
             preds = transfer(x)
             next_prefix = f'{transfer.name}({prefix})'
             print(f"{transfer.src_task.name}2{transfer.dest_task.name}", next_prefix)
-            if transfer.dest_task.name == 'normal' and next_prefix in prefix_filter:
-                logger.images(preds.clamp(max=1, min=0), next_prefix+'.', nrow=2, resize=resize)
+            if transfer.dest_task.name == 'normal':
+                logger.images(preds.clamp(max=1, min=0), next_prefix, nrow=2, resize=resize)
             if transfer.dest_task.name not in visited:
                 visited.add(transfer.dest_task.name)
                 res = search(preds, transfer.dest_task, next_prefix, visited, depth+1)
@@ -138,7 +107,7 @@ def main():
 
     with torch.no_grad():
         # search_full(gt['rgb'], TASK_MAP['rgb'], 'x', set('rgb'), 1, TASK_MAP['normal'])
-        search(ood_images, TASK_MAP['rgb'], 'x', set('rgb'), 1)
+        search(ood_images, get_task('rgb'), 'x', set('rgb'), 1)
     
     for name, mse_list in mse_dict.items():
         mse_list.sort()

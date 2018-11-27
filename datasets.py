@@ -13,229 +13,169 @@ from torchvision import transforms, utils
 
 from utils import *
 from logger import Logger, VisdomLogger
+from task_configs import get_task, tasks
 
 from PIL import Image
 from io import BytesIO
 import IPython
 
 
-class ImageTaskDataset(Dataset):
-    """Face Landmarks dataset."""
-
-    def __init__(
-        self,
-        buildings,
-        data_dirs=DATA_DIRS,
-        source_task=None,
-        dest_task=None,
-        source_transforms=transforms.ToTensor(),
-        dest_transforms=transforms.ToTensor(),
+""" Default data loading configurations for training, validation, and testing. """
+def load_train_val(source_task, dest_task, 
+        train_buildings=None, val_buildings=None, split_file="data/split.txt", 
+        batch_size=64, batch_transforms=cycle
     ):
-        self.data_dirs = data_dirs
-        self.source_task, self.dest_task, self.buildings = (source_task, dest_task, buildings)
-        self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
 
-        self.source_files = []
-        for building in buildings:
-            self.source_files += sorted(get_files(f"{building}_{source_task.file_name()}/{source_task.file_name()}/*.png", data_dirs))
-            
-        print ("Source files len: ", len(self.source_files))
-        target_files = []
-        for building in buildings:
-            target_files += sorted(get_files(f"{building}_{dest_task.file_name()}/{dest_task.file_name()}/*.png", data_dirs))
-        print("Target files len: ", len(target_files))
-        target_files_set = {convert_path(x, source_task.file_name()) for x in target_files}
-        source_files_set = set(self.source_files)
-        source_files_set = source_files_set.intersection(target_files_set)
-        self.source_files = sorted(list(source_files_set))
-        print("Filtered files len: ", len(self.source_files))
+    if isinstance(source_task, str) and isinstance(dest_task, str):
+        source_task, dest_task = get_task(source_task), get_task(dest_task)
+    
+    data = yaml.load(open(split_file))
+    train_buildings = train_buildings or data["train_buildings"]
+    val_buildings = val_buildings or data["val_buildings"]
 
-    def __len__(self):
-        return len(self.source_files)
+    train_loader = torch.utils.data.DataLoader(
+        TaskDataset(buildings=train_buildings, tasks=[source_task, dest_task]),
+        batch_size=batch_size,
+        num_workers=64, shuffle=True, pin_memory=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        TaskDataset(buildings=val_buildings, tasks=[source_task, dest_task]),
+        batch_size=batch_size,
+        num_workers=64, shuffle=True, pin_memory=True
+    )
 
-    def __getitem__(self, idx):
+    train_step = int(2248616 // (100 * batch_size))
+    val_step = int(245592 // (100 * batch_size))
+    print("Train step: ", train_step)
+    print("Val step: ", val_step)
 
-        for i in range(200):
-            source_file = self.source_files[idx]
-            dest_file = convert_path(source_file, self.dest_task.file_name())
-            try:
-                image = self.source_task.file_loader(source_file)
-                image = self.source_transforms(image).float()
-                task = self.dest_task.file_loader(dest_file)
-                ######### TODO CHANGE CHANGE CHANGE CHANGE ###########
-                task = self.dest_transforms(task).float()
-                # task = task.float()
-                return image, task
-            except Exception as e:
-                # time.sleep(0.1)
-                # print(i, e)
-                idx = random.randrange(0, len(self.source_files))
-                # return self.__getitem__(random.randrange(0, len(self.source_files)))
-        raise Exception('Error, could not open image or target file')
+    return train_loader, val_loader, train_step, val_step
 
-class ImageMultiTaskDataset(Dataset):
-    """Face Landmarks dataset."""
 
-    def __init__(
-        self,
-        buildings,
-        data_dirs=DATA_DIRS,
-        source_task="rgb",
-        dest_task=["normal", "principal_curvature"],
-        source_transforms=transforms.ToTensor(),
-        dest_transforms=transforms.ToTensor(),
+def load_test(source_task, dest_task, 
+        buildings=["almena", "albertville"], sample=6,
     ):
-        self.data_dirs = data_dirs
-        self.source_task, self.dest_tasks, self.buildings = (source_task, dest_task, buildings)
-        self.source_transforms, self.dest_transforms = (source_transforms, dest_transforms)
-        # self.source_files = [
-        #     sorted(glob.glob(f"{data_dir}/{building}_{source_task}/{source_task}/*.png")) for building in buildings
-        # ]
-        self.source_files = []
-        for building in buildings:
-            self.source_files += sorted(get_files(f"{building}_{source_task.file_name()}/{source_task.file_name()}/*.png", data_dirs))
-        print ("Source files len: ", len(self.source_files))
+
+    test_loader1 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[0]], tasks=[source_task, dest_task]),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True
+    )
+    test_loader2 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[1]], tasks=[source_task, dest_task]),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True
+    )
+    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+
+    return test_set, test_images
+
+
+def load_ood(ood_path=f"{SHARED_DIR}/ood_standard_set/", resize=256):
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
+        batch_size=10,
+        num_workers=10, shuffle=False, pin_memory=True
+    )
+    ood_images = list(itertools.islice(ood_loader, 1))
+    return ood_images
+
+
+def load_video_games(ood_path=f"{BASE_DIR}/video_games", resize=256):
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
+        batch_size=66,
+        num_workers=32, shuffle=False, pin_memory=True
+    )
+    ood_images = list(itertools.islice(ood_loader, 1))
+    return ood_images
+    
+
+def load_sintel_train_val_test(batch_size=32):
+    train_loader = torch.utils.data.DataLoader(
+        ImagePairDataset(data_dir=f"{BASE_DIR}/sintel/training/clean", 
+            files=glob.glob(f"{BASE_DIR}/sintel/training/clean/*/*.png")
+        ),
+        batch_size=batch_size,
+        num_workers=batch_size, shuffle=False, pin_memory=True
+    )
+    test_files = glob.glob(f"{BASE_DIR}/sintel/test/clean/*/*.png")
+    random.Random(229).shuffle(test_files)
+    val_loader = torch.utils.data.DataLoader(
+        ImagePairDataset(data_dir=f"{BASE_DIR}/sintel/test/clean", 
+            files=test_files
+        ),
+        batch_size=batch_size,
+        num_workers=batch_size, shuffle=False, pin_memory=True
+    )
+    test_set = list(itertools.islice(val_loader, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+
+    return train_loader, val_loader, test_set, test_images
 
 
 
-    def __len__(self):
-        return len(self.source_files)
 
-    def __getitem__(self, idx):
+class TaskDataset(Dataset):
 
-        source_file = self.source_files[idx]
-        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.png", "/".join(source_file.split('/')[-3:]))
-        building, task, view = (result["building"], result["task"], result["view"])
+    def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS):
 
-        try:
-            image = self.Image.open(source_file)
-            image = self.source_transforms(image).float()
+        super().__init__()
+        self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
 
-            task_data = []
-            for task2 in self.dest_tasks:
-                dest_file = f"{building}_{task2}/{task2}/{view}_domain_{task2}.png"
-                data_dir = FILE_MAP[f"{building}_{task2}"]
-                task = Image.open(f"{data_dir}/{dest_file}")
-                task = self.dest_transforms(task).float()
-                task_data.append(task)
-        
-        except Exception as e:
-            print (e)
-            return self.__getitem__(random.randrange(0, len(self.source_files)))
-        
-        return image, tuple(task_data)
+        # Build a map from buildings to directories
+        self.file_map = {}
+        for data_dir in self.data_dirs:
+            for file in glob.glob(f'{data_dir}/*'):
+                res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
+                if res is None: continue
+                self.file_map[file[len(data_dir)+1:]] = data_dir
 
-
-class GeneralTaskLoader(Dataset):
-    """Face Landmarks dataset."""
-
-    def __init__(
-        self,
-        buildings,
-        tasks,
-        data_dirs=DATA_DIRS,
-        resize=256,
-    ):
-        self.data_dirs = data_dirs
-        self.buildings = buildings
-        self.tasks = tasks
-        self.base_transform = transforms.Compose([transforms.Resize(resize), transforms.ToTensor()])
-
-        assert(len(tasks) > 0)
         filtered_files = set()
         for i, task in enumerate(tasks):
             task_files = []
             for building in buildings:
-                task_files += sorted(get_files(f"{building}_{task.file_name()}/{task.file_name()}/*.png", data_dirs))
+                task_files += sorted(get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", data_dirs))
             print(f"{task.name} file len: {len(task_files)}")
-            task_set = {convert_path(x, tasks[0].file_name()) for x in task_files}
+            task_set = {self.convert_path(x, tasks[0]) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-        self.idx_files = sorted(list(filtered_files))
 
+        self.idx_files = sorted(list(filtered_files))
         print ("Intersection files len: ", len(self.idx_files))
+
+    def convert_path(self, source_file, task):
+        """ Converts a file from task A to task B. """
+
+        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.{ext}", "/".join(source_file.split('/')[-3:]))
+        building, _, view = (result["building"], result["task"], result["view"])
+        dest_file = f"{building}_{task.file_name}/{task.file_name}/{view}_domain_{task.file_name_alt}.{task.file_ext}"
+        if f"{building}_{task.file_name}" not in self.file_map:
+            return ""
+        data_dir = self.file_map[f"{building}_{task.file_name}"]
+        return f"{data_dir}/{dest_file}"
 
     def __len__(self):
         return len(self.idx_files)
 
     def __getitem__(self, idx):
-        try:
-            res = []
-            for task in self.tasks:
-                file_name = convert_path(self.idx_files[idx], task.file_name())
-                image = task.file_loader(file_name)
-                image = self.base_transform(image)
-                image = task.transform(image).float()
-                res.append(image)
-            return tuple(res)
-        except Exception as e:
-            # print (e)
-            return self.__getitem__(random.randrange(0, len(self.idx_files)))
 
-class ImagePairDataset(Dataset):
-    """Face Landmarks dataset."""
-
-    def __init__(
-        self,
-        files=[]
-    ):
-        data_dir = f"{BASE_DIR}/simpsons_imgs"
-        resize = (256, 256)
-
-        def crop(x):
-            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
-        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-        self.files = files
-        print("num files = ", len(self.files))
-
-    def __len__(self):
-        return len(self.files)
-
-    def __getitem__(self, idx):
-
-        file = self.files[idx]
-        try:
-            image = Image.open(file)
-            image = self.transforms(image).float()[0:3, :, :]
-            if image.shape[0] == 1: image = image.expand(3, -1, -1)
-        except Exception as e:
-            return self.__getitem__(random.randrange(0, len(self.files)))
-        # print(image.shape, file)
-        return image, image
-
-
-if __name__ == "__main__":
-
-    logger = VisdomLogger("data", server="35.230.67.129", port=7000, env=JOB)
-
-    ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir="data/ood_images"),
-        batch_size=6,
-        num_workers=6,
-        shuffle=False,
-    )
-    ood_images = torch.cat(list(itertools.islice(ood_loader, 1)), dim=0)
-    logger.images(ood_images, "ood_images", resize=128)
-
-    test_buildings = ["almena", "albertville"]
-    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
-    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-
-    transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
-    data_loader = torch.utils.data.DataLoader(
-        ImageMultiTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform),
-        batch_size=64,
-        num_workers=0,
-        shuffle=True,
-    )
-    logger.add_hook(lambda data: logger.step(), freq=32)
-
-    for i, (X, Y) in enumerate(data_loader):
-        logger.update("epoch", i)
-
+        for i in range(200):
+            try:
+                res = []
+                for task in self.tasks:
+                    file_name = self.convert_path(self.idx_files[idx], task)
+                    if len(file_name) == 0: raise Exception("unable to convert file")
+                    image = task.file_loader(file_name)
+                    res.append(image)
+                return tuple(res)
+            except Exception as e:
+                idx = random.randrange(0, len(self.idx_files))
+                if i == 199: raise (e)
+            
 
 
 class ImageDataset(Dataset):
-    """Face Landmarks dataset."""
 
     def __init__(
         self,
@@ -260,36 +200,48 @@ class ImageDataset(Dataset):
             if image.shape[0] == 1: image = image.expand(3, -1, -1)
         except Exception as e:
             return self.__getitem__(random.randrange(0, len(self.files)))
-        # print(image.shape, file)
         return image
+
+
+class ImagePairDataset(Dataset):
+    """Face Landmarks dataset."""
+    def __init__(self, data_dir, resize=(256, 256), files=None):
+
+        self.data_dir = data_dir
+        def crop(x):
+            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
+        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
+
+        self.files = files or glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
+        print("num files = ", len(self.files))
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+
+        file = self.files[idx]
+        try:
+            image = Image.open(file)
+            image = self.transforms(image).float()[0:3, :, :]
+            if image.shape[0] == 1: image = image.expand(3, -1, -1)
+        except Exception as e:
+            return self.__getitem__(random.randrange(0, len(self.files)))
+        # print(image.shape, file)
+        return image, image
+
+
 
 
 if __name__ == "__main__":
 
-    logger = VisdomLogger("data", server="35.230.67.129", port=7000, env=JOB)
+    logger = VisdomLogger("data", env=JOB)
 
-    ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir="data/ood_images"),
-        batch_size=6,
-        num_workers=6,
-        shuffle=False,
-    )
-    ood_images = torch.cat(list(itertools.islice(ood_loader, 1)), dim=0)
-    logger.images(ood_images, "ood_images", resize=128)
+    train_loader, val_loader, test_set, test_images = load_sintel_train_val_test()
+    logger.images(test_images, "test_images", resize=256)
 
-    test_buildings = ["almena", "albertville"]
-    buildings = [file.split("/")[-1][:-7] for file in glob.glob(f"{DATA_DIR}/*_normal")]
-    train_buildings, val_buildings = train_test_split(buildings, test_size=0.1)
-
-    transform = transforms.Compose([transforms.Resize(256), transforms.ToTensor()])
-    data_loader = torch.utils.data.DataLoader(
-        ImageMultiTaskDataset(buildings=train_buildings, source_transforms=transform, dest_transforms=transform),
-        batch_size=64,
-        num_workers=0,
-        shuffle=True,
-    )
     logger.add_hook(lambda data: logger.step(), freq=32)
 
-    for i, (X, Y) in enumerate(data_loader):
+    for i, (X, Y) in enumerate(train_loader):
         logger.update("epoch", i)
         

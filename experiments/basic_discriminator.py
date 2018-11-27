@@ -28,7 +28,7 @@ from functools import partial
 import IPython
 
 
-def main(disc_step=0.0):
+def main(disc_step=0.0, max_epochs=200):
 
     disc_weight = 1e-2
 
@@ -76,7 +76,7 @@ def main(disc_step=0.0):
     plot_images(model, logger, test_set, ood_images, mask_val=0.502)
 
     # TRAINING
-    for epochs in range(0, 800):
+    for epochs in range(0, max_epochs):
         logger.update("epoch", epochs)
 
         train_set = itertools.islice(train_loader, train_step)

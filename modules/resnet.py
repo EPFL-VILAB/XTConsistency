@@ -12,30 +12,6 @@ from torch.optim.lr_scheduler import MultiStepLR
 from models import TrainableModel
 from utils import *
 
-class ConvBlock(nn.Module):
-    def __init__(self, f1, f2, use_groupnorm=True, groups=8, dilation=1, transpose=False):
-        super().__init__()
-        self.transpose = transpose
-        self.conv = nn.Conv2d(f1, f2, (3, 3), dilation=dilation, padding=dilation)
-        if self.transpose:
-            self.convt = nn.ConvTranspose2d(
-                f1, f1, (3, 3), dilation=dilation, stride=2, padding=dilation, output_padding=1
-            )
-        if use_groupnorm:
-            self.bn = nn.GroupNorm(groups, f1)
-        else:
-            self.bn = nn.GroupNorm(8, f1)
-
-    def forward(self, x):
-        # x = F.dropout(x, 0.04, self.training)
-        x = self.bn(x)
-        if self.transpose:
-            # x = F.upsample(x, scale_factor=2, mode='bilinear')
-            x = F.relu(self.convt(x))
-            # x = x[:, :, :-1, :-1]
-        x = F.relu(self.conv(x))
-        return x
-
 class Bottleneck(nn.Module):
     expansion = 4
 
@@ -133,57 +109,27 @@ class ResNetOriginal(nn.Module):
         return x
 
 class ResNet(TrainableModel):
-    def __init__(self):
+    def __init__(self, out_channels=1000):
         super().__init__()
-        # self.resnet = models.resnet50()
         self.resnet = ResNetOriginal(Bottleneck, [3, 4, 6, 3])
-        self.final_conv = nn.Conv2d(2048, 128, (3, 3), padding=1)
-
-        self.decoder = nn.Sequential(
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 128, transpose=True),
-            ConvBlock(128, 3, transpose=True),
-        )
+        self.final = nn.Linear(2048, out_channels)
 
     def forward(self, x):
 
         for layer in list(self.resnet._modules.values())[:-2]:
             x = layer(x)
-
-        x = self.final_conv(x)
-        x = self.decoder(x)
+        x = F.relu(x.mean(dim=2).mean(dim=2))
+        x = F.log_softmax(self.final(x), dim=1)
 
         return x
 
-    ### Not in Use Right Now ###
     def loss(self, pred, target):
-        mask = build_mask(pred, val=0.502)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
 
 
 
+if __name__ == "__main__":
+    model = ResNet(out_channels=365)
+    print (model(torch.randn(2, 3, 256, 256)).shape)
 
-class ResNetClass(TrainableModel):
-    def __init__(self):
-        super().__init__()
-        self.resnet = models.resnet50(pretrained=True)
-
-    def forward(self, x):
-
-        for layer in list(self.resnet._modules.values())[:-2]:
-            x = layer(x)
-        return x
-
-    ### Not in Use Right Now ###
-    def loss(self, pred, target):
-        mask = build_mask(pred, val=0.502)
-        mse = F.mse_loss(pred[mask], target[mask])
-        return mse, (mse.detach(),)

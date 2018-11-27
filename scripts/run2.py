@@ -11,7 +11,7 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
 
     elapsed()
     try:
-        run_log = yaml.load(open("checkpoints/runlog.yml"))
+        run_log = yaml.load(open("checkpoints/runlog.yml")) or {}
     except:
         run_log = {}
 
