@@ -20,7 +20,7 @@ import IPython
 
 def main():
 
-    pairs = list(itertools.product(["rgb"], ["class_scene", "point_info"]))
+    pairs = list(itertools.product(["rgb"], ["segment_semantic"]))
     for i, (src_task, dest_task) in enumerate(pairs):
         src_task, dest_task = get_task(src_task), get_task(dest_task)
         print (f"Transfer {i}: source task={src_task}, dest task={dest_task}")
@@ -42,9 +42,9 @@ def main():
         train_loader, val_loader, train_step, val_step = load_train_val(src_task, dest_task, 
             batch_size=64, train_buildings=["almena"], val_buildings=["almena"])
         test_set, test_images = load_test(src_task, dest_task)
-        logger.images(test_images, "images", resize=128)
+        src_task.plot_func(test_images, "images", logger, resize=128)
 
-        for epochs in range(0, 2):
+        for epochs in range(0, 20):
 
             plot_images(model, logger, test_set, dest_task, show_masks=True)
 

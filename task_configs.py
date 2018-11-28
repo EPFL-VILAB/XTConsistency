@@ -50,7 +50,7 @@ def get_model(src_task, dest_task):
         return UNet(downsample=5, in_channels=src_task.shape[0], out_channels=dest_task.shape[0])
 
     elif isinstance(src_task, ImageTask) and isinstance(dest_task, ClassTask):
-        return ResNet(out_channels=dest_task.classes)
+        return ResNet(in_channels=src_task.shape[0], out_channels=dest_task.classes)
 
     elif isinstance(src_task, ImageTask) and isinstance(dest_task, PointInfoTask):
         return ResNet(out_channels=dest_task.out_channels)
@@ -149,20 +149,20 @@ class ImageClassTask(ImageTask):
         super().__init__(*args, **kwargs)
 
     def norm(self, pred, target):
-        loss = F.kl_div(pred, torch.exp(target))
-        return loss, (loss.detach())
+        loss = F.kl_div(F.log_softmax(pred, dim=1), F.softmax(target, dim=1))
+        return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger, resize=None):
         _, idx = torch.max(data, dim=1)
-        idx = idx/16.0
-        print (idx.min(), idx.max())
+        idx = idx.float()/16.0
+        idx = idx.unsqueeze(1).expand(-1, 3, -1, -1)
         logger.images(idx.clamp(min=0, max=1), name, nrow=2, resize=resize or self.resize)
 
     def file_loader(self, path):
-        data = self.image_transform(Image.open(open(path, 'rb')))
-        one_hot = torch.cuda.FloatTensor(self.classes, data.shape[0], data.shape[0]).fill_(1e-10)
-        one_hot = one_hot.scatter_(0, data.unsqueeze(0), 1)
-        return torch.log(one_hot)
+        data = (self.image_transform(Image.open(open(path, 'rb')))*255.0).long()
+        one_hot = torch.zeros((self.classes, data.shape[1], data.shape[2]))
+        one_hot = one_hot.scatter_(0, data, 1)
+        return one_hot
 
 
 class ClassTask(Task):
@@ -178,6 +178,7 @@ class ClassTask(Task):
         super().__init__(*args, **kwargs)
 
     def norm(self, pred, target):
+        # Input and target are BOTH logits
         loss = F.kl_div(pred, torch.exp(target))
         return loss, (loss.detach(),) 
 
@@ -261,6 +262,10 @@ tasks = [
         mask_val=1.0, 
         transform=partial(clamp_maximum_transform, max_val=8000.0),
     ),
+    ImageClassTask('segment_semantic',
+        file_name_alt="segmentsemantic",
+        shape=(16, 256, 256), classes=16,
+    ),
     ImageTask('reshading', mask_val=0.0507),
     ImageTask('edge_occlusion', 
         shape=(1, 256, 256),
@@ -287,9 +292,6 @@ tasks = [
         classes=1000, classes_file="data/object_classes.txt"
     ),
     PointInfoTask('point_info'),
-    ImageClassTask('segment_semantic',
-        shape=(16, 256, 256),
-    ),
 ]
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
@@ -297,3 +299,8 @@ tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
 def get_task(task_name):
     return task_map[task_name]
 
+
+
+
+if __name__ == "__main__":
+    IPython.embed()

@@ -52,10 +52,10 @@ class Bottleneck(nn.Module):
 
 class ResNetOriginal(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, in_channels=3, num_classes=1000):
         self.inplanes = 64
         super(ResNetOriginal, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.GroupNorm(8, 64)
         self.relu = nn.ReLU(inplace=True)
@@ -109,9 +109,9 @@ class ResNetOriginal(nn.Module):
         return x
 
 class ResNet(TrainableModel):
-    def __init__(self, out_channels=1000):
+    def __init__(self, in_channels=3, out_channels=1000):
         super().__init__()
-        self.resnet = ResNetOriginal(Bottleneck, [3, 4, 6, 3])
+        self.resnet = ResNetOriginal(Bottleneck, [3, 4, 6, 3], in_channels=in_channels)
         self.final = nn.Linear(2048, out_channels)
 
     def forward(self, x):
