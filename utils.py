@@ -33,7 +33,7 @@ RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 
 if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic2", "/keypoints", "/keypoints2d"]
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 else:
@@ -48,7 +48,8 @@ def build_file_map(data_dirs=DATA_DIRS, task_list={}):
             if res is None: continue
             file_map[file[len(data_dir)+1:]] = data_dir
             if res['task'] in task_list:
-                task_count[res['task']] += len(glob.glob(f'{file}/**', recursive=True))
+                print(res['building'], len(glob.glob(f'{file}/**', recursive=True)))
+                # task_count[res['task']] += len(glob.glob(f'{file}/**', recursive=True))
     return file_map
 
 FILE_MAP = build_file_map()
