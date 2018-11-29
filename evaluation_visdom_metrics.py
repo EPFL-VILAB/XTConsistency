@@ -3,6 +3,7 @@ from functools import lru_cache
 from itertools import chain
 from pathlib import Path
 
+import fire
 import imageio
 from PIL import Image
 from evaluation_visdom_visualizations import convert_normal_for_display
@@ -142,6 +143,7 @@ class TaskonomyTestDataset(data.Dataset):
 
         return rgb_image, normal_image, valid_pixels, image_name
 
+
 class TaskonomyPredictionGenerator:
     @staticmethod
     @lru_cache(maxsize=None)
@@ -149,7 +151,8 @@ class TaskonomyPredictionGenerator:
         if custom_data_loader:
             data_loader = custom_data_loader
         else:
-            data_loader = data.DataLoader(taskonomy_test_dataset_actual, batch_size=64)
+            taskonomy_test_dataset = TaskonomyTestDataset('almena')
+            data_loader = data.DataLoader(taskonomy_test_dataset, batch_size=64)
 
         model_to_load = our_best_models_to_model[model_name]
         loaded_model = DataParallelModel.load(model_to_load.cuda(),
@@ -236,11 +239,13 @@ class NYUV2Dataset(data.Dataset):
 
         return torch.Tensor(rgb_image), torch.Tensor(normal_gt), torch.Tensor(mask_image), torch.Tensor([ii])
 
+
 class NYUV2PredictionGenerator:
     @staticmethod
     @lru_cache(maxsize=None)
     def get_predictions_from(model_name, resize_frame=(256, 256), dry_run=False):
-        data_loader = data.DataLoader(taskonomy_test_dataset, batch_size=16)
+        nyuv2_test_dataset = NYUV2Dataset((256, 256))
+        data_loader = data.DataLoader(nyuv2_test_dataset, batch_size=16)
         return TaskonomyPredictionGenerator.get_predictions_from(model_name, None, dry_run,
                                                                  custom_data_loader=data_loader)
 
@@ -295,24 +300,6 @@ class NYUV2PredictionGenerator:
 
         return np.asarray(geonet_preds), np.asarray(geonet_gts), np.asarray(geonet_masks), geonet_image_names
 
-taskonomy_test_dataset = NYUV2Dataset((256, 256))
-taskonomy_test_dataset_actual = TaskonomyTestDataset('almena')
-
-our_best_models = [
-    ('rgb2normal_multitask.pth', UNet(in_channels=3, out_channels=6, downsample=5)),
-    ('rgb2normal_imagepercep.pth', UNet()),
-    ('rgb2normal_discriminator.pth', UNet()),
-    ('rgb2normal_random.pth', UNet()),
-    ('unet_percep_epoch150_100.pth', UNetOld()),
-    ('unet_percepstep_0.1.pth', UNetOld()),
-    ('alpha_perceptriangle_method1_curve2depth.pth', UNetOld()),
-    ('alpha_perceptriangle_method2_curve2depth.pth', UNetOld()),
-    ('mixing_percepcurv_norm.pth', UNetOld()),
-    ('unet_baseline.pth', UNetOld()),
-    ('geonet', None),
-]
-our_best_models_to_model = {model_name: arch for model_name, arch in our_best_models}
-
 
 def evaluation_our_models_and_geonet_on_taskonomy():
     all_models_on_nyu_metrics = {}
@@ -323,14 +310,14 @@ def evaluation_our_models_and_geonet_on_taskonomy():
             all_predictions, all_targets, all_valid_pixels, _ = NYUV2PredictionGenerator.get_predictions_from_geonet(
                 dry_run=False)
         else:
-            all_predictions, all_targets, all_valid_pixels, _ = NYUV2PredictionGenerator.get_predictions_from(model_name,
-                                                                                                              dry_run=False)
+            all_predictions, all_targets, all_valid_pixels, _ = NYUV2PredictionGenerator.get_predictions_from(
+                model_name,
+                dry_run=False)
         if model_name == 'rgb2normal_multitask.pth':
             all_predictions = all_predictions[:, :, :, -3:]
 
         metrics = get_metrics(all_predictions, all_targets, all_valid_pixels)
         all_models_on_nyu_metrics[model_name] = metrics
-
 
     all_models_on_taskonomy_metrics = {}
 
@@ -374,6 +361,47 @@ def evaluation_pix2pix_taskonomy():
     return get_metrics(np.asarray(pix2pix_preds[:1600]), np.asarray(pix2pix_targets[:1600]), np.ones((1600, 256, 256)))
 
 
-def main():
-    all_models_on_nyu_metrics, all_models_on_taskonomy_metrics = evaluation_our_models_and_geonet_on_taskonomy()
-    pix2pix_taskonomy_metrics = evaluation_pix2pix_taskonomy()
+our_best_models = [
+    ('rgb2normal_multitask.pth', UNet(in_channels=3, out_channels=6, downsample=5)),
+    ('rgb2normal_imagepercep.pth', UNet()),
+    ('rgb2normal_discriminator.pth', UNet()),
+    ('rgb2normal_random.pth', UNet()),
+    ('unet_percep_epoch150_100.pth', UNetOld()),
+    ('unet_percepstep_0.1.pth', UNetOld()),
+    ('alpha_perceptriangle_method1_curve2depth.pth', UNetOld()),
+    ('alpha_perceptriangle_method2_curve2depth.pth', UNetOld()),
+    ('mixing_percepcurv_norm.pth', UNetOld()),
+    ('unet_baseline.pth', UNetOld()),
+    ('geonet', None),
+]
+our_best_models_to_model = {model_name: arch for model_name, arch in our_best_models}
+
+
+class EvaluationMetrics:
+    # Need to add to the above "our_best_models" if you want to evaluate a new pretrained model
+    def run_on_model(self, model_name: str, dry_run=False):
+        all_predictions, all_targets, all_valid_pixels, _ = TaskonomyPredictionGenerator.get_predictions_from(
+            model_name,
+            building_name='almena',
+            dry_run=dry_run)
+        metrics = get_metrics(all_predictions, all_targets, all_valid_pixels)
+        print('Metrics for taskonomy:')
+        print(metrics)
+        print()
+
+        all_predictions, all_targets, all_valid_pixels, _ = NYUV2PredictionGenerator.get_predictions_from(
+            model_name,
+            dry_run=False)
+        metrics = get_metrics(all_predictions, all_targets, all_valid_pixels)
+        print("Metrics for NYU v2:")
+        print(metrics)
+        print()
+
+    # This takes a long time.
+    def run_on_all(self):
+        all_models_on_nyu_metrics, all_models_on_taskonomy_metrics = evaluation_our_models_and_geonet_on_taskonomy()
+        pix2pix_taskonomy_metrics = evaluation_pix2pix_taskonomy()
+
+
+if __name__ == '__main__':
+    fire.Fire(EvaluationMetrics)
