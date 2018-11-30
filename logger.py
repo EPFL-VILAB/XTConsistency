@@ -14,7 +14,7 @@ from utils import elapsed
 import IPython
 
 class BaseLogger(object):
-    
+    """ Logger class, with hooks for data features and plotting functions. """
     def __init__(self, name, verbose=True):
 
         self.name = name
