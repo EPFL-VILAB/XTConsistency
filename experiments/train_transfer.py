@@ -40,7 +40,7 @@ def main(src_task, dest_task):
 
         logger.update("epoch", epochs)
         plot_images(model, logger, test_set, dest_task, show_masks=True)
-        
+
         train_set = itertools.islice(train_loader, train_step)
         val_set = itertools.islice(val_loader, val_step)
 

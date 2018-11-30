@@ -104,13 +104,14 @@ pretrained_transfers = {
 
 class Transfer(object):
     
-    def __init__(self, src_task, dest_task, checkpoint=True, name=None):
+    def __init__(self, src_task, dest_task, checkpoint=True, name=None, model_type=None, path=None):
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
 
         self.src_task, self.dest_task, self.checkpoint = src_task, dest_task, checkpoint
         self.name = name or f"{src_task.name}2{dest_task.name}" 
-        self.model_type, self.path = pretrained_transfers[(src_task.name, dest_task.name)]
+        saved_type, saved_path = pretrained_transfers[(src_task.name, dest_task.name)]
+        self.model_type, self.path = model_type or saved_type, path or saved_path
         self.model = None
     
     def load_model(self):
@@ -181,6 +182,10 @@ functional_transfers = (
     Transfer('depth_zbuffer', 'principal_curvature', name='H'),
 
     Transfer('rgb', 'normal', name='n'),
+    Transfer('rgb', 'normal', name='npstep', 
+        model_type=lambda: UNetOld(),
+        path=f"{MODELS_DIR}/unet_percepstep_0.1.pth",
+    ),
     Transfer('rgb', 'principal_curvature', name='RC'),
     Transfer('rgb', 'keypoints2d', name='k'),
     Transfer('rgb', 'sobel_edges', name='a'),
@@ -204,8 +209,8 @@ functional_transfers = (
 )
 
 finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = finetuned_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = finetuned_transfers
 
 TRANSFER_MAP = {t.name:t for t in functional_transfers}
 

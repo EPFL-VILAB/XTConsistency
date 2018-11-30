@@ -90,6 +90,16 @@ def load_video_games(ood_path=f"{BASE_DIR}/video_games", resize=256):
     )
     ood_images = list(itertools.islice(ood_loader, 1))
     return ood_images
+
+
+def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
+    ood_loader = torch.utils.data.DataLoader(
+        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
+        batch_size=64,
+        num_workers=64, shuffle=False, pin_memory=True
+    )
+    ood_images = list(itertools.islice(ood_loader, 1))
+    return ood_loader, ood_images
     
 
 def load_sintel_train_val_test(batch_size=32):
@@ -186,6 +196,7 @@ class ImageDataset(Dataset):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
+        self.files = sorted(self.files)
         print("num files = ", len(self.files))
 
     def __len__(self):
