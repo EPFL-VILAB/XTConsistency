@@ -15,7 +15,7 @@ from plotting import *
 from functional import get_functional_loss
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
-from datasets import ImageTaskDataset, ImagePairDataset
+from datasets import ImagePairDataset, load_train_val, load_test, load_ood
 
 from modules.resnet import ResNet
 from modules.unet import UNet, UNetOld
@@ -25,18 +25,20 @@ from skimage import feature
 from functools import partial
 from scipy import ndimage
 
+from transfers import TRANSFER_MAP
+
 import IPython
 
 
-def main(loss_config="gt_mse", mode="standard", **kwargs):
+def main(loss_config="gt_mse", mode="standard", pretrained=False, **kwargs):
 
     # FUNCTIONAL LOSS
     functional = get_functional_loss(config=loss_config, mode=mode, **kwargs)
+    print(functional)
     print ("Losses: ", functional.losses.keys())
 
     # MODEL
-    model = DataParallelModel(UNet())
-    # model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/unet_baseline.pth")
+    model = TRANSFER_MAP['n'].load_model() if pretrained else DataParallelModel(UNet())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
@@ -48,15 +50,16 @@ def main(loss_config="gt_mse", mode="standard", **kwargs):
     functional.logger_hooks(logger)
 
     # DATA LOADING
-    train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
-        load_data_vid("rgb", "normal", batch_size=32, dataset_class=ImagePairDataset)
+    ood_images = load_ood()
+    train_loader, val_loader, train_step, val_step = load_train_val("rgb", "normal", batch_size=48)
+    test_set, test_images = load_test("rgb", "normal")
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
     # TRAINING
-    for epochs in range(0, 800):
+    for epochs in range(0, 50):
         preds_name = "start_preds" if epochs == 0 else "preds"
-        plot_images(model, logger, test_set, ood_images, mask_val=functional.dest_task.mask_val, 
+        plot_images(model, logger, test_set, dest_task="normal", ood_images=ood_images, 
             loss_models=functional.plot_losses, preds_name=preds_name
         )
         logger.update("epoch", epochs)

@@ -55,6 +55,8 @@ def load_train_val(source_task, dest_task,
 def load_test(source_task, dest_task, 
         buildings=["almena", "albertville"], sample=6,
     ):
+    if isinstance(source_task, str) and isinstance(dest_task, str):
+        source_task, dest_task = get_task(source_task), get_task(dest_task)
 
     test_loader1 = torch.utils.data.DataLoader(
         TaskDataset(buildings=[buildings[0]], tasks=[source_task, dest_task]),

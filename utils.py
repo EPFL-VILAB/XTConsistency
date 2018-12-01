@@ -88,16 +88,19 @@ def plot_images(model, logger, test_set, dest_task="normal",
     test_images = torch.cat([x for x, y in test_set], dim=0)
     preds, targets, losses, _ = model.predict_with_data(test_set)
 
+    if isinstance(dest_task, str):
+        dest_task = get_task(dest_task)
+
     if show_masks and isinstance(dest_task, ImageTask):
         test_masks = ImageTask.build_mask(targets, dest_task.mask_val, tol=1e-3)
         logger.images(test_masks.float(), f"{dest_task}_masks", resize=64)
 
-    dest_task.plot_func(preds, preds_name or f"{dest_task}_preds", logger)
-    dest_task.plot_func(targets, target_name or f"{dest_task}_target", logger)
+    dest_task.plot_func(preds, preds_name or f"{dest_task.name}_preds", logger)
+    dest_task.plot_func(targets, target_name or f"{dest_task.name}_target", logger)
     
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
-        dest_task.plot_func(ood_preds, f"{dest_task}_ood_preds", logger)
+        dest_task.plot_func(ood_preds, f"{dest_task.name}_ood_preds", logger)
 
     for name, loss_model in loss_models.items():
         with torch.no_grad():

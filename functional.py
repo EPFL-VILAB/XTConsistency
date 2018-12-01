@@ -12,7 +12,7 @@ from torch.utils.checkpoint import checkpoint
 
 from utils import *
 from plotting import *
-from task_configs import TASK_MAP
+from task_configs import get_task
 from transfers import functional_transfers, finetuned_transfers
 
 from functools import partial
@@ -512,6 +512,17 @@ loss_configs = {
                 "RND(y^)": lambda y, y_hat, x: RND(y_hat), 
             }
         ),
+    "percepcurv": 
+    (
+        {
+            "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
+            "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
+        },
+        {
+            "f(y)": lambda y, y_hat, x: f(y), 
+            "f(y^)": lambda y, y_hat, x: f(y_hat), 
+        }
+    ),
     "cycle_tests": 
         (
             {
@@ -600,8 +611,9 @@ class FunctionalLoss(object):
         self.plot_losses = plot_losses
         if config is not None:
             self.losses, self.plot_losses = loss_configs[config]
+
         self.loss_names = sorted(self.losses.keys())
-        self.src_task, self.dest_task = TASK_MAP[src_task], TASK_MAP[dest_task]
+        self.src_task, self.dest_task = get_task(src_task), get_task(dest_task)
 
     def __call__(self, y, y_hat, x):
         y.parents = [n]
@@ -645,9 +657,9 @@ class NormalizedFunctionalLoss(FunctionalLoss):
 class MixingFunctionalLoss(FunctionalLoss):
     
     def __init__(self, config=None, losses={}, plot_losses={}, update_freq=1):
-        super().__init(config=config, losses=losses, plot_losses=plot_losses)
+        super().__init__(config=config, losses=losses, plot_losses=plot_losses)
         
-        if len(losses) != 2:
+        if len(self.losses) != 2:
             raise Exception("MixingFunctionalLoss requires exactly two loss functions")
 
         print ("WARNING: Changing all functional models to use checkpoint=False")
