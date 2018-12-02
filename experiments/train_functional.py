@@ -57,7 +57,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, **kwargs):
 
     # TRAINING
     for epochs in range(0, 50):
-=        preds_name = "start_preds" if epochs == 0 else "preds"
+        preds_name = "start_preds" if epochs == 0 else "preds"
         ood_name = "start_ood" if epochs == 0 else "ood"
         plot_images(model, logger, test_set, dest_task="normal", ood_images=ood_images, 
             loss_models=functional.plot_losses, preds_name=preds_name, ood_name=ood_name
