@@ -27,7 +27,7 @@ def main(src_task, dest_task):
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
-    logger.add_hook(partial(jointplot, logger=logger, loss_type="mse_loss"), feature="val_mse_loss", freq=1)
+    logger.add_hook(partial(jointplot, loss_type="mse_loss"), feature="val_mse_loss", freq=1)
     logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/{src_task.name}2{dest_task.name}.pth"), feature="loss", freq=400)
 
     # DATA LOADING
