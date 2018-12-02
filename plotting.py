@@ -1,7 +1,7 @@
 import numpy as np
 
-def jointplot(data, logger, loss_type="mse_loss"):
-    data = np.stack((logger.data[f"train_{loss_type}"], logger.data[f"val_{loss_type}"]), axis=1)
+def jointplot(data, loss_type="mse_loss"):
+    data = np.stack((data[f"train_{loss_type}"], data[f"val_{loss_type}"]), axis=1)
     logger.plot(data, loss_type, opts={"legend": [f"train_{loss_type}", f"val_{loss_type}"]})
 
 def get_running_means_w_std_bounds_and_legend_on_diff_prev_time_step(list_of_list_values):

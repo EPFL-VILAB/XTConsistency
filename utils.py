@@ -85,8 +85,7 @@ def plot_images(model, logger, test_set, dest_task="normal",
 
     from task_configs import get_task, ImageTask
     
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-    preds, targets, losses, _ = model.predict_with_data(test_set)
+    test_images, preds, targets, losses, _ = model.predict_with_data(test_set)
 
     if isinstance(dest_task, str):
         dest_task = get_task(dest_task)
@@ -128,6 +127,16 @@ def gaussian_filter(channels=3, kernel_size=5, sigma=1.0, device=0):
     gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
 
     return gaussian_kernel
+
+
+def motion_blur_filter(kernel_size=15):
+    channels = 3
+    kernel_motion_blur = torch.zeros((kernel_size, kernel_size))
+    kernel_motion_blur[int((kernel_size - 1) / 2), :] = torch.ones(kernel_size)
+    kernel_motion_blur = kernel_motion_blur / kernel_size
+    kernel_motion_blur = kernel_motion_blur.view(1, 1, kernel_size, kernel_size)
+    kernel_motion_blur = kernel_motion_blur.repeat(channels, 1, 1, 1)
+    return kernel_motion_blur
 
 
 def sobel_kernel(x):

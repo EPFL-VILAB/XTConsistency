@@ -115,24 +115,24 @@ class TrainableModel(AbstractModel):
             y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
             if logger is not None:
                 logger.update("loss", float(loss))
-            yield ((y_pred.detach(), y, float(loss), metric_data))
+            yield ((batch.detach(), y_pred.detach(), y, float(loss), metric_data))
 
     def fit(self, datagen, loss_fn=None, logger=None):
         for x in self._process_data(datagen, loss_fn=loss_fn, train=train, logger=logger):
             pass
 
     def fit_with_data(self, datagen, loss_fn=None, logger=None):
-        preds, targets, losses, metrics = zip(
+        images, preds, targets, losses, metrics = zip(
             *self._process_data(datagen, loss_fn=loss_fn, train=True, logger=logger)
         )
-        preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
+        images, preds, targets = torch.cat(images, dim=0), torch.cat(preds, dim=0), torch.cat(targets, dim=0)
         metrics = zip(*metrics)
-        return preds, targets, losses, metrics
+        return images, preds, targets, losses, metrics
 
     def fit_with_metrics(self, datagen, loss_fn=None, logger=None):
         metrics = [
             metrics
-            for _, _, _, metrics in self._process_data(
+            for _, _, _, _, metrics in self._process_data(
                 datagen, loss_fn=loss_fn, train=True, logger=logger
             )
         ]
@@ -140,19 +140,19 @@ class TrainableModel(AbstractModel):
 
     def predict_with_data(self, datagen, loss_fn=None, logger=None):
         with torch.no_grad():
-            preds, targets, losses, metrics = zip(
+            images, preds, targets, losses, metrics = zip(
                 *self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)
             )
-            preds, targets = torch.cat(preds, dim=0), torch.cat(targets, dim=0)
+            images, preds, targets = torch.cat(images, dim=0), torch.cat(preds, dim=0), torch.cat(targets, dim=0)
             # preds = torch.cat(preds, dim=0)
             metrics = zip(*metrics)
-        return preds, targets, losses, metrics
+        return images, preds, targets, losses, metrics
 
     def predict_with_metrics(self, datagen, loss_fn=None, logger=None):
         with torch.no_grad():
             metrics = [
                 metrics
-                for _, _, _, metrics in self._process_data(
+                for _, _, _, _, metrics in self._process_data(
                     datagen, loss_fn=loss_fn, train=False, logger=logger
                 )
             ]
