@@ -634,6 +634,9 @@ class FunctionalLoss(object):
         for loss, metric in zip(self.losses.keys(), val_metrics):
             logger.update(f"val_{loss}", np.mean(metric))
 
+    def __str__(self):
+        return str(self.losses.keys())
+
 
 class NormalizedFunctionalLoss(FunctionalLoss):
     

@@ -22,7 +22,7 @@ logger = VisdomLogger("train", env='baselinenormals_geonet')
 
 
 def convert_to_taxonomy_normals(thing):
-    return 255 - thing
+    return 255.0 - thing
 
 
 def convert_normal_for_display(normal_image, should_invert=False):
