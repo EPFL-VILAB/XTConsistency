@@ -81,7 +81,7 @@ class Task(object):
         self.plot_func = plot_func or self.plot_func
 
     def norm(self, pred, target):
-        loss = F.mse_loss(pred, target)
+        loss = ((pred - target)**2).mean()
         return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger, **kwargs):

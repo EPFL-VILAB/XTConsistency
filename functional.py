@@ -14,13 +14,14 @@ from utils import *
 from plotting import *
 from task_configs import get_task
 from transfers import functional_transfers, finetuned_transfers
+from losses import calculate_weight
 
 from functools import partial
 
 import IPython
 
 
-def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
+def get_functional_loss(config="F_gt_mse", mode='standard', model=None, **kwargs):
     if isinstance(mode, str):
         mode = {
             "standard": FunctionalLoss, 
@@ -28,7 +29,7 @@ def get_functional_loss(config="F_gt_mse", mode='standard', **kwargs):
             "normalized": NormalizedFunctionalLoss,
             "curriculum": CurriculumFunctionalLoss,
         }[mode]
-    return mode(config=config, **kwargs)
+    return mode(config=config, model=model, **kwargs)
 
 
 ### FUNCTIONAL LOSS CONFIGS
@@ -605,7 +606,7 @@ loss_configs = {
 
 class FunctionalLoss(object):
     
-    def __init__(self, config=None, losses={}, metrics={}, plot_losses={}, src_task="rgb", dest_task="normal"):
+    def __init__(self, config=None, losses={}, metrics={}, plot_losses={}, src_task="rgb", dest_task="normal", model=None):
 
         self.losses = losses
         self.plot_losses = plot_losses
@@ -614,10 +615,11 @@ class FunctionalLoss(object):
 
         self.loss_names = sorted(self.losses.keys())
         self.src_task, self.dest_task = get_task(src_task), get_task(dest_task)
+        self.model = model
 
     def __call__(self, y, y_hat, x):
         y.parents = [n]
-        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm) for loss in self.loss_names]
+        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm)[0] for loss in self.loss_names]
         return sum(loss_values), [loss.detach() for loss in loss_values]
 
     def logger_hooks(self, logger):
@@ -635,8 +637,8 @@ class FunctionalLoss(object):
 
 class NormalizedFunctionalLoss(FunctionalLoss):
     
-    def __init__(self, config=None, losses={}, plot_losses={}, update_freq=1):
-        super().__init__(config=config, losses=losses, plot_losses=plot_losses)
+    def __init__(self, config=None, losses={}, plot_losses={}, update_freq=1, model=None):
+        super().__init__(config=config, losses=losses, plot_losses=plot_losses, model=model)
         
         self.loss_coeffs = None
         self.update_freq = update_freq
@@ -644,7 +646,7 @@ class NormalizedFunctionalLoss(FunctionalLoss):
 
     def __call__(self, y, y_hat, x):
         y.parents = [n]
-        loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
+        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm)[0] for loss in self.loss_names]
 
         if self.step_count % self.update_freq == 0:
             self.loss_coeffs = [1/loss.detach() for loss in loss_values]
@@ -656,22 +658,23 @@ class NormalizedFunctionalLoss(FunctionalLoss):
 
 class MixingFunctionalLoss(FunctionalLoss):
     
-    def __init__(self, config=None, losses={}, plot_losses={}, update_freq=1):
-        super().__init__(config=config, losses=losses, plot_losses=plot_losses)
+    def __init__(self, config=None, losses={}, plot_losses={}, update_freq=1, model=None):
+        super().__init__(config=config, losses=losses, plot_losses=plot_losses, model=model)
         
         if len(self.losses) != 2:
             raise Exception("MixingFunctionalLoss requires exactly two loss functions")
-
+        if self.model is None:
+            raise Exception("Must pass a model to MixingFunctionalLoss")
         print ("WARNING: Changing all functional models to use checkpoint=False")
         for model in functional_transfers:
             model.checkpoint = False
 
     def __call__(self, y, y_hat, x):
         y.parents = [n]
-        loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
+        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm)[0] for loss in self.loss_names]
         c1, c2 = 1, 1
         if y.requires_grad:
-            c1, c2 = calculate_weight(model, loss_values[0], loss_values[1])
+            c1, c2 = calculate_weight(self.model, loss_values[0], loss_values[1])
 
         return c1*loss_values[0] + c2*loss_values[1], [loss.detach() for loss in loss_values] + [c1]
 
@@ -680,6 +683,9 @@ class MixingFunctionalLoss(FunctionalLoss):
         logger.add_hook(partial(jointplot, logger=logger, loss_type="c"), feature=f"val_c", freq=1)
 
     def logger_update(self, logger, train_metrics, val_metrics):
+        # IPython.embed()
+        train_metrics = list(train_metrics)
+        val_metrics = list(val_metrics)
         super().logger_update(logger, train_metrics[:-1], val_metrics[:-1])
         logger.update(f"train_c", np.mean(train_metrics[-1]))
         logger.update(f"val_c", np.mean(val_metrics[-1]))
@@ -687,15 +693,15 @@ class MixingFunctionalLoss(FunctionalLoss):
 
 class CurriculumFunctionalLoss(FunctionalLoss):
     
-    def __init__(self, config=None, losses={}, plot_losses={}, initial_coeffs=[1.0, 0.0], step=[0.0, 0.1]):
-        super().__init__(config=config, losses=losses, plot_losses=plot_losses)
+    def __init__(self, config=None, losses={}, plot_losses={}, initial_coeffs=[1.0, 0.0], step=[0.0, 0.1], model=None):
+        super().__init__(config=config, losses=losses, plot_losses=plot_losses, model=model)
         
         self.loss_coeffs = initial_coeffs
         self.step = step
 
     def __call__(self, y, y_hat, x):
         y.parents = [n]
-        loss_values = [self.losses[loss](y, y_hat, x, self.norm) for loss in self.loss_names]
+        loss_values = [self.losses[loss](y, y_hat, x, self.dest_task.norm)[0] for loss in self.loss_names]
         final_loss = sum(c*loss for loss, c in zip(loss_values, self.loss_coeffs))
         return final_loss, [loss.detach() for loss in loss_values]
 

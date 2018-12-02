@@ -219,5 +219,8 @@ if __name__ == "__main__":
     y = g(F(f(x)))
     print (y.shape)
 
-
+class Graph(object):
+    def __init__(models_dir=MODELS_DIR):
+        self.models_dir = models_dir
+    
 

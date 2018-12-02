@@ -100,7 +100,7 @@ def plot_images(model, logger, test_set, dest_task="normal",
     
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
-        dest_task.plot_func(ood_preds, f"{dest_task.name}_ood_preds", logger)
+        dest_task.plot_func(ood_preds, ood_name or f"{dest_task.name}_ood_preds", logger)
 
     for name, loss_model in loss_models.items():
         with torch.no_grad():
