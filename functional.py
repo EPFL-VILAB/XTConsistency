@@ -37,83 +37,6 @@ def get_functional_loss(config="F_gt_mse", mode='standard', model=None, **kwargs
 # (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er,) = finetuned_transfers
 
 loss_configs = {
-    "vid_F_EC_a_x": 
-        (
-            {
-                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
-            },
-            {
-                "a(x)": lambda y, y_hat, x: a(x), 
-                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
-                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
-            }
-        ),
-    "vid_F_RC_x": 
-        (
-            {
-                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
-            },
-            {
-                "RC(x)": lambda y, y_hat, x: RC(x), 
-                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
-            }
-        ),
-    "vid_F_f_S_a_x": 
-        (
-            {
-                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
-            },
-            {
-                "a(x)": lambda y, y_hat, x: a(x), 
-                "s(a(x)": lambda y, y_hat, x: S(a(x)), 
-                "f(s(a(x))": lambda y, y_hat, x: f(S(a(x))), 
-                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
-            }
-        ),
-    "vid_all_three": 
-        (
-            {
-                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
-                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
-                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
-            },
-            {
-                "a(x)": lambda y, y_hat, x: a(x), 
-                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
-                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
-                "S(a(x)": lambda y, y_hat, x: S(a(x)), 
-                "f(S(a(x))": lambda y, y_hat, x: f(S(a(x))), 
-                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
-                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
-                "RC(x)": lambda y, y_hat, x: RC(x), 
-            }
-        ),
-    "vid_C_two": 
-        (
-            {
-                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
-                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
-            },
-            {
-                "a(x)": lambda y, y_hat, x: a(x), 
-                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
-                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
-                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
-                "RC(x)": lambda y, y_hat, x: RC(x), 
-
-            }
-        ),
-    "vid_F_KC_k_x": 
-        (
-            {
-                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
-            },
-            {
-                "F(KC(k(x)))": lambda y, y_hat, x: F(KC(k(x))), 
-                "KC(k(x))": lambda y, y_hat, x: KC(k(x)), 
-                "k(x)": lambda y, y_hat, x: k(x), 
-            }
-        ),
     "gt_mse": 
         (
             {
@@ -494,23 +417,81 @@ loss_configs = {
                 "F(KC[k(x)])": lambda y, y_hat, x: F(KC(k(x))), 
             }
         ),
-    "percep_imagenet": 
+    "F_EC_a_x": 
         (
             {
-                "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
-                "NIm(y) -> NIm(y^)": lambda y, y_hat, x, norm: norm(NIm(y), NIm(y_hat)),
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
             },
-            {}
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+            }
         ),
-    "percep_random": 
+    "F_RC_x": 
         (
             {
-                "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
-                "RND(y) -> RND(y^)": lambda y, y_hat, x, norm: norm(RND(y), RND(y_hat)),
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
             },
             {
-                "RND(y)": lambda y, y_hat, x: RND(y), 
-                "RND(y^)": lambda y, y_hat, x: RND(y_hat), 
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
+            }
+        ),
+    "F_f_S_a_x": 
+        (
+            {
+                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "s(a(x)": lambda y, y_hat, x: S(a(x)), 
+                "f(s(a(x))": lambda y, y_hat, x: f(S(a(x))), 
+                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
+            }
+        ),
+    "vid_all_three": 
+        (
+            {
+                "y -> F(f(S(a(x)))": lambda y, y_hat, x, norm: norm(y, F(f(S(a(x))))),
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+                "S(a(x)": lambda y, y_hat, x: S(a(x)), 
+                "f(S(a(x))": lambda y, y_hat, x: f(S(a(x))), 
+                "F(f(S(a(x)))": lambda y, y_hat, x: F(f(S(a(x)))), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)), 
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+            }
+        ),
+    "vid_C_two": 
+        (
+            {
+                "y -> F(RC(x))": lambda y, y_hat, x, norm: norm(y, F(RC(x))),
+                "y -> F(EC(a(x)))": lambda y, y_hat, x, norm: norm(y, F(EC(a(x)))),
+            },
+            {
+                "a(x)": lambda y, y_hat, x: a(x), 
+                "EC(a(x))": lambda y, y_hat, x: EC(a(x)), 
+                "F(EC(a(x)))": lambda y, y_hat, x: F(EC(a(x))), 
+                "F(RC(x))": lambda y, y_hat, x: F(RC(x)),
+                "RC(x)": lambda y, y_hat, x: RC(x), 
+
+            }
+        ),
+    "vid_F_KC_k_x": 
+        (
+            {
+                "y -> F(KC(k(x)))": lambda y, y_hat, x, norm: norm(y, F(KC(k(x)))),
+            },
+            {
+                "F(KC(k(x)))": lambda y, y_hat, x: F(KC(k(x))), 
+                "KC(k(x))": lambda y, y_hat, x: KC(k(x)), 
+                "k(x)": lambda y, y_hat, x: k(x), 
             }
         ),
     "percepcurv": 
@@ -524,82 +505,17 @@ loss_configs = {
             "f(y^)": lambda y, y_hat, x: f(y_hat), 
         }
     ),
-    "cycle_tests": 
-        (
-            {
-                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
-                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
-
-                # "g(y) -> g(y^)": lambda y, y_hat, x, norm: norm(g(y), g(y_hat)),
-                # "G(g(y))_frozen -> y": lambda y, y_hat, x, norm: norm(G(g(y)).detach(), y),
-
-                "s(y) -> s(y^)": lambda y, y_hat, x, norm: norm(s(y), s(y_hat)),
-                "S(s(y))_frozen -> y": lambda y, y_hat, x, norm: norm(S(s(y)), y),
-
-                "nr(y) -> nr(y^)": lambda y, y_hat, x, norm: norm(nr(y), nr(y_hat)),
-                "rn(nr(y)))_frozen -> y^": lambda y, y_hat, x, norm: norm(rn(nr(y)).detach(), y),
-
-                "Nk3(y) -> Nk3(y^)": lambda y, y_hat, x, norm: norm(Nk3(y), Nk3(y_hat)),
-                "k3N(Nk3(y))_frozen -> y^": lambda y, y_hat, x, norm: norm(k3N(Nk3(y)).detach(), y),
-            },
-            {
-                "f(y)": lambda y, y_hat, x: f(y), 
-                "f(y^)": lambda y, y_hat, x: f(y_hat),
-                "F(f(y))": lambda y, y_hat, x: F(f(y)),
-
-                # "g(y)": lambda y, y_hat, x: g(y), 
-                # "g(y^)": lambda y, y_hat, x: g(y_hat),
-                # "G(g(y))": lambda y, y_hat, x: G(g(y)),
-
-                "s(y)": lambda y, y_hat, x: s(y), 
-                "s(y^)": lambda y, y_hat, x: s(y_hat),
-                "S(s(y))": lambda y, y_hat, x: S(s(y)),
-
-                "nr(y)": lambda y, y_hat, x: nr(y), 
-                "nr(y^)": lambda y, y_hat, x: nr(y_hat),
-                "rn(nr(y))": lambda y, y_hat, x: rn(nr(y)),
-
-                "Nk3(y)": lambda y, y_hat, x: Nk3(y), 
-                "Nk3(y^)": lambda y, y_hat, x: Nk3(y_hat),
-                "k3N(Nk3(y))": lambda y, y_hat, x: k3N(Nk3(y)),
-            }
-        ),
-
-        "nontriv_cycle": 
-        (
-            {
-                "f(y) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
-                "F(f(y))_frozen -> y": lambda y, y_hat, x, norm: norm(F(f(y)).detach(), y),
-
-                # "g(y) -> g(y^)": lambda y, y_hat, x, norm: norm(g(y), g(y_hat)),
-                # "G(g(y))_frozen -> y": lambda y, y_hat, x, norm: norm(G(g(y)).detach(), y),
-
-                "s(y) -> s(y^)": lambda y, y_hat, x, norm: norm(s(y), s(y_hat)),
-                "nr(y) -> nr(y^)": lambda y, y_hat, x, norm: norm(nr(y), nr(y_hat)),
-                "Nk3(y) -> Nk3(y^)": lambda y, y_hat, x, norm: norm(Nk3(y), Nk3(y_hat)),
-            },
-            {
-                "f(y)": lambda y, y_hat, x: f(y), 
-                "f(y^)": lambda y, y_hat, x: f(y_hat),
-                "F(f(y))": lambda y, y_hat, x: F(f(y)),
-
-                # "g(y)": lambda y, y_hat, x: g(y), 
-                # "g(y^)": lambda y, y_hat, x: g(y_hat),
-                # "G(g(y))": lambda y, y_hat, x: G(g(y)),
-
-                "s(y)": lambda y, y_hat, x: s(y), 
-                "s(y^)": lambda y, y_hat, x: s(y_hat),
-                # "S(s(y))": lambda y, y_hat, x: S(s(y)),
-
-                "nr(y)": lambda y, y_hat, x: nr(y), 
-                "nr(y^)": lambda y, y_hat, x: nr(y_hat),
-                # "rn(nr(y))": lambda y, y_hat, x: rn(nr(y)),
-
-                "Nk3(y)": lambda y, y_hat, x: Nk3(y), 
-                "Nk3(y^)": lambda y, y_hat, x: Nk3(y_hat),
-                # "k3N(Nk3(y))": lambda y, y_hat, x: k3N(Nk3(y)),
-            }
-        ),
+    "curv_cycle": 
+    (
+        {
+            "y -> y^": lambda y, y_hat, x, norm: norm(y, y_hat),
+            "F(f(y)) -> f(y^)": lambda y, y_hat, x, norm: norm(f(y), f(y_hat)),
+        },
+        {
+            "f(y)": lambda y, y_hat, x: f(y), 
+            "f(y^)": lambda y, y_hat, x: f(y_hat), 
+        }
+    ),
 }
 
 ### FUNCTIONAL LOSSES
@@ -624,7 +540,7 @@ class FunctionalLoss(object):
 
     def logger_hooks(self, logger):
         for loss in self.losses.keys():
-            logger.add_hook(partial(jointplot, logger=logger, loss_type=f"{loss}"), feature=f"val_{loss}", freq=1)
+            logger.add_hook(partial(jointplot, loss_type=f"{loss}"), feature=f"val_{loss}", freq=1)
 
     def logger_update(self, logger, train_metrics, val_metrics):
 
@@ -683,7 +599,7 @@ class MixingFunctionalLoss(FunctionalLoss):
 
     def logger_hooks(self, logger):
         super().logger_hooks(logger)
-        logger.add_hook(partial(jointplot, logger=logger, loss_type="c"), feature=f"val_c", freq=1)
+        logger.add_hook(partial(jointplot, loss_type="c"), feature=f"val_c", freq=1)
 
     def logger_update(self, logger, train_metrics, val_metrics):
         # IPython.embed()

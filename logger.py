@@ -40,7 +40,7 @@ class BaseLogger(object):
 
         for hook, hook_feature, freq in self.hooks:
             if feature == hook_feature and len(self.data[feature]) % freq == 0:
-                hook(self.data[feature])
+                hook(self.data)
 
     def step(self):
         self.text (f"({self.name}) ", end="")
@@ -140,5 +140,9 @@ class VisdomLogger(BaseLogger):
         data = torch.stack([transform(x.cpu()) for x in data])
         data = utils.make_grid(data, nrow=nrow, normalize=normalize, pad_value=0)
         self.window(plot_name, self.visdom.image, np.array(data), opts=opts)
+
+    def images_grouped(self, image_groups, plot_name, **kwargs):
+        interleave = [y for x in zip(*image_groups) for y in x]
+        self.images(interleave, plot_name, nrow=len(image_groups), **kwargs)
 
 

@@ -19,9 +19,8 @@ from datasets import ImagePairDataset, load_train_val, load_test, load_ood
 
 from modules.resnet import ResNet
 from modules.unet import UNet, UNetOld
-from fire import Fire
-
 from functools import partial
+from fire import Fire
 
 from transfers import TRANSFER_MAP
 
