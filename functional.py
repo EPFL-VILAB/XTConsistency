@@ -914,8 +914,7 @@ class MixingFunctionalLoss(FunctionalLoss):
     def __call__(self, y, y_hat, x):
         y.parents = [n]
         loss_values = self.compute_losses(y, y_hat, x)
-
-        c1, c2 = 1, 1
+        c1, c2 =  0.5, 0.5
         if y.requires_grad:
             c1, c2 = calculate_weight(self.model, loss_values[0], loss_values[1])
 

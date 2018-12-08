@@ -7,13 +7,20 @@ import yaml
 import IPython
 
 def process_file(file, result_loc="local/small_data", flags="-C"):
+	# res = parse.parse("http://downloads.cs.stanford.edu/downloads/taskonomy_data/{task}/{building}_{task}.tar", file)
+	# building, task = res['building'], res['task']
+	# data_full_len = len(glob.glob(f'mount/data_full/data/taskonomy3/{building}_{task}/**', recursive=True))
+	# data_len = len(glob.glob(f'mount/data_full/data/taskonomy3/{building}_depth_zbuffer/**', recursive=True))
+	# if data_full_len >= data_len:
+	# 	print(f'skipping {building} for {task}...')
+	# 	return 0, f'{building}_{task}'
 	try:
 		*rest, task, archive = file.split('/')
 		result_dir = f"{result_loc}/{archive[:-4]}"
 		os.makedirs(result_dir, exist_ok=True)
-		print (["wget", file, "-P", result_loc])
+		print (["wget", file, "-q", "-P", result_loc])
 		print (["tar", "xf", f"{result_loc}/{archive}", flags, result_dir, "--no-same-owner"])
-		return_code = subprocess.call(["wget", file, "-P", result_loc])
+		return_code = subprocess.call(["wget", file, "-q", "n-P", result_loc])
 		return_code += subprocess.call(["tar", "xf", f"{result_loc}/{archive}", flags, result_dir, "--no-same-owner"])
 		return_code += subprocess.call(["rm", "-rf", f"{result_loc}/{archive}"])
 
