@@ -17,8 +17,8 @@ from scipy import ndimage
 import IPython
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-dtype = torch.cuda.FloatTensor
-
+USE_CUDA = torch.cuda.is_available()
+dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
 EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
@@ -32,6 +32,10 @@ if BASE_DIR == "/":
     DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
+elif BASE_DIR == "locals":
+    DATA_DIRS = ["locals/small_data"]
+    DATA_DIRS = ["locals/result"]
+    MODELS_DIR = ["locals/shared/models"]
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")
 

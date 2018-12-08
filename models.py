@@ -139,23 +139,22 @@ class TrainableModel(AbstractModel):
         return zip(*metrics)
 
     def predict_with_data(self, datagen, loss_fn=None, logger=None):
-        with torch.no_grad():
-            images, preds, targets, losses, metrics = zip(
-                *self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)
-            )
-            images, preds, targets = torch.cat(images, dim=0), torch.cat(preds, dim=0), torch.cat(targets, dim=0)
-            # preds = torch.cat(preds, dim=0)
-            metrics = zip(*metrics)
+        images, preds, targets, losses, metrics = zip(
+            *self._process_data(datagen, loss_fn=loss_fn, train=False, logger=logger)
+        )
+        images, preds, targets = torch.cat(images, dim=0), torch.cat(preds, dim=0), torch.cat(targets, dim=0)
+        images, preds, targets = images.cpu(), preds.cpu(), targets.cpu()
+        # preds = torch.cat(preds, dim=0)
+        metrics = zip(*metrics)
         return images, preds, targets, losses, metrics
 
     def predict_with_metrics(self, datagen, loss_fn=None, logger=None):
-        with torch.no_grad():
-            metrics = [
-                metrics
-                for _, _, _, _, metrics in self._process_data(
-                    datagen, loss_fn=loss_fn, train=False, logger=logger
-                )
-            ]
+        metrics = [
+            metrics
+            for _, _, _, _, metrics in self._process_data(
+                datagen, loss_fn=loss_fn, train=False, logger=logger
+            )
+        ]
         return zip(*metrics)
 
     def predict(self, datagen):

@@ -1,6 +1,6 @@
 import numpy as np
 
-def jointplot(data, loss_type="mse_loss"):
+def jointplot(logger, data, loss_type="mse_loss"):
     data = np.stack((data[f"train_{loss_type}"], data[f"val_{loss_type}"]), axis=1)
     logger.plot(data, loss_type, opts={"legend": [f"train_{loss_type}", f"val_{loss_type}"]})
 

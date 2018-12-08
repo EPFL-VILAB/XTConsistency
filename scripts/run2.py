@@ -8,7 +8,6 @@ import IPython
 
 
 def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=False):
-
     elapsed()
     try:
         run_log = yaml.load(open("checkpoints/runlog.yml")) or {}
@@ -66,7 +65,7 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
     process.kill()
 
     if debug and run_data["status"] != "Complete":
-        return
+        return 
 
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + run_name, "--exclude", 
         "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "mount"],
@@ -77,9 +76,11 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
 
     interval = elapsed()
     print(f"Program ended after {interval:0.4f} seconds.")
-    if shutdown and run_data["status"] != "Killed" and interval > 60:
-        print(f"Shutting down in 1 minute.")
-        time.sleep(60)
+    print ("Shutdown?", shutdown)
+    print (run_data["status"], interval)
+    if shutdown and run_data["status"] != "Killed" and interval > 1:
+        print(f"Shutting down in 5 minutes.")
+        time.sleep(300)
         subprocess.call("sudo shutdown -h now", shell=True)
 
 def run(cmd, config="default", experiment_id=None, shutdown=False, debug=False):

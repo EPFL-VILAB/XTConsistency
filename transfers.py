@@ -1,7 +1,7 @@
 
 import os, sys, math, random, itertools
 import numpy as np
-from pathlib import Path
+from collections import namedtuple
 
 import torch
 import torch.nn as nn
@@ -209,10 +209,11 @@ functional_transfers = (
 )
 
 finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = finetuned_transfers
-
 TRANSFER_MAP = {t.name:t for t in functional_transfers}
+functional_transfers = namedtuple('functional_transfers', TRANSFER_MAP.keys())(**TRANSFER_MAP)
+
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+
 
 if __name__ == "__main__":
     x = torch.randn(1, 3, 256, 256)

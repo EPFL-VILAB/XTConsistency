@@ -74,7 +74,7 @@ def load_test(source_task, dest_task,
     return test_set, test_images
 
 
-def load_ood(ood_path=f"{SHARED_DIR}/ood_standard_set/", resize=256):
+def load_ood(ood_path=f"{SHARED_DIR}/ood_standard_set", resize=256):
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir=ood_path, resize=(resize, resize)),
         batch_size=10,
@@ -197,6 +197,9 @@ class ImageDataset(Dataset):
         def crop(x):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
+        print ("System: ", f"{data_dir}/*.png")
+        os.system(f"ls {data_dir}/*.png")
+        os.system(f"sudo ls {data_dir}/*.png")
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         self.files = sorted(self.files)
         print("num files = ", len(self.files))

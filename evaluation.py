@@ -1,6 +1,7 @@
 
 import numpy as np
 import os, sys, math, random, glob, time, itertools
+from fire import Fire
 
 import torch
 import torch.nn as nn
@@ -10,7 +11,7 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from task_configs import get_task, get_model, tasks
 from logger import Logger, VisdomLogger
-from datasets import TaskDataset
+from datasets import TaskDataset, load_ood
 import transforms
 
 from modules.unet import UNet, UNetOld
@@ -24,10 +25,10 @@ import IPython
 ### Depth/normal
 
 ### Almena Depth/normal Check
-### Almena corrupted intensity 1 Depth/normal 
-### Almena corrupted intensity 2 Depth/normal 
-### Almena corrupted intensity 3 Depth/normal 
-### Almena corrupted intensity 4 Depth/normal 
+### Almena corrupted intensity 1 Depth/normal Check
+### Almena corrupted intensity 2 Depth/normal Check
+### Almena corrupted intensity 3 Depth/normal Check
+### Almena corrupted intensity 4 Depth/normal Check
 
 ### Almena PGD epsilon 1e-3 Depth/normal
 ### Almena PGD epsilon 1e-1 Depth/normal
@@ -41,13 +42,16 @@ class ValidationMetrics(object):
     PLOT_METRICS = ["ang_error_median", "eval_mse"]
 
     def __init__(self, name, src_task=get_task("rgb"), dest_task=get_task("normal")):
-        self.dataset = TaskDataset(["almena"], tasks=[src_task, dest_task])
         self.name = name
         self.src_task, self.dest_task = src_task, dest_task
+        self.load_dataset()
 
-    def build_dataloader(self, sample=None, batch_size=16):
+    def load_dataset(self):
+        self.dataset = TaskDataset(["almena", "albertville"], tasks=[self.src_task, self.dest_task])
+
+    def build_dataloader(self, sample=None, batch_size=64):
         sampler = torch.utils.data.SequentialSampler() if sample is None else \
-            torch.utils.data.SubsetRandomSampler(random.sample(range(len(self.dataset)), sample))
+            torch.utils.data.SubsetRandomSampler(random.Random(229).sample(range(len(self.dataset)), sample))
 
         eval_loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=batch_size,
@@ -111,19 +115,18 @@ class ValidationMetrics(object):
             data = np.stack((logger.data[key] for key in keys), axis=1)
             logger.plot(data, metric, opts={"legend": keys})
 
-    def evaluate(self, model, logger=None, sample=None):
+    def evaluate(self, model, logger=None, sample=None, show_images=False):
         """ Evaluates dataset on model. """
 
         eval_loader = self.build_dataloader(sample=sample)
-        elapsed()
         images, preds, targets, _, _ = model.predict_with_data(eval_loader)
-        print ("Time elapsed: ", elapsed())
         metrics = self.get_metrics(preds, targets)
 
         if logger is not None:
             for metric in ValidationMetrics.PLOT_METRICS:
                 logger.update(f"{self.name}_{metric}", metrics[metric])
-            logger.images_grouped([images, preds, targets], self.name, resize=256)
+            if show_images:
+                logger.images_grouped([images, preds, targets], self.name, resize=256)
 
         return metrics
 
@@ -158,60 +161,83 @@ class ImageCorruptionMetrics(ValidationMetrics):
         super().__init__(*args, **kwargs)
 
     def build_dataloader(self, sample=None):
-        eval_loader = super().build_dataloader(sample=sample, batch_size=4)
+        eval_loader = super().build_dataloader(sample=sample, batch_size=8)
 
-        for i, images in enumerate(eval_loader):
-
-            
+        for i, (X, Y) in enumerate(eval_loader):
             transform = self.TRANSFORMS[i % len(self.TRANSFORMS)]
-            print (transform)
-
             if transform.geometric:
-                images = torch.stack(images, dim=1)
+                images = torch.stack([X, Y], dim=1)
                 B, N, C, H, W = images.shape
-                images = images.view(B*N, C, H, W)
-                result = transform(images.to(DEVICE))
+                result = transform(images.view(B*N, C, H, W).to(DEVICE))
                 result = result.view(B, N, C, result.shape[2], result.shape[3])                
-            
                 yield result[:, 0], result[:, 1]
-
             else:
-                X, Y = images
-                X = transform(X.to(DEVICE))
-                yield X, Y.to(DEVICE)
+                yield transform(X.to(DEVICE)), Y.to(DEVICE)
 
-    # def __getitem__(self, idx):
-    #     images = super().__getitem__(idx)
-    #     images = torch.stack(images)
-    #     print (images.shape)
-    #     transform = ImageCorruptionDataset.TRANSFORMS[idx % len(ImageCorruptionDataset.TRANSFORMS)]
-    #     images = transform.sample_with_intensity(images, self.corruption/4.0)
-    #     print (images.shape)
-    #     return tuple(images)
+
+class AdversarialMetrics(ValidationMetrics):
+
+    def __init__(self, *args, **kwargs):
+        self.model = kwargs.pop('model', None)
+        self.eps = kwargs.pop('eps', 1e-3)
+        self.n = kwargs.pop('n', 10)
+        self.lr = kwargs.pop('lr', 0.9)
+        super().__init__(*args, **kwargs)
+
+    def build_dataloader(self, sample=None):
+        eval_loader = super().build_dataloader(sample=sample, batch_size=32)
+
+        for i, (X, Y) in enumerate(eval_loader):
+
+            perturbation = torch.randn_like(X).to(DEVICE).requires_grad_(True)
+            optimizer = torch.optim.Adam([perturbation], lr=self.lr)
+
+            for i in range(0, self.n):
+                perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()
+                Xn = (X.to(DEVICE) + perturbation_zc).clamp(min=0, max=1)
+                loss, _ = self.dest_task.norm(self.model(Xn), Y.to(DEVICE))
+                loss = -1.0*loss
+                # print ("Loss: ", loss)
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+            with torch.no_grad():
+                perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()
+                Xn = (X + self.eps*perturbation_zc.cpu()).clamp(min=0, max=1)
+
+            yield Xn.detach(), Y.detach()
+
+    def evaluate(self, model, logger=None, sample=None, show_images=False):
+        self.model = model #set the adversarial model to the current model
+        return super().evaluate(model, logger=logger, sample=sample, show_images=show_images)
+
+datasets = [
+    ValidationMetrics("almena"),
+    # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
+    # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
+    # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
+    ImageCorruptionMetrics("almena_corrupted4", corruption=4),
+    # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
+    AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2),
+]
+
+def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=80, show_images=False):
+    load_ood()
+    model = model or DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/{model_file}")
+    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+
+    logger = logger or VisdomLogger("eval", env=JOB)
+
+    for dataset in datasets:
+        print (dataset.evaluate(model, sample=sample, logger=logger, show_images=show_images))
+
+    ValidationMetrics.plot(logger)
 
 
 
 if __name__ == "__main__":
-    
-    model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/unet_percepstep_0.1.pth")
-    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-
-    logger = VisdomLogger("eval", env=JOB)
-
-    datasets = [
-        ValidationMetrics("almena"),
-        ImageCorruptionMetrics("almena_corrupted1", corruption=1),
-        ImageCorruptionMetrics("almena_corrupted2", corruption=2),
-        ImageCorruptionMetrics("almena_corrupted3", corruption=3),
-        ImageCorruptionMetrics("almena_corrupted4", corruption=4),
-        AdversarialMetrics("almena_adversarial_eps0.001", model=model, eps=1e-3),
-        AdversarialMetrics("almena_adversarial_eps0.01", model=model, eps=1e-2),
-    ]
-
-    for dataset in datasets:
-        print (dataset.name, dataset.evaluate(model, sample=80, logger=logger))
-
-    ValidationMetrics.plot(logger)
+    Fire(run_eval_suite)
 
 
 

@@ -6,7 +6,7 @@ import random
 import yaml
 import IPython
 
-def process_file(file, result_loc="/result", flags="-C"):
+def process_file(file, result_loc="local/small_data", flags="-C"):
 	try:
 		*rest, task, archive = file.split('/')
 		result_dir = f"{result_loc}/{archive[:-4]}"
@@ -22,7 +22,9 @@ def process_file(file, result_loc="/result", flags="-C"):
 		print (e, file)
 		return 1, result_dir
 
-def main(filename="data/alllinks.txt", tasks=['keypoints3d']):
+def main(filename="data/alllinks.txt", tasks=['rgb', 'normal', 
+		'principal_curvature', 'depth_zbuffer', 'reshading', 
+		'sobel_edges', 'keypoints3d', 'keypoints2d', 'edge_occlusion', 'edge_texture']):
 
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]

@@ -40,7 +40,7 @@ class BaseLogger(object):
 
         for hook, hook_feature, freq in self.hooks:
             if feature == hook_feature and len(self.data[feature]) % freq == 0:
-                hook(self.data)
+                hook(self, self.data)
 
     def step(self):
         self.text (f"({self.name}) ", end="")
