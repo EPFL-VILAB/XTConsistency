@@ -925,7 +925,6 @@ class MixingFunctionalLoss(FunctionalLoss):
         logger.add_hook(partial(jointplot, loss_type="c"), feature=f"val_c", freq=1)
 
     def logger_update(self, logger, train_metrics, val_metrics):
-        # IPython.embed()
         train_metrics = list(train_metrics)
         val_metrics = list(val_metrics)
         super().logger_update(logger, train_metrics[:-1], val_metrics[:-1])

@@ -117,10 +117,13 @@ class Transfer(object):
         self.model_type, self.path = model_type or saved_type, path or saved_path
         self.model = None
     
-    def load_model(self):
+    def load_model(self, optimizer=True):
         if self.model is None:
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
+                if optimizer:
+                    self.model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+
             else:
                 self.model = self.model_type()
         return self.model
@@ -218,12 +221,12 @@ functional_transfers = namedtuple('functional_transfers', TRANSFER_MAP.keys())(*
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
 
-class Graph(object):
+class TaskGraph(object):
     def __init__(self, models_dir=MODELS_DIR, transfer_set=None,
      task_filter=['segment_semantic', 'class_scene', 'class_object', 'point_info']):
         self.models_dir = models_dir
         self.tasks, self.edges = self.create_edges(task_filter, transfer_set)
-        print(f'Graph initialized with {len(self.tasks)} tasks and {len(self.edges)} transfers')
+        print(f'Task Graph initialized with {len(self.tasks)} tasks and {len(self.edges)} transfers')
     
     def create_edges(self, task_filter, transfer_set):
         filtered_tasks = set(task_map.keys()) - set(task_filter)
@@ -254,7 +257,7 @@ class Graph(object):
 if __name__ == "__main__":
     # y = g(F(f(x)))
     # print (y.shape)
-    g = Graph()
+    g = TaskGraph()
     counts, total = defaultdict(int), 0
     for i in range(1000):
         x = torch.randn(1, 3, 256, 256).cuda()
