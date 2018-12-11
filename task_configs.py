@@ -109,6 +109,7 @@ class ImageTask(Task):
         self.resize = kwargs.pop("resize", 256)
         self.image_transform = transforms.Compose([
             transforms.Resize(self.resize, interpolation=PIL.Image.NEAREST), 
+            transforms.CenterCrop(256), 
             transforms.ToTensor(),
             self.transform]
         )
@@ -137,7 +138,7 @@ class ImageTask(Task):
 
     def file_loader(self, path):
         # print ("Image transform: ", self.image_transform(Image.open(path)))
-        return self.image_transform(Image.open(open(path, 'rb')))
+        return self.image_transform(Image.open(open(path, 'rb')))[0:3]
 
 
 class ImageClassTask(ImageTask):

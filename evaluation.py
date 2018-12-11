@@ -6,6 +6,7 @@ from fire import Fire
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 
 from utils import *
 from models import TrainableModel, DataParallelModel
@@ -14,7 +15,11 @@ from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_ood
 import transforms
 
-from modules.unet import UNet, UNetOld
+torch.manual_seed(229) # cpu  vars
+torch.cuda.manual_seed_all(229) # gpu vars
+
+from modules.unet import UNet, UNetOld, UNetOld2
+from transfers import functional_transfers as ft
 
 import IPython
 
@@ -49,9 +54,9 @@ class ValidationMetrics(object):
     def load_dataset(self):
         self.dataset = TaskDataset(["almena", "albertville"], tasks=[self.src_task, self.dest_task])
 
-    def build_dataloader(self, sample=None, batch_size=64):
+    def build_dataloader(self, sample=None, batch_size=32, seed=229):
         sampler = torch.utils.data.SequentialSampler() if sample is None else \
-            torch.utils.data.SubsetRandomSampler(random.Random(229).sample(range(len(self.dataset)), sample))
+            torch.utils.data.SubsetRandomSampler(random.Random(seed).sample(range(len(self.dataset)), sample))
 
         eval_loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=batch_size,
@@ -136,7 +141,7 @@ class ValidationMetrics(object):
 class ImageCorruptionMetrics(ValidationMetrics):
 
     TRANSFORMS = [
-        transforms.resize, 
+        # transforms.resize, 
         transforms.resize_rect, 
         transforms.color_jitter, 
         transforms.scale,
@@ -158,18 +163,21 @@ class ImageCorruptionMetrics(ValidationMetrics):
 
     def __init__(self, *args, **kwargs):
         self.corruption = kwargs.pop('corruption', 1)
+        self.transforms = kwargs.pop('transforms', ImageCorruptionMetrics.TRANSFORMS)
         super().__init__(*args, **kwargs)
 
-    def build_dataloader(self, sample=None):
-        eval_loader = super().build_dataloader(sample=sample, batch_size=8)
+    def build_dataloader(self, sample=None, seed=229):
+        eval_loader = super().build_dataloader(sample=sample, batch_size=1, seed=seed)
 
         for i, (X, Y) in enumerate(eval_loader):
-            transform = self.TRANSFORMS[i % len(self.TRANSFORMS)]
+            transform = self.transforms[i % len(self.transforms)]
+            self.orig_image = X
+            print ("Transform: ", transform)
             if transform.geometric:
                 images = torch.stack([X, Y], dim=1)
                 B, N, C, H, W = images.shape
-                result = transform(images.view(B*N, C, H, W).to(DEVICE))
-                result = result.view(B, N, C, result.shape[2], result.shape[3])                
+                result = transform.sample_with_intensity(images.view(B*N, C, H, W).to(DEVICE), self.corruption/4.0)
+                result = result.view(B, N, C, result.shape[2], result.shape[3])
                 yield result[:, 0], result[:, 1]
             else:
                 yield transform(X.to(DEVICE)), Y.to(DEVICE)
@@ -184,18 +192,19 @@ class AdversarialMetrics(ValidationMetrics):
         self.lr = kwargs.pop('lr', 0.9)
         super().__init__(*args, **kwargs)
 
-    def build_dataloader(self, sample=None):
-        eval_loader = super().build_dataloader(sample=sample, batch_size=32)
+    def build_dataloader(self, sample=None, seed=229):
+        eval_loader = super().build_dataloader(sample=sample, batch_size=16, seed=seed)
 
         for i, (X, Y) in enumerate(eval_loader):
 
-            perturbation = torch.randn_like(X).to(DEVICE).requires_grad_(True)
+            perturbation = torch.randn_like(X).requires_grad_(True)
             optimizer = torch.optim.Adam([perturbation], lr=self.lr)
 
             for i in range(0, self.n):
                 perturbation_zc = (perturbation - perturbation.mean())/perturbation.std()
-                Xn = (X.to(DEVICE) + perturbation_zc).clamp(min=0, max=1)
-                loss, _ = self.dest_task.norm(self.model(Xn), Y.to(DEVICE))
+                Xn = (X + perturbation_zc).clamp(min=0, max=1)
+                Yn_pred = self.model(Xn)
+                loss, _ = self.dest_task.norm(Yn_pred, Y.to(Yn_pred.device))
                 loss = -1.0*loss
                 # print ("Loss: ", loss)
                 loss.backward()
@@ -212,15 +221,46 @@ class AdversarialMetrics(ValidationMetrics):
         self.model = model #set the adversarial model to the current model
         return super().evaluate(model, logger=logger, sample=sample, show_images=show_images)
 
+
+class SintelMetrics(ValidationMetrics):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def load_dataset(self):
+        buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
+        self.dataset = TaskDataset(buildings, tasks=[self.src_task, self.dest_task], 
+            building_files=self.building_files, convert_path=self.convert_path)
+
+    def building_files(self, task, building):
+        """ Gets all the tasks in a given building (grouping of data) """
+        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+        return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
+
+    def convert_path(self, source_file, task):
+        """ Converts a file from task A to task B. Can be overriden by subclasses"""
+        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
+        building, view = (result["building"], result["view"])
+
+        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+
+        dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
+        return dest_file
+
+
 datasets = [
-    ValidationMetrics("almena"),
-    # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
-    # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
-    # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
+    # ValidationMetrics("almena"),
+    ImageCorruptionMetrics("almena_corrupted1", corruption=1),
+    ImageCorruptionMetrics("almena_corrupted2", corruption=2),
+    ImageCorruptionMetrics("almena_corrupted3", corruption=3),
     ImageCorruptionMetrics("almena_corrupted4", corruption=4),
     # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
-    AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2),
+    AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
+    SintelMetrics("sintel"),
 ]
+
 
 def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=80, show_images=False):
     load_ood()
@@ -230,14 +270,15 @@ def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth"
     logger = logger or VisdomLogger("eval", env=JOB)
 
     for dataset in datasets:
-        print (dataset.evaluate(model, sample=sample, logger=logger, show_images=show_images))
+        logger.text (str(dataset.evaluate(model, sample=sample, logger=logger, show_images=show_images)))
 
     ValidationMetrics.plot(logger)
 
 
 
 if __name__ == "__main__":
-    Fire(run_eval_suite)
+    # Fire(run_eval_suite)
+    cherry_pick()
 
 
 

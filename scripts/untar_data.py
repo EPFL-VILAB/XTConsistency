@@ -22,9 +22,7 @@ def process_file(file, result_loc="local/small_data", flags="-C"):
 		print (e, file)
 		return 1, result_dir
 
-def main(filename="data/alllinks.txt", tasks=['rgb', 'normal', 
-		'principal_curvature', 'depth_zbuffer', 'reshading', 
-		'sobel_edges', 'keypoints3d', 'keypoints2d', 'edge_occlusion', 'edge_texture']):
+def main(filename="data/somelinks.txt", tasks=['normal']):
 
 	links = [link.strip() for link in open(filename, 'r')]
 	links = [(link, link.split('/')) for link in links]

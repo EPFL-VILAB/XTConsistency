@@ -2,6 +2,8 @@ http://downloads.cs.stanford.edu/downloads/taskonomy_data/class_object/almena_cl
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/class_scene/almena_class_scene.tar
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/depth_zbuffer/almena_depth_zbuffer.tar
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/edge_occlusion/almena_edge_occlusion.tar
+http://downloads.cs.stanford.edu/downloads/taskonomy_data/normal/almena_normal.tar
+http://downloads.cs.stanford.edu/downloads/taskonomy_data/normal/albertville_normal.tar
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/edge_texture/almena_edge_texture.tar
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/keypoints2d/almena_keypoints2d.tar
 http://downloads.cs.stanford.edu/downloads/taskonomy_data/keypoints3d/almena_keypoints3d.tar

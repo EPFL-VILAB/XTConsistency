@@ -131,11 +131,13 @@ def load_sintel_train_val_test(batch_size=32):
 
 class TaskDataset(Dataset):
 
-    def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS):
+    def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
+            building_files=None, convert_path=None):
 
         super().__init__()
         self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
-
+        self.building_files = building_files or self.building_files
+        self.convert_path = convert_path or self.convert_path
         # Build a map from buildings to directories
         self.file_map = {}
         for data_dir in self.data_dirs:
@@ -148,7 +150,7 @@ class TaskDataset(Dataset):
         for i, task in enumerate(tasks):
             task_files = []
             for building in buildings:
-                task_files += sorted(get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", data_dirs))
+                task_files += sorted(self.building_files(task, building))
             print(f"{task.name} file len: {len(task_files)}")
             task_set = {self.convert_path(x, tasks[0]) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
@@ -156,8 +158,12 @@ class TaskDataset(Dataset):
         self.idx_files = sorted(list(filtered_files))
         print ("Intersection files len: ", len(self.idx_files))
 
+    def building_files(self, task, building):
+        """ Gets all the tasks in a given building (grouping of data) """
+        return get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", self.data_dirs)
+
     def convert_path(self, source_file, task):
-        """ Converts a file from task A to task B. """
+        """ Converts a file from task A to task B. Can be overriden by subclasses"""
 
         result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.{ext}", "/".join(source_file.split('/')[-3:]))
         building, _, view = (result["building"], result["task"], result["view"])

@@ -33,9 +33,9 @@ if BASE_DIR == "/":
     RESULTS_DIR = "/result"
     MODELS_DIR = "/models"
 elif BASE_DIR == "locals":
-    DATA_DIRS = ["locals/small_data"]
-    DATA_DIRS = ["locals/result"]
-    MODELS_DIR = ["locals/shared/models"]
+    DATA_DIRS = ["local/small_data"]
+    DATA_DIRS = ["local/result"]
+    MODELS_DIR = ["local/shared/models"]
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")
 

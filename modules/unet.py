@@ -307,3 +307,4 @@ class UNetOld2(TrainableModel):
     def loss(self, pred, target):
         loss = torch.tensor(0.0, device=pred.device)
         return loss, (loss.detach(),)
+        

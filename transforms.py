@@ -168,8 +168,8 @@ def gauss(x, sigma=1):
     return x.clamp(min=1e-3, max=1)
 
 
-@sample(0.0, 0.0, 10.0)
-def motion_blur(x, val=5.0):
+@sample(0.0, 0.0, 30.0)
+def motion_blur(x, val=15.0):
     filter = motion_blur_filter(kernel_size=int(val))
     x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=int(val)//2)
     return x.clamp(min=1e-3, max=1)
