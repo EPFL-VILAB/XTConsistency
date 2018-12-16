@@ -3,7 +3,6 @@ import os, sys, math, random, itertools
 import numpy as np
 from collections import namedtuple, defaultdict
 from pathlib import Path
-from collections import 
 
 import torch
 import torch.nn as nn
@@ -122,7 +121,7 @@ class Transfer(object):
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
                 if optimizer:
-                    self.model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
+                    self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
             else:
                 self.model = self.model_type()
@@ -243,11 +242,10 @@ class TaskGraph(object):
             if not os.path.isfile(path): continue
             edges[key] = Transfer(src_task, dest_task, model_type=model_type, path=path)
             tasks[src_task.name].append(edges[key])
-
             # x = torch.randn(1, src_task.shape[0], 256, 256)
             # print(f'{src_task} -> {dest_task}, channels = {x.shape[1]}')
             # edges[key](x)
-
+        edges = {k:v for k,v in edges.items()}
         return tasks, edges
 
 

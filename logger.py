@@ -37,7 +37,7 @@ class BaseLogger(object):
         if feature not in self.running_data or self.reset_running.pop(feature, False):
             self.running_data[feature] = []
         self.running_data[feature].append(x)
-
+        
         for hook, hook_feature, freq in self.hooks:
             if feature == hook_feature and len(self.data[feature]) % freq == 0:
                 hook(self, self.data)
