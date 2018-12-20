@@ -6,7 +6,7 @@ from pathlib import Path
 import fire
 import imageio
 from PIL import Image
-from evaluation_visdom_visualizations import convert_normal_for_display
+from old.evaluation_visdom_visualizations import convert_normal_for_display
 from logger import VisdomLogger
 from models import DataParallelModel
 from modules.unet import UNetOld, UNet
@@ -59,11 +59,11 @@ def get_metrics(original_pred, original_target, masks):
     ang_error_without_masking = np.mean(ang_errors_per_pixel)
     ang_error_median = np.mean(np.median(np.ma.masked_equal(ang_errors_per_pixel_masked, 0), axis=1))
 
-    normed_pred = pred / (norm(pred)[:, None] + 2e-1)
-    normed_target = target / (norm(target)[:, None] + 2e-1)
     masks_expanded = np.expand_dims(masks, 3).reshape([-1])
-    mse = (normed_pred - normed_target) * masks_expanded[:, None]
-    mse = np.mean(mse ** 2)
+    normed_pred = pred / (norm(pred)[:, None] + 1e-7)       # eps for stability
+    normed_target = target / (norm(target)[:, None] + 1e-7) # eps for stability
+    residuals = (normed_pred - normed_target) * masks_expanded[:, None]
+    mse = np.mean((residuals ** 2) / num_channels)
     rmse = np.sqrt(mse) * 255
 
     threshold_1125 = (np.sum(ang_errors_per_pixel_masked <= 11.25) - num_invalid_pixels) / num_valid_pixels
@@ -73,7 +73,7 @@ def get_metrics(original_pred, original_target, masks):
         "ang_error_without_masking": ang_error_without_masking,
         "ang_error_mean": ang_error_mean,
         "ang_error_median": ang_error_median,
-        # "rmse": rmse,
+        "rmse": rmse,
         'percentage_within_11.25_degrees': threshold_1125,
         'percentage_within_22.5_degrees': threshold_225,
         'percentage_within_30_degrees': threshold_30,
@@ -154,7 +154,7 @@ class TaskonomyPredictionGenerator:
             taskonomy_test_dataset = TaskonomyTestDataset('almena')
             data_loader = data.DataLoader(taskonomy_test_dataset, batch_size=64)
 
-        model_to_load = our_best_models_to_model[model_name]
+        model_to_load = our_pretrained_model_names_to_model[model_name]
         loaded_model = DataParallelModel.load(model_to_load.cuda(),
                                               f"/home/ajaysohmshetty/scaling/{MODELS_DIR}/{model_name}")
 
@@ -304,7 +304,7 @@ class NYUV2PredictionGenerator:
 def evaluation_our_models_and_geonet_on_taskonomy():
     all_models_on_nyu_metrics = {}
 
-    for model_name, _ in our_best_models:
+    for model_name, _ in our_pretrained_models_list:
         print(model_name)
         if model_name == 'geonet':
             all_predictions, all_targets, all_valid_pixels, _ = NYUV2PredictionGenerator.get_predictions_from_geonet(
@@ -321,7 +321,7 @@ def evaluation_our_models_and_geonet_on_taskonomy():
 
     all_models_on_taskonomy_metrics = {}
 
-    for model_name, _ in [('geonet', None)] + our_best_models:
+    for model_name, _ in [('geonet', None)] + our_pretrained_models_list:
         print(model_name)
         if model_name == 'geonet':
             all_predictions, all_targets, all_valid_pixels, _ = TaskonomyPredictionGenerator.get_predictions_from_geonet(
@@ -361,7 +361,7 @@ def evaluation_pix2pix_taskonomy():
     return get_metrics(np.asarray(pix2pix_preds[:1600]), np.asarray(pix2pix_targets[:1600]), np.ones((1600, 256, 256)))
 
 
-our_best_models = [
+our_pretrained_models_list = [
     ('rgb2normal_multitask.pth', UNet(in_channels=3, out_channels=6, downsample=5)),
     ('rgb2normal_imagepercep.pth', UNet()),
     ('rgb2normal_discriminator.pth', UNet()),
@@ -374,7 +374,7 @@ our_best_models = [
     ('unet_baseline.pth', UNetOld()),
     ('geonet', None),
 ]
-our_best_models_to_model = {model_name: arch for model_name, arch in our_best_models}
+our_pretrained_model_names_to_model = {model_name: arch for model_name, arch in our_pretrained_models_list}
 
 
 class EvaluationMetrics:
