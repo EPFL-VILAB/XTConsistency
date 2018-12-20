@@ -63,12 +63,12 @@ def cycle(iterable):
 #             yield resize(X.to(DEVICE), val=val).detach(), resize(Y.to(DEVICE), val=val).detach()
 
 
-def get_files(exp, data_dirs=DATA_DIRS):
+def get_files(exp, data_dirs=DATA_DIRS, recursive=False):
     """ Gets data files across mounted directories matching glob expression pattern. """
 
     files, seen = [], set()
     for data_dir in data_dirs:
-        for file in glob.glob(f'{data_dir}/{exp}'):
+        for file in glob.glob(f'{data_dir}/{exp}', recursive=recursive):
             if file[len(data_dir):] not in seen:
                 files.append(file)
                 seen.add(file[len(data_dir):])
