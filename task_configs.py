@@ -20,6 +20,7 @@ from modules.unet import UNet, UNetOld2, UNetOld
 from modules.resnet import ResNet
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
+from datasets import TaskDataset
 
 import IPython
 
@@ -99,6 +100,29 @@ class Task(object):
 
     def __hash__(self):
         return hash(self.name)
+
+
+""" 
+Abstract task type definitions. 
+Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
+"""
+
+class RealityTask(object):
+    """ General task output space"""
+
+    def __init__(self, name, dataset, tasks=[tasks.rgb, tasks.normal], batch_size=64):
+
+        super().__init__()
+        self.name = name
+        self.loader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size,
+            num_workers=64, shuffle=True, pin_memory=True
+        )
+        self.generator = cycle(loader)
+        self.step()
+
+    def step(self):
+        self.task_data = {task: x for task, x in zip(self.tasks, next(generator))}
 
 
 class ImageTask(Task):

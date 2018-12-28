@@ -12,7 +12,7 @@ from torchvision import models
 
 from utils import *
 from models import TrainableModel, DataParallelModel
-from task_configs import get_task, task_map, get_model
+from task_configs import get_task, task_map, get_model, Task, RealityTask
 
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
@@ -106,7 +106,7 @@ class Transfer(object):
         self.src_task, self.dest_task, self.checkpoint = src_task, dest_task, checkpoint
         self.name = name or f"{src_task.name}2{dest_task.name}" 
         if model_type is None and path is None:
-            saved_type, saved_path = pretrained_transfers[(src_task.name, dest_task.name)]
+            saved_type, saved_path = pretrained_transfers.get((src_task.name, dest_task.name), (None, None))
         self.model_type, self.path = model_type or saved_type, path or saved_path
         self.model = None
     
@@ -116,7 +116,6 @@ class Transfer(object):
                 self.model = DataParallelModel.load(self.model_type().to(DEVICE), self.path)
                 if optimizer:
                     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-
             else:
                 self.model = self.model_type()
         return self.model
