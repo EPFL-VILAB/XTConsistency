@@ -41,8 +41,22 @@ class PathDistribution(object):
         raise NotImplementedError()
 
 class UniformSampler(PathDistribution):
+
     def __init__(self, task_graph, **kwargs):
         super().__init__(task_graph, **kwargs)
+
+    def sample(self):
+        path, curr = [self.start], self.start.dest_task
+        for i in range(self.max_depth):
+            path.append(random.choice(self.g.tasks[curr.name]))
+            curr = path[-1].dest_task
+        return path
+
+class UniformSampler(PathDistribution):
+
+    def __init__(self, task_graph, **kwargs):
+        super().__init__(task_graph, **kwargs)
+
     def sample(self):
         path, curr = [self.start], self.start.dest_task
         for i in range(self.max_depth):

@@ -50,7 +50,6 @@ class AbstractModel(nn.Module):
 
     # Fit (make one optimizer step) on a batch of data
     def fit_on_batch(self, data, target, loss_fn=None, train=True):
-
         loss_fn = loss_fn or self.loss
 
         self.zero_grad()
@@ -60,7 +59,6 @@ class AbstractModel(nn.Module):
 
         self.zero_grad()
         self.optimizer.zero_grad()
-
         pred = self.forward(data)
         if isinstance(target, list):
             target = tuple(t.to(pred.device) for t in target)
@@ -78,6 +76,22 @@ class AbstractModel(nn.Module):
             self.optimizer.zero_grad()
 
         return pred, loss, metrics
+
+    # Make one optimizer step w.r.t a loss
+    def step(self, loss, train=True):
+
+        loss_fn = loss_fn or self.loss
+
+        self.zero_grad()
+        self.optimizer.zero_grad()
+        self.train()
+        self.zero_grad()
+        self.optimizer.zero_grad()
+
+        loss.backward()
+        self.optimizer.step()
+        self.zero_grad()
+        self.optimizer.zero_grad()
 
     @classmethod
     def load(cls, weights_file=None):

@@ -56,7 +56,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=48,
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
     # TRAINING
-    for epochs in range(0, 40):
+    for epochs in range(0, 15):
         preds_name = "start_preds" if epochs == 0 and pretrained else "preds"
         ood_name = "start_ood" if epochs == 0 and pretrained else "ood"
         plot_images(model, logger, test_set, dest_task="normal", ood_images=ood_images, 

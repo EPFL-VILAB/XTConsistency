@@ -1,31 +1,25 @@
 
 import os, sys, math, random, itertools
+from collections import namedtuple
 import numpy as np
-from collections import namedtuple, defaultdict
-from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from torch.utils.checkpoint import checkpoint as util_checkpoint
+from torchvision import models
 
 from utils import *
 from models import TrainableModel, DataParallelModel
+from task_configs import get_task, task_map, get_model
 
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
-from sklearn.model_selection import train_test_split
+
 from fire import Fire
-
-from skimage import feature
-from functools import partial
-from task_configs import get_task, task_map, get_model
-
-from torchvision import models
-
 import IPython
 
 
@@ -119,7 +113,7 @@ class Transfer(object):
     def load_model(self, optimizer=True):
         if self.model is None:
             if self.path is not None:
-                self.model = DataParallelModel.load(self.model_type().cuda(), self.path)
+                self.model = DataParallelModel.load(self.model_type().to(DEVICE), self.path)
                 if optimizer:
                     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
@@ -132,6 +126,19 @@ class Transfer(object):
         preds = util_checkpoint(self.model, x) if self.checkpoint else self.model(x)
         preds.task = self.dest_task
         return preds
+
+
+class RealityTransfer(Transfer):
+
+    def __init__(self, src_task, dest_task):
+        super().__init__(src_task, dest_task, model_type=lambda: None)
+
+    def load_model(self, optimizer=True):
+        pass
+
+    def __call__(self, x):
+        assert (isinstance(self.src_task, RealityTask))
+        return self.src_task.task_data[self.dest_task]
 
 
 class FineTunedTransfer(Transfer):
@@ -219,59 +226,10 @@ functional_transfers = namedtuple('functional_transfers', TRANSFER_MAP.keys())(*
 
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
-
-class TaskGraph(object):
-    def __init__(self, models_dir=MODELS_DIR, transfer_set=None,
-     task_filter=['segment_semantic', 'class_scene', 'class_object', 'point_info']):
-        self.models_dir = models_dir
-        self.tasks, self.edges = self.create_edges(task_filter, transfer_set)
-        print(f'Task Graph initialized with {len(self.tasks)} tasks and {len(self.edges)} transfers')
-    
-    def create_edges(self, task_filter, transfer_set):
-        filtered_tasks = set(task_map.keys()) - set(task_filter)
-        all_tasks = [task_map[n] for n in filtered_tasks]
-        edges, tasks = {}, defaultdict(list)
-        for src_task, dest_task in itertools.product(all_tasks, all_tasks):
-            key = (src_task.name, dest_task.name)
-            if transfer_set is not None and key not in transfer_set: continue
-
-            model_type, path = pretrained_transfers.get(key, (None, None))
-            path = path or f"{self.models_dir}/{src_task}2{dest_task}.pth"
-            model_type = model_type or partial(get_model, src_task.name, dest_task.name)
-
-            if not os.path.isfile(path): continue
-            edges[key] = Transfer(src_task, dest_task, model_type=model_type, path=path)
-            tasks[src_task.name].append(edges[key])
-            # x = torch.randn(1, src_task.shape[0], 256, 256)
-            # print(f'{src_task} -> {dest_task}, channels = {x.shape[1]}')
-            # edges[key](x)
-        edges = {k:v for k,v in edges.items()}
-        return tasks, edges
-
-
-
-
-
 if __name__ == "__main__":
-    # y = g(F(f(x)))
-    # print (y.shape)
-    g = TaskGraph()
-    counts, total = defaultdict(int), 0
-    for i in range(1000):
-        x = torch.randn(1, 3, 256, 256).cuda()
-        prev, curr = 'rgb', 'normal'
-        for j in range(5):
-            # print(f'{prev} -> {curr}')
-            counts[(prev, curr)] += 1
-            total += 1
-            # x = g.edges[(prev, curr)](x)
-            next_dest = random.choice(g.tasks[curr]).dest_task.name
-            prev = curr
-            curr = next_dest
-        # print(f'{task} has {len(g.tasks[task])} nbrs')
-    counts = sorted([(b/total, a) for a,b in counts.items()])
-    for count, (src_task, dest_task) in counts:
-        print(f'{count}\t\t\t{src_task}->{dest_task}')
+    y = g(F(f(x)))
+    print (y.shape)
+    
 
 
 

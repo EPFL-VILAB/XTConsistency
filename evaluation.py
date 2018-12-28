@@ -251,14 +251,14 @@ class SintelMetrics(ValidationMetrics):
 
 
 datasets = [
-    # ValidationMetrics("almena"),
-    ImageCorruptionMetrics("almena_corrupted1", corruption=1),
-    ImageCorruptionMetrics("almena_corrupted2", corruption=2),
-    ImageCorruptionMetrics("almena_corrupted3", corruption=3),
-    ImageCorruptionMetrics("almena_corrupted4", corruption=4),
-    # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
-    AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
-    SintelMetrics("sintel"),
+    ValidationMetrics("almena"),
+    # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
+    # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
+    # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
+    # ImageCorruptionMetrics("almena_corrupted4", corruption=4),
+    # # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
+    # AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
+    # SintelMetrics("sintel"),
 ]
 
 

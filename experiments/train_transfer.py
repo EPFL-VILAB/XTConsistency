@@ -26,13 +26,13 @@ def main(src_task, dest_task):
 
     # LOGGING
     logger = VisdomLogger("train", env=JOB)
-    logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
+    logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=25)
     logger.add_hook(partial(jointplot, loss_type="mse_loss"), feature="val_mse_loss", freq=1)
-    logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/{src_task.name}2{dest_task.name}.pth"), feature="loss", freq=400)
+    logger.add_hook(lambda logger, data: model.save(f"{RESULTS_DIR}/{src_task.name}2{dest_task.name}.pth"), feature="loss", freq=400)
 
     # DATA LOADING
-    train_loader, val_loader, train_step, val_step = \
-        load_train_val(src_task, dest_task, batch_size=64)
+    train_loader, val_loader, train_step, val_step = load_train_val(src_task, dest_task, batch_size=64) 
+        # train_buildings=["almena", "albertville"], val_buildings=["almena"])
     test_set, test_images = load_test(src_task, dest_task)
     src_task.plot_func(test_images, "images", logger, resize=128)
 
@@ -44,10 +44,11 @@ def main(src_task, dest_task):
         train_set = itertools.islice(train_loader, train_step)
         val_set = itertools.islice(val_loader, val_step)
 
+        print ("Here")
         (train_mse_data,) = model.fit_with_metrics(train_set, loss_fn=dest_task.norm, logger=logger)
-        logger.update("train_mse_loss", np.mean(train_mse_data))
+        logger.update("train_mse_loss", train_mse_data)
         (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=dest_task.norm, logger=logger)
-        logger.update("val_mse_loss", np.mean(val_mse_data))
+        logger.update("val_mse_loss", val_mse_data)
 
 
 if __name__ == "__main__":

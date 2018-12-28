@@ -164,11 +164,12 @@ class TaskDataset(Dataset):
 
     def convert_path(self, source_file, task):
         """ Converts a file from task A to task B. Can be overriden by subclasses"""
-
-        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.{ext}", "/".join(source_file.split('/')[-3:]))
+        source_file = "/".join(source_file.split('/')[-3:])
+        result = parse.parse("{building}_{task}/{task}/{view}_domain_{task2}.{ext}", source_file)
         building, _, view = (result["building"], result["task"], result["view"])
         dest_file = f"{building}_{task.file_name}/{task.file_name}/{view}_domain_{task.file_name_alt}.{task.file_ext}"
         if f"{building}_{task.file_name}" not in self.file_map:
+            print (f"{building}_{task.file_name} not in file map")
             return ""
         data_dir = self.file_map[f"{building}_{task.file_name}"]
         return f"{data_dir}/{dest_file}"
@@ -203,7 +204,6 @@ class ImageDataset(Dataset):
         def crop(x):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-        print ("System: ", f"{data_dir}/*.png")
         os.system(f"ls {data_dir}/*.png")
         os.system(f"sudo ls {data_dir}/*.png")
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
@@ -253,17 +253,11 @@ class ImagePairDataset(Dataset):
         return image, image
 
 
-
-
 if __name__ == "__main__":
 
     logger = VisdomLogger("data", env=JOB)
-
-    train_loader, val_loader, test_set, test_images = load_sintel_train_val_test()
-    logger.images(test_images, "test_images", resize=256)
-
-    logger.add_hook(lambda data: logger.step(), freq=32)
+    train_loader = TaskDataset(buildings=["almena", "albertville"], tasks=[tasks.rgb, tasks.normal])
+    logger.add_hook(lambda logger, data: logger.step(), freq=32)
 
     for i, (X, Y) in enumerate(train_loader):
         logger.update("epoch", i)
-        

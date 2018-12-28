@@ -15,3 +15,4 @@ checkpoints
 *.pyc
 data/results
 .DS_Store
+local

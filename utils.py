@@ -1,7 +1,6 @@
 
 import numpy as np
 import random, sys, os, time, glob, math, itertools, yaml
-from sklearn.model_selection import train_test_split
 import parse
 from collections import defaultdict
 
@@ -34,11 +33,16 @@ if BASE_DIR == "/":
     MODELS_DIR = "/models"
 elif BASE_DIR == "locals":
     DATA_DIRS = ["local/small_data"]
-    DATA_DIRS = ["local/result"]
-    MODELS_DIR = ["local/shared/models"]
+    RESULTS_DIR = "local/result"
+    MODELS_DIR = "local/models"
+elif BASE_DIR == "cvgl":
+    DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
+    RESULTS_DIR = "local/result"
+    MODELS_DIR = "local/models"
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")
 
+print (DATA_DIRS)
 
 def elapsed(last_time=[time.time()]):
     """ Returns the time passed since elapsed() was last called. """

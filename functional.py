@@ -847,7 +847,7 @@ class FunctionalLoss(object):
         if config is not None:
             self.losses, self.plot_losses = loss_configs[config]
 
-        self.loss_names = sorted(self.losses.keys())
+        self.loss_names = self.losses.keys()
         self.src_task, self.dest_task = get_task(src_task), get_task(dest_task)
         self.model = model
 
@@ -944,8 +944,9 @@ class CurriculumFunctionalLoss(FunctionalLoss):
         y.parents = [n]
         loss_values = self.compute_losses(y, y_hat, x)
 
-        loss_coeffs2 = [1/loss.detach() for loss in loss_values]
-        final_loss = sum(c*loss*c2 for loss, c, c2 in zip(loss_values, self.loss_coeffs, loss_coeffs2))
+        # loss_coeffs2 = [1/loss.detach() for loss in loss_values]
+        # final_loss = sum(c*loss*c2 for loss, c, c2 in zip(loss_values, self.loss_coeffs, loss_coeffs2))
+        final_loss = sum(c*loss for loss, c in zip(loss_values, self.loss_coeffs))
         return final_loss, [loss.detach() for loss in loss_values]
 
     def logger_update(self, logger, train_metrics, val_metrics):

@@ -94,8 +94,11 @@ class Task(object):
     def __eq__(self, other):
         return self.name == other.name
 
-    def __str__(self):
+    def __repr__(self):
         return self.name
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class ImageTask(Task):
@@ -255,6 +258,22 @@ def blur_transform(x, max_val=4000.0):
 
 
 tasks = [
+    RealityTask('almena', 
+        dataset=TaskDataset(
+            buildings=['almena'], 
+            tasks=[tasks.rgb, tasks.normal],
+        ),
+        tasks=[tasks.rgb, tasks.normal],
+        batch_size=64
+    )
+    # RealityTask('sintel', 
+    #     dataset=TaskDataset(
+    #         buildings=['almena'], 
+    #         tasks=[tasks.rgb, tasks.normal],
+    #     ),
+    #     tasks=[tasks.rgb, tasks.normal],
+    #     batch_size=64
+    # )
     ImageTask('rgb'),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
@@ -289,10 +308,10 @@ tasks = [
         file_name_alt="class_places", 
         classes=365, classes_file="data/scene_classes.txt"
     ),
-    ClassTask('class_object', 
-        classes=1000, classes_file="data/object_classes.txt"
-    ),
-    PointInfoTask('point_info'),
+    # ClassTask('class_object', 
+    #     classes=1000, classes_file="data/object_classes.txt"
+    # ),
+    # PointInfoTask('point_info'),
 ]
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
