@@ -206,6 +206,34 @@ class TaskDataset(Dataset):
             except Exception as e:
                 idx = random.randrange(0, len(self.idx_files))
                 if i == 199: raise (e)
+
+
+class SintelDataset(TaskDataset):
+
+    def __init__(self, *args, **kwargs):
+        if kwargs["buildings"] is None:
+            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
+        super().__init__(*args, **kwargs)
+
+    def load_dataset(self):
+        buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
+
+    def building_files(self, task, building):
+        """ Gets all the tasks in a given building (grouping of data) """
+        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+        return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
+
+    def convert_path(self, source_file, task):
+        """ Converts a file from task A to task B. Can be overriden by subclasses"""
+        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
+        building, view = (result["building"], result["view"])
+
+        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+
+        dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
+        return dest_file
             
 
 

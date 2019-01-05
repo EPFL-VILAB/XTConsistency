@@ -1,6 +1,7 @@
 
-import os, sys, math, random, itertools
+import os, sys, math, random, itertools, heapq
 from collections import namedtuple, defaultdict
+from functools import partial, reduce
 import numpy as np
 
 import torch
@@ -11,7 +12,7 @@ from utils import *
 from models import TrainableModel, WrapperModel
 from datasets import TaskDataset
 from task_configs import get_task, task_map, tasks, get_model, RealityTask
-from transfers import Transfer, RealityTransfer
+from transfers import Transfer, RealityTransfer, get_named_transfer
 
 
 
@@ -43,7 +44,7 @@ class TaskGraph(TrainableModel):
             if isinstance(dest_task, RealityTask): continue
             if src_task == dest_task: continue
 
-            transfer = Transfer(src_task, dest_task)
+            transfer = get_named_transfer(Transfer(src_task, dest_task))
             if transfer.model_type is None: continue
             self.edges += [transfer]
             self.adj[src_task] += [transfer]
@@ -51,7 +52,8 @@ class TaskGraph(TrainableModel):
         self.estimates = WrapperModel(
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.randn(
-                    *([batch_size] + list(task.shape))).requires_grad_(True).to(DEVICE)
+                        *([batch_size] + list(task.shape))
+                    ).requires_grad_(True).to(DEVICE)*task.variance*1e-3
                 ) for task in tasks
             })
         )
@@ -120,6 +122,54 @@ class TaskGraph(TrainableModel):
             norm(transfer) for transfer in random.sample(self.edges, sample)
         ]
         return sum(task_data)/len(task_data)
+
+    def plot_paths(self, logger, reality, dest_tasks=[tasks.normal], show_images=False, max_len=4):
+
+        def dfs(task, X, max_len=max_len, history=[]):
+            if task in dest_tasks: yield (history, X)
+            if isinstance(task, RealityTask) or max_len == 0: return
+
+            for transfer in self.adj[task]:
+                yield from dfs(
+                    transfer.dest_task, transfer(X), max_len=max_len-1, 
+                    history=history+[transfer]
+                )
+
+        self.mse, self.pathnames = defaultdict(list), defaultdict(list)
+        images = []
+        for history, Y in itertools.chain.from_iterable(
+            dfs(src_task, self.estimates[src_task.name], history=[src_task]) \
+            for src_task in self.anchored_tasks
+        ): 
+            print ("DFS path: ", history)
+            dest_task = history[-1].dest_task
+            pathname = reduce(lambda a, b: f"{b}({a})", history)
+            mse = dest_task.norm(reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
+
+            self.mse[dest_task] += [mse]
+            self.pathnames[dest_task] += [pathname]
+            images.append((-mse, pathname, Y))
+
+        if show_images:
+            for mse, pathname, Y in heapq.nlargest(5, images):
+                logger.images(Y, pathname, resize=256)
+            for task in dest_task:
+                logger.images(reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
+
+        self.update_paths(logger, reality)
+
+
+    def update_paths(self, logger, reality):
+
+        for task in self.pathnames:
+            curr_mse = task.norm(reality.task_data[task].to(DEVICE), 
+                self.estimates[task.name])[0].data.cpu().numpy().mean()
+
+            logger.bar([curr_mse] + self.mse[task], f'{task}_path_mse', opts={'rownames': ["current"] + self.pathnames[task]})
+
+    def plot_estimates(self, logger):
+        for task in self.tasks:
+            task.plot_func(self.estimates[task.name], task.name, logger)
 
     # def free_energy(self, sample=12):
 

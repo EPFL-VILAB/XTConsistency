@@ -128,7 +128,7 @@ class Transfer(object):
         return preds
 
     def __repr__(self):
-        return str(self.src_task) + " -> " + str(self.dest_task)
+        return self.name or str(self.src_task) + " -> " + str(self.dest_task)
 
 
 class RealityTransfer(Transfer):
@@ -226,6 +226,12 @@ functional_transfers = (
 finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]
 TRANSFER_MAP = {t.name:t for t in functional_transfers}
 functional_transfers = namedtuple('functional_transfers', TRANSFER_MAP.keys())(**TRANSFER_MAP)
+
+def get_named_transfer(transfer):
+    for t in functional_transfers:
+        if transfer.src_task == t.src_task and transfer.dest_task == t.dest_task:
+            return t
+    return transfer
 
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
