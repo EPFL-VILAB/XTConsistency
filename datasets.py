@@ -51,6 +51,21 @@ def load_train_val(source_task, dest_task,
 
     return train_loader, val_loader, train_step, val_step
 
+""" Load all buildings """
+def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", batch_transforms=cycle):
+
+    data = yaml.load(open(split_file))
+    buildings = buildings or (data["train_buildings"] + data["val_buildings"])
+
+    data_loader = torch.utils.data.DataLoader(
+        TaskDataset(buildings=buildings, tasks=tasks),
+        batch_size=batch_size,
+        num_workers=0, shuffle=True, pin_memory=True
+    )
+
+    return data_loader
+
+
 
 def load_test(source_task, dest_task, 
         buildings=["almena", "albertville"], sample=6,

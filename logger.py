@@ -128,6 +128,9 @@ class VisdomLogger(BaseLogger):
     def histogram(self, data, plot_name, opts={}):
         self.window(plot_name, self.visdom.histogram, np.array(data), opts=opts)
 
+    def scatter(self, X, Y, plot_name, opts={}):
+        self.window(plot_name, self.visdom.scatter, np.stack([X, Y], axis=1), opts=opts)
+
     def bar(self, data, plot_name, opts={}):
         self.window(plot_name, self.visdom.bar, np.array(data), opts=opts)
 

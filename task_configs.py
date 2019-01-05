@@ -20,7 +20,6 @@ from modules.unet import UNet, UNetOld2, UNetOld
 from modules.resnet import ResNet
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
-from datasets import TaskDataset
 
 import IPython
 
@@ -67,6 +66,7 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 
 class Task(object):
     """ General task output space"""
+    variances = yaml.load(open(f"{MODELS_DIR}/variances.txt"))
 
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
@@ -80,6 +80,8 @@ class Task(object):
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
+        self.variance = Task.variances.get(name, 1.0)
+        print (self.name, self.variance)
 
     def norm(self, pred, target):
         loss = ((pred - target)**2).mean()
@@ -107,22 +109,27 @@ Abstract task type definitions.
 Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
-class RealityTask(object):
+class RealityTask(Task):
     """ General task output space"""
 
-    def __init__(self, name, dataset, tasks=[tasks.rgb, tasks.normal], batch_size=64):
+    def __init__(self, name, dataset, tasks, batch_size=64):
 
-        super().__init__()
-        self.name = name
-        self.loader = torch.utils.data.DataLoader(
+        super().__init__(name=name)
+        self.tasks = tasks
+        loader = torch.utils.data.DataLoader(
             dataset, batch_size=batch_size,
             num_workers=64, shuffle=True, pin_memory=True
         )
         self.generator = cycle(loader)
+        self.shape = (1,)
         self.step()
 
+    def norm(self, pred, target):
+        loss = torch.tensor(0.0, device=pred.device)
+        return loss, (loss.detach(),)
+
     def step(self):
-        self.task_data = {task: x for task, x in zip(self.tasks, next(generator))}
+        self.task_data = {task: x for task, x in zip(self.tasks, next(self.generator))}
 
 
 class ImageTask(Task):
@@ -280,16 +287,18 @@ def blur_transform(x, max_val=4000.0):
     return norm
 
 
+def get_task(task_name):
+    return task_map[task_name]
 
 tasks = [
-    RealityTask('almena', 
-        dataset=TaskDataset(
-            buildings=['almena'], 
-            tasks=[tasks.rgb, tasks.normal],
-        ),
-        tasks=[tasks.rgb, tasks.normal],
-        batch_size=64
-    )
+    # RealityTask('almena', 
+    #     dataset=TaskDataset(
+    #         buildings=['almena'], 
+    #         tasks=["rgb", "normal"],
+    #     ),
+    #     tasks=["rgb", "normal"],
+    #     batch_size=64
+    # ),
     # RealityTask('sintel', 
     #     dataset=TaskDataset(
     #         buildings=['almena'], 
@@ -339,9 +348,6 @@ tasks = [
 ]
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
-
-def get_task(task_name):
-    return task_map[task_name]
 
 
 

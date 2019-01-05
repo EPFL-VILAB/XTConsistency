@@ -6,17 +6,15 @@ from fire import Fire
 
 def experiment_id(config):
     i = 1
-    while subprocess.call(f"gsutil stat gs://taskonomy-code/{config}_{i}/utils.py".split(), 
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
+    while subprocess.call(f"gsutil stat gs://taskonomy-code/{config}_{i}/utils.py".split()) == 0:
         i += 1
     return config + "_" + str(i)
 
 def upload(exp_id):
     os.system(f"echo {exp_id}, 0, mount > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude",
-        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "local"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "local"])
+    subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split())
 
 def delete(env):
     import visdom

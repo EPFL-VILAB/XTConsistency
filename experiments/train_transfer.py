@@ -44,7 +44,6 @@ def main(src_task, dest_task):
         train_set = itertools.islice(train_loader, train_step)
         val_set = itertools.islice(val_loader, val_step)
 
-        print ("Here")
         (train_mse_data,) = model.fit_with_metrics(train_set, loss_fn=dest_task.norm, logger=logger)
         logger.update("train_mse_loss", train_mse_data)
         (val_mse_data,) = model.predict_with_metrics(val_set, loss_fn=dest_task.norm, logger=logger)

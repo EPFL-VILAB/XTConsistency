@@ -148,14 +148,22 @@ def motion_blur_filter(kernel_size=15):
 
 
 def sobel_kernel(x):
-    def dest_transforms(image):
-        image = image.data.cpu().numpy().mean(axis=0)
-        blur = ndimage.filters.gaussian_filter(image, sigma=2)
-        sx = ndimage.sobel(blur, axis=0, mode='constant')
-        sy = ndimage.sobel(blur, axis=1, mode='constant')
-        image = np.hypot(sx, sy)
-        edge = torch.FloatTensor(image, device=x.device).unsqueeze(0)
-        return edge
 
-    edges = torch.stack([dest_transforms(image) for image in x], dim=0).to(x.device)
-    return edges
+    blur = gaussian_filter(channels=3, kernel_size=5, sigma=2.0)
+    x = F.conv2d(x, weight=blur.to(x.device), bias=None, groups=3, padding=2)
+    x = x.mean(dim=1, keepdim=True)
+
+    a=np.array([[1, 0, -1],[2,0,-2],[1,0,-1]])
+    conv1=nn.Conv2d(1, 1, kernel_size=3, stride=1, padding=1, bias=False)
+    conv1.weight=nn.Parameter(torch.from_numpy(a).float().unsqueeze(0).unsqueeze(0))
+    conv1 = conv1.to(x.device)
+    G_x=conv1(x)
+
+    b=np.array([[1, 2, 1],[0,0,0],[-1,-2,-1]])
+    conv2=nn.Conv2d(1, 1, kernel_size=3, stride=1, padding=1, bias=False)
+    conv2.weight=nn.Parameter(torch.from_numpy(b).float().unsqueeze(0).unsqueeze(0))
+    conv2 = conv2.to(x.device)
+    G_y=conv2(x)
+
+    G=torch.sqrt(torch.pow(G_x,2)+ torch.pow(G_y,2))
+    return G

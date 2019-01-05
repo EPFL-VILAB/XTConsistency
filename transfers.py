@@ -104,7 +104,8 @@ class Transfer(object):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
 
         self.src_task, self.dest_task, self.checkpoint = src_task, dest_task, checkpoint
-        self.name = name or f"{src_task.name}2{dest_task.name}" 
+        self.name = name or f"{src_task.name}2{dest_task.name}"
+        saved_type, saved_path = None, None
         if model_type is None and path is None:
             saved_type, saved_path = pretrained_transfers.get((src_task.name, dest_task.name), (None, None))
         self.model_type, self.path = model_type or saved_type, path or saved_path
@@ -126,6 +127,9 @@ class Transfer(object):
         preds.task = self.dest_task
         return preds
 
+    def __repr__(self):
+        return str(self.src_task) + " -> " + str(self.dest_task)
+
 
 class RealityTransfer(Transfer):
 
@@ -137,7 +141,7 @@ class RealityTransfer(Transfer):
 
     def __call__(self, x):
         assert (isinstance(self.src_task, RealityTask))
-        return self.src_task.task_data[self.dest_task]
+        return self.src_task.task_data[self.dest_task].to(DEVICE)
 
 
 class FineTunedTransfer(Transfer):

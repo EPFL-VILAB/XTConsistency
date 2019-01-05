@@ -80,8 +80,6 @@ class AbstractModel(nn.Module):
     # Make one optimizer step w.r.t a loss
     def step(self, loss, train=True):
 
-        loss_fn = loss_fn or self.loss
-
         self.zero_grad()
         self.optimizer.zero_grad()
         self.train()
@@ -198,6 +196,24 @@ class DataParallelModel(TrainableModel):
         if weights_file is not None:
             model.load_state_dict(torch.load(weights_file))
         return model
+
+class WrapperModel(TrainableModel):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x):
+        return self.model(x)
+
+    def loss(self, x, preds):
+        raise NotImplementedError()
+
+    def __getitem__(self, i):
+        return self.model[i]
+
+    @property
+    def module(self):
+        return self.model
 
 
 if __name__ == "__main__":
