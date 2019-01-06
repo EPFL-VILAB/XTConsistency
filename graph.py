@@ -54,7 +54,7 @@ class TaskGraph(TrainableModel):
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.randn(
                         *([batch_size] + list(task.shape))
-                    ).requires_grad_(True).to(DEVICE)#*task.variance*1e-3
+                    ).requires_grad_(True).to(DEVICE)*task.variance
                 ) for task in tasks
             })
         )

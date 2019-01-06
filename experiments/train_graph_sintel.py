@@ -32,19 +32,23 @@ def main():
         tasks.principal_curvature, 
         tasks.sobel_edges,
         tasks.depth_zbuffer,
+        tasks.reshading,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
+        tasks.keypoints2d,
     ]
     tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
 
     reality = RealityTask('sintel', 
         dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal]),
         tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal],
-        batch_size=8
+        batch_size=4
     )
     graph = TaskGraph(
         tasks=[reality, *task_list],
-        anchored_tasks=[reality, tasks.rgb],
+        anchored_tasks=[reality, tasks.rgb, tasks.normal],
         reality=reality,
-        batch_size=8
+        batch_size=4
     )
 
     print (graph.edges)
@@ -57,15 +61,14 @@ def main():
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
     logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    logger.images(functional_transfers.d(graph.estimate(tasks.rgb)), "d(x)", resize=256)
-    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer, tasks.normal], show_images=True)
+    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer], show_images=False)
 
-    # for epochs in range(0, 4000):
-    #     logger.update("epoch", epochs)
+    for epochs in range(0, 4000):
+        logger.update("epoch", epochs)
 
-    #     free_energy = graph.free_energy(sample=4)
-    #     graph.estimates.step(free_energy)
-    #     logger.update("energy", free_energy)
+        free_energy = graph.free_energy(sample=12)
+        graph.estimates.step(free_energy)
+        logger.update("energy", free_energy)
 
 
 if __name__ == "__main__":

@@ -30,10 +30,7 @@ def main():
     ]
 
     reality = RealityTask('almena', 
-        dataset=TaskDataset(
-            buildings=['almena'],
-            tasks=task_list,
-        ),
+        dataset=TaskDataset(buildings=['almena'], tasks=task_list),
         tasks=task_list,
         batch_size=4
     )
@@ -43,13 +40,8 @@ def main():
         reality=reality,
         edges_exclude=[
             ('almena', 'normal'),  #remove all GT for normals
-            # ('almena', 'principal_curvature'),  #remove all GT for normals
-            ('almena', 'depth_zbuffer'),  #remove all GT for normals
-            ('almena', 'sobel_edges'),  #remove all GT for normals
-            # ('rgb', 'normal'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'principal_curvature'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'depth_zbuffer'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'sobel_edges'), #remove all GT substitutes (pretraining?)
+            ('almena', 'depth_zbuffer'),  #remove all GT for depth_zbuffer
+            ('almena', 'sobel_edges'),  #remove all GT for sobel_edges
         ],
         anchored_tasks=[
             reality,
@@ -58,23 +50,21 @@ def main():
             # tasks.depth_zbuffer,
             # tasks.sobel_edges,
         ],
+        reality=reality,
         batch_size=4
     )
 
     print (graph.edges)
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
-    graph.estimates['rgb'].data = reality.task_data[tasks.rgb].to(DEVICE)
-    graph.estimates['principal_curvature'].data = reality.task_data[tasks.principal_curvature].to(DEVICE)
-    # graph.estimates['normal'].data = TRANSFER_MAP['n'](graph.estimates['rgb'].data).detach().to(DEVICE)
 
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
-    logger.add_hook(lambda logger, data: graph.update_paths(logger, reality), feature="epoch", freq=32)
+    logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.plot_paths(logger, reality, show_images=True)
+    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer], show_images=False)
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
@@ -86,4 +76,5 @@ def main():
 
 if __name__ == "__main__":
     Fire(main)
+
 
