@@ -36,7 +36,7 @@ def main(src_task, dest_task):
     test_set, test_images = load_test(src_task, dest_task)
     src_task.plot_func(test_images, "images", logger, resize=128)
 
-    for epochs in range(0, 300):
+    for epochs in range(0, 800):
 
         logger.update("epoch", epochs)
         plot_images(model, logger, test_set, dest_task, show_masks=True)
