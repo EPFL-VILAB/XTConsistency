@@ -286,6 +286,11 @@ def blur_transform(x, max_val=4000.0):
         norm = norm.unsqueeze(0)
     return norm
 
+def sintel_depth_transform(x):
+    x = (1.0/ (x+1/255.0))
+    print (x.min(), x.max())
+    x = x / 255.0
+    return x.clamp(min=0.0, max=1.0)
 
 def get_task(task_name):
     return task_map[task_name]
@@ -346,10 +351,15 @@ tasks = [
     # ),
     # PointInfoTask('point_info'),
 ]
+
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
 
-
+tasks.depth_zbuffer.sintel_depth = ImageTask('depth_sintel',
+    shape=(1, 256, 256), 
+    mask_val=1.0, 
+    transform=sintel_depth_transform,
+)
 
 
 if __name__ == "__main__":

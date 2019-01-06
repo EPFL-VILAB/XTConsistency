@@ -21,13 +21,14 @@ class TaskGraph(TrainableModel):
     from directories."""
 
     def __init__(self, 
-            tasks=tasks, edges=None, edges_exclude=None, batch_size=64, 
+            tasks=tasks, edges=None, edges_exclude=None, batch_size=64, reality=None,
             task_filter=[tasks.segment_semantic, tasks.class_scene],
             anchored_tasks=[]
         ):
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
         self.edges, self.adj = [], defaultdict(list)
+        self.reality=reality
 
         # construct transfer graph
         for src_task, dest_task in itertools.product(self.tasks, self.tasks):
@@ -59,6 +60,10 @@ class TaskGraph(TrainableModel):
         )
 
         self.anchored_tasks = set(anchored_tasks)
+        for task in self.anchored_tasks:
+            if task is self.reality: continue
+            self.estimates[task.name].data = self.reality.task_data[task].to(DEVICE)
+
         tasks_theta = list(set(tasks) - self.anchored_tasks)
         self.p = WrapperModel(
             nn.ParameterDict({
@@ -123,7 +128,7 @@ class TaskGraph(TrainableModel):
         ]
         return sum(task_data)/len(task_data)
 
-    def plot_paths(self, logger, reality, dest_tasks=[tasks.normal], show_images=False, max_len=4):
+    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=4):
 
         def dfs(task, X, max_len=max_len, history=[]):
             if task in dest_tasks: yield (history, X)
@@ -135,40 +140,92 @@ class TaskGraph(TrainableModel):
                     history=history+[transfer]
                 )
 
-        self.mse, self.pathnames = defaultdict(list), defaultdict(list)
-        images = []
+        self.mse, self.pathnames, images = defaultdict(list), defaultdict(list), defaultdict(list)
         for history, Y in itertools.chain.from_iterable(
             dfs(src_task, self.estimates[src_task.name], history=[src_task]) \
             for src_task in self.anchored_tasks
-        ): 
+        ):
             print ("DFS path: ", history)
             dest_task = history[-1].dest_task
             pathname = reduce(lambda a, b: f"{b}({a})", history)
-            mse = dest_task.norm(reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
+            mse = dest_task.norm(self.reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
 
             self.mse[dest_task] += [mse]
             self.pathnames[dest_task] += [pathname]
-            images.append((-mse, pathname, Y))
+            images[dest_task] += [(-mse, pathname, Y)]
 
         if show_images:
-            for mse, pathname, Y in heapq.nlargest(5, images):
-                logger.images(Y.clamp(min=0, max=1), pathname, resize=256)
-            for task in reality.task_data:
-                logger.images(reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
+            for task in dest_tasks:
+                for mse, pathname, Y in heapq.nlargest(5, images[task]):
+                    logger.images(Y, pathname, resize=256)
+                logger.images(self.reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
 
-        self.update_paths(logger, reality)
+        self.update_paths(logger)
 
+    def update_paths(self, logger):
 
-    def update_paths(self, logger, reality):
         for task in self.pathnames:
-            curr_mse = task.norm(reality.task_data[task].to(DEVICE), 
+            curr_mse = task.norm(self.reality.task_data[task].to(DEVICE), 
                 self.estimates[task.name])[0].data.cpu().numpy().mean()
-            data, rownames = zip(*sorted(zip([curr_mse] + self.mse[task], ["current"] + self.pathnames[task])))
-            logger.bar(data, f'{task}_path_mse', opts={'rownames': list(rownames)})
+            data, rownames = zip(*sorted(zip(self.mse[task],  self.pathnames[task])))
+            logger.bar([curr_mse] + list(data), f'{task}_path_mse', opts={'rownames': ["current"] + list(rownames)})
 
     def plot_estimates(self, logger):
         for task in self.tasks:
             task.plot_func(self.estimates[task.name], task.name, logger)
+
+    def prob(self, task):
+        if task in self.anchored_tasks:
+            return torch.tensor(1.0, device=DEVICE)
+        return F.softmax(F.relu(self.p[task.name]), dim=0)[1]
+    
+    def dist(self, task):
+        if task in self.anchored_tasks:
+            return torch.tensor([0.0, 1.0], device=DEVICE)
+        return F.softmax(self.p[task.name].clamp(min=1e-3, max=1-1e-3), dim=0)
+
+    def estimate(self, task):
+        x = self.estimates[task.name]
+        return x.detach() if task in self.anchored_tasks else x
+
+    # def conditional(self, transfer):
+
+    #     A, B = transfer.src_task, transfer.dest_task
+
+    #     Ax = self.estimate(A)
+    #     Bx = self.estimate(B)
+
+    #     est_mse = transfer.dest_task.norm(Bx, transfer(Ax))[0]
+    #     gt_mse = B.variance*(1 - self.prob(B))
+    #     mse = (est_mse**2 + gt_mse**2)**(0.5)
+        
+    #     # pdf is uniform in angle?
+    #     # Do some clever math here to ensure nothing becomes 0.0 for no reason
+    #     # Without causing pathological edge cases
+
+    #     p = F.relu(1 - mse/B.variance)/self.prob(A)
+    #     p = p.clamp(min=1e-3, max=1-1e-3)
+    #     prob = torch.stack([1-p, p])
+
+    #     divergence = F.kl_div(torch.log(prob), self.dist(B))
+    #     print (f"{transfer}: p(F|E)={p} -> p(F)={self.prob(B)} ... transfer_mse={est_mse}, variance={B.variance}, divergence={divergence}")
+
+    #     return prob
+
+    def free_energy(self, sample=10):
+
+        def norm(transfer):
+            return (
+                transfer.dest_task.norm(
+                    self.estimate(transfer.dest_task), 
+                    transfer(self.estimate(transfer.src_task))
+                )[0]/transfer.dest_task.variance
+            )
+
+        task_data = [
+            norm(transfer) for transfer in random.sample(self.edges, sample)
+        ]
+        return sum(task_data)/len(task_data)
 
     # def free_energy(self, sample=12):
 

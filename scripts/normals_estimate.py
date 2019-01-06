@@ -102,19 +102,7 @@ def normal_from_depth(file_name, cam_file=None, image_file=None):
         print (file_name)
         result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", file_name)
         building, view = (result["building"], result["view"])
-
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
-        cam_file = f"mount/sintel/training/camdata_left/{building}/frame_{view}.png"
-
-    if cam_file is None:
-        print (file_name)
-        result = parse.parse("mount/sintel/training//{building}/{task_val}_{view}.png", file_name)
-        building, view = (result["building"], result["view"])
-
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
-        cam_file = f"mount/sintel/training/camdata_left/{building}/frame_{view}.png"
+        cam_file = f"mount/sintel/training/camdata_left/{building}/frame_{view}.cam"
 
     camera, _ = cam_read(cam_file)
     print (camera)
@@ -135,12 +123,8 @@ if __name__ == "__main__":
     files = glob.glob("mount/sintel/training/depth_viz/*/frame*.png")
     depth_map = load_depth_map_in_m(files[0])
 
-    logger = VisdomLogger("train", env=JOB)
-
-    images, normals
     with Pool() as pool:
-        for i, (file, normals) in enumerate(pool.imap_unordered(normal_from_depth, 
-                random.sample(files, 64))):
+        for i, (file, normals) in enumerate(pool.imap_unordered(normal_from_depth, files)):
 
             filename = "normal" + file.split('/')[-1][5:]
             filename = file[:-len(filename)] + "/" + filename

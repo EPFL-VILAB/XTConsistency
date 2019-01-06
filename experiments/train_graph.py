@@ -1,5 +1,5 @@
 
-import os, sys, math, random, itertools, pickle, heapq
+import os, sys, math, random, itertools, pickle
 import numpy as np
 
 import torch
@@ -40,6 +40,7 @@ def main():
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
+        reality=reality,
         edges_exclude=[
             ('almena', 'normal'),  #remove all GT for normals
             # ('almena', 'principal_curvature'),  #remove all GT for normals

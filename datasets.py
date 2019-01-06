@@ -220,8 +220,9 @@ class SintelDataset(TaskDataset):
 
     def building_files(self, task, building):
         """ Gets all the tasks in a given building (grouping of data) """
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+        task_dir = {"rgb": "clean", "normal": "depth_viz", "depth_zbuffer": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
+
         return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
 
     def convert_path(self, source_file, task):
@@ -229,8 +230,8 @@ class SintelDataset(TaskDataset):
         result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
         building, view = (result["building"], result["view"])
 
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
+        task_dir = {"rgb": "clean", "normal": "depth_viz", "depth_zbuffer": "depth_viz"}[task.name]
+        task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
 
         dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
         return dest_file

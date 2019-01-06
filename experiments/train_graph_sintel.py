@@ -25,6 +25,7 @@ def main():
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
 
+    
     task_list = [
         tasks.rgb, 
         tasks.normal, 
@@ -32,71 +33,42 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
     ]
+    tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
 
     reality = RealityTask('sintel', 
-        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.depth_zbuffer]),
-        tasks=[tasks.rgb, tasks.depth_zbuffer],
-        batch_size=4
+        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal]),
+        tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal],
+        batch_size=8
     )
-
     graph = TaskGraph(
         tasks=[reality, *task_list],
-        # edges=[
-        #     ('normal', 'rgb'),
-        #     ('normal', 'principal_curvature'),
-        #     ('normal', 'sobel_edges'),
-        #     ('normal', 'depth_zbuffer'),
-        #     ('depth_zbuffer', 'normal'),
-        #     ('sobel_edges', 'normal'),
-        #     ('principal_curvature', 'normal'),
-        #     ('rgb', 'normal'),
-        # ],
-        edges_exclude=[
-            # ('sintel', 'rgb'),  #remove all GT for normals
-            # ('sintel', 'normal'),  #remove all GT for normals
-            # ('sintel', 'principal_curvature'),  #remove all GT for normals
-            # ('sintel', 'depth_zbuffer'),  #remove all GT for normals
-            # ('sintel', 'sobel_edges'),  #remove all GT for normals
-            # ('rgb', 'normal'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'principal_curvature'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'depth_zbuffer'), #remove all GT substitutes (pretraining?)
-            # ('rgb', 'sobel_edges'), #remove all GT substitutes (pretraining?)
-        ],
-        anchored_tasks=[
-            reality,
-            tasks.rgb,
-            tasks.depth_zbuffer,
-            # tasks.depth_zbuffer,
-            # tasks.sobel_edges,
-        ],
-        batch_size=4
+        anchored_tasks=[reality, tasks.rgb],
+        reality=reality,
+        batch_size=8
     )
 
     print (graph.edges)
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
-    graph.plot_paths(logger, reality)
+    logger = VisdomLogger("train", env=JOB)
+    logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
+    logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
+    logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
+    logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.estimates['rgb'].data = reality.task_data[tasks.rgb].to(DEVICE)
-    graph.estimates['depth_zbuffer'].data = reality.task_data[tasks.principal_curvature].to(DEVICE)
+    logger.images(functional_transfers.d(graph.estimate(tasks.rgb)), "d(x)", resize=256)
+    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer, tasks.normal], show_images=True)
 
-    for task in graph.tasks:
-        task.plot_func(graph.estimates[task.name], task.name, logger)
+    # for epochs in range(0, 4000):
+    #     logger.update("epoch", epochs)
 
-    for epochs in range(0, 4000):
-        free_energy = graph.free_energy(sample=12)
-        # graph.p.step(free_energy)
-        graph.estimates.step(free_energy)
-        logger.update("energy", free_energy)
+    #     free_energy = graph.free_energy(sample=4)
+    #     graph.estimates.step(free_energy)
+    #     logger.update("energy", free_energy)
 
-        if epochs % 32 == 0:
-            # for task in graph.tasks:
-            #     print (f"{task.name}: {graph.prob(task)}")
 
-            for task in graph.tasks:
-                task.plot_func(graph.estimates[task.name], task.name, logger)
-    
 if __name__ == "__main__":
     Fire(main)
+
 
