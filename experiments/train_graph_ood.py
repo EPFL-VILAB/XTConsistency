@@ -12,7 +12,7 @@ from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from task_configs import get_task, tasks, RealityTask
 from transfers import functional_transfers
-from datasets import TaskDataset
+from datasets import TaskDataset, load_ood
 from graph import TaskGraph
 from transfers import TRANSFER_MAP
 from fire import Fire
@@ -29,26 +29,18 @@ def main():
         tasks.depth_zbuffer,
     ]
 
-    reality = RealityTask('almena', 
-        dataset=TaskDataset(buildings=['almena'], tasks=task_list),
-        tasks=task_list,
+    reality = RealityTask('ood', 
+        dataset=ImageDataset(data_dir=f"{SHARED_DIR}/ood_standard_set", resize=(256, 256)),
+        tasks=[tasks.rgb],
         batch_size=4
     )
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
         reality=reality,
-        edges_exclude=[
-            ('almena', 'normal'),  #remove all GT for normals
-            ('almena', 'depth_zbuffer'),  #remove all GT for depth_zbuffer
-            ('almena', 'sobel_edges'),  #remove all GT for sobel_edges
-        ],
         anchored_tasks=[
             reality,
             tasks.rgb,
-            tasks.principal_curvature,
-            # tasks.depth_zbuffer,
-            # tasks.sobel_edges,
         ],
         reality=reality,
         batch_size=4
