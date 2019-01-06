@@ -53,7 +53,7 @@ class TaskGraph(TrainableModel):
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.randn(
                         *([batch_size] + list(task.shape))
-                    ).requires_grad_(True).to(DEVICE)*task.variance*1e-3
+                    ).requires_grad_(True).to(DEVICE)#*task.variance*1e-3
                 ) for task in tasks
             })
         )
@@ -116,7 +116,7 @@ class TaskGraph(TrainableModel):
             Ax = Ax.detach() if A in self.anchored_tasks else Ax
             Bx = self.estimates[B.name]
             Bx = Bx.detach() if B in self.anchored_tasks else Bx
-            return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/transfer.dest_task.variance)
+            return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance)
 
         task_data = [
             norm(transfer) for transfer in random.sample(self.edges, sample)
@@ -152,20 +152,19 @@ class TaskGraph(TrainableModel):
 
         if show_images:
             for mse, pathname, Y in heapq.nlargest(5, images):
-                logger.images(Y, pathname, resize=256)
-            for task in dest_task:
+                logger.images(Y.clamp(min=0, max=1), pathname, resize=256)
+            for task in reality.task_data:
                 logger.images(reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
 
         self.update_paths(logger, reality)
 
 
     def update_paths(self, logger, reality):
-
         for task in self.pathnames:
             curr_mse = task.norm(reality.task_data[task].to(DEVICE), 
                 self.estimates[task.name])[0].data.cpu().numpy().mean()
-
-            logger.bar([curr_mse] + self.mse[task], f'{task}_path_mse', opts={'rownames': ["current"] + self.pathnames[task]})
+            data, rownames = zip(*sorted(zip([curr_mse] + self.mse[task], ["current"] + self.pathnames[task])))
+            logger.bar(data, f'{task}_path_mse', opts={'rownames': list(rownames)})
 
     def plot_estimates(self, logger):
         for task in self.tasks:

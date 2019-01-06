@@ -14,7 +14,7 @@ from task_configs import get_task, tasks, RealityTask
 from transfers import functional_transfers
 from datasets import TaskDataset
 from graph import TaskGraph
-
+from transfers import TRANSFER_MAP
 from fire import Fire
 import IPython
 
@@ -65,6 +65,7 @@ def main():
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
     graph.estimates['rgb'].data = reality.task_data[tasks.rgb].to(DEVICE)
     graph.estimates['principal_curvature'].data = reality.task_data[tasks.principal_curvature].to(DEVICE)
+    # graph.estimates['normal'].data = TRANSFER_MAP['n'](graph.estimates['rgb'].data).detach().to(DEVICE)
 
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
@@ -72,7 +73,7 @@ def main():
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
     logger.add_hook(lambda logger, data: graph.update_paths(logger, reality), feature="epoch", freq=32)
 
-    graph.plot_paths(logger, reality)
+    graph.plot_paths(logger, reality, show_images=True)
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
