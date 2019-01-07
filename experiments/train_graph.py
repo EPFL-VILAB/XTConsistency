@@ -27,36 +27,36 @@ def main():
         tasks.principal_curvature, 
         tasks.sobel_edges,
         tasks.depth_zbuffer,
+        tasks.reshading,
+        # tasks.edge_occlusion,
+        # tasks.keypoints3d,
+        tasks.keypoints2d,
     ]
 
     reality = RealityTask('almena', 
-        dataset=TaskDataset(buildings=['almena'], tasks=task_list),
-        tasks=task_list,
+        dataset=TaskDataset(buildings=['almena'], 
+            tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer]
+        ),
+        tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer],
         batch_size=4
     )
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
+        anchored_tasks=[reality, tasks.rgb, tasks.principal_curvature],
         reality=reality,
+        batch_size=4,
         edges_exclude=[
-            ('almena', 'normal'),  #remove all GT for normals
-            ('almena', 'depth_zbuffer'),  #remove all GT for depth_zbuffer
-            ('almena', 'sobel_edges'),  #remove all GT for sobel_edges
+            ('almena', 'normal'),
+            # ('almena', 'principal_curvature'), //cyclecurv
+            ('almena', 'depth_zbuffer'),
         ],
-        anchored_tasks=[
-            reality,
-            tasks.rgb,
-            # tasks.principal_curvature,
-            # tasks.depth_zbuffer,
-            # tasks.sobel_edges,
-        ],
-        reality=reality,
-        batch_size=4
+        initialize_first_order=True,
     )
 
-    print (graph.edges)
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
+
 
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
@@ -64,7 +64,11 @@ def main():
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
     logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer], show_images=False)
+    graph.plot_estimates(logger)
+    graph.plot_paths(logger, 
+        dest_tasks=[tasks.normal, tasks.depth_zbuffer], 
+        show_images=False
+    )
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)

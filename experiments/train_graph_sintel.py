@@ -21,11 +21,6 @@ import IPython
 
 def main():
 
-    logger = VisdomLogger("train", env=JOB)
-    logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
-    logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
-
-    
     task_list = [
         tasks.rgb, 
         tasks.normal, 
@@ -33,25 +28,31 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        tasks.edge_occlusion,
-        tasks.keypoints3d,
+        # tasks.edge_occlusion,
+        # tasks.keypoints3d,
         tasks.keypoints2d,
     ]
-    tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
+    # tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
 
     reality = RealityTask('sintel', 
-        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal]),
-        tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal],
-        batch_size=4
+        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.normal]),
+        tasks=[tasks.rgb, tasks.normal],
+        batch_size=8
     )
     graph = TaskGraph(
         tasks=[reality, *task_list],
-        anchored_tasks=[reality, tasks.rgb, tasks.normal],
+        anchored_tasks=[reality, tasks.rgb],
         reality=reality,
-        batch_size=4
+        batch_size=8,
+        edges_exclude=[
+            ('rgb', 'keypoints3d'),
+            ('rgb', 'edge_occlusion'),
+            ('sintel', 'normal'),
+            ('sintel', 'depth_zbuffer'),
+        ],
+        initialize_first_order=False,
     )
 
-    print (graph.edges)
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
@@ -61,12 +62,13 @@ def main():
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
     logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.plot_paths(logger, dest_tasks=[tasks.depth_zbuffer], show_images=False)
+    graph.plot_estimates(logger)
+    graph.plot_paths(logger, dest_tasks=[tasks.normal], show_images=True)
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=12)
+        free_energy = graph.free_energy(sample=16)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

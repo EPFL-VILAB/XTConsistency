@@ -23,11 +23,12 @@ class TaskGraph(TrainableModel):
     def __init__(self, 
             tasks=tasks, edges=None, edges_exclude=None, batch_size=64, reality=None,
             task_filter=[tasks.segment_semantic, tasks.class_scene],
-            anchored_tasks=[]
+            anchored_tasks=[],
+            initialize_first_order=True,
         ):
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
-        self.edges, self.adj = [], defaultdict(list)
+        self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.reality=reality
 
         # construct transfer graph
@@ -40,38 +41,59 @@ class TaskGraph(TrainableModel):
                 transfer = RealityTransfer(src_task, dest_task)
                 self.edges += [transfer]
                 self.adj[src_task] += [transfer]
+                self.in_adj[dest_task] += [transfer]
                 continue
 
             if isinstance(dest_task, RealityTask): continue
             if src_task == dest_task: continue
 
             transfer = get_named_transfer(Transfer(src_task, dest_task))
-            if transfer.model_type is None: continue
+            if transfer.model_type is None: 
+                print ("Failed: ", transfer)
+                continue
             self.edges += [transfer]
             self.adj[src_task] += [transfer]
+            self.in_adj[dest_task] += [transfer]
 
+        self.anchored_tasks = set(anchored_tasks)
+        self.initialize_first_order = initialize_first_order
+        self.batch_size = batch_size
+        self.init_params()
+
+    def init_params(self):
         self.estimates = WrapperModel(
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.randn(
-                        *([batch_size] + list(task.shape))
+                        *([self.batch_size] + list(task.shape))
                     ).requires_grad_(True).to(DEVICE)*task.variance
-                ) for task in tasks
+                ) for task in self.tasks
             })
         )
 
-        self.anchored_tasks = set(anchored_tasks)
         for task in self.anchored_tasks:
             if task is self.reality: continue
             self.estimates[task.name].data = self.reality.task_data[task].to(DEVICE)
 
-        tasks_theta = list(set(tasks) - self.anchored_tasks)
-        self.p = WrapperModel(
-            nn.ParameterDict({
-                task.name: nn.Parameter(
-                    torch.tensor([2.0, 8.0]).requires_grad_(True).to(DEVICE)
-                ) for task in tasks_theta
-            })
-        )
+        if self.initialize_first_order:
+            for dest_task in self.tasks:
+                found_src = False
+                for src_task in self.anchored_tasks:
+                    for transfer in self.adj[src_task]:
+                        if transfer.dest_task == dest_task:
+                            self.estimates[dest_task.name].data = transfer(self.estimates[src_task.name]).data
+                            found_src = True
+                            break
+
+                    if found_src: break
+
+        # tasks_theta = list(set(self.tasks) - self.anchored_tasks)
+        # self.p = WrapperModel(
+        #     nn.ParameterDict({
+        #         task.name: nn.Parameter(
+        #             torch.tensor([2.0, 8.0]).requires_grad_(True).to(DEVICE)
+        #         ) for task in tasks_theta
+        #     })
+        # )
 
     def prob(self, task):
         if task in self.anchored_tasks:
@@ -83,56 +105,61 @@ class TaskGraph(TrainableModel):
             return torch.tensor([0.0, 1.0], device=DEVICE)
         return F.softmax(self.p[task.name].clamp(min=1e-3, max=1-1e-3), dim=0)
 
-    def conditional(self, transfer):
+    def estimate(self, task):
+        x = self.estimates[task.name]
+        return x.detach() if task in self.anchored_tasks else x
 
-        A, B = transfer.src_task, transfer.dest_task
+    # def conditional(self, transfer):
 
-        Ax = self.estimates[A.name]
-        Ax = Ax.detach() if A in self.anchored_tasks else Ax
-        Bx = self.estimates[B.name]
-        Bx = Bx.detach() if B in self.anchored_tasks else Bx
+    #     A, B = transfer.src_task, transfer.dest_task
 
-        est_mse = transfer.dest_task.norm(Bx, transfer(Ax))[0]
-        gt_mse = B.variance*(1 - self.prob(B))
-        mse = (est_mse**2 + gt_mse**2)**(0.5)
-        # pdf is uniform in angle?
-        # Do some clever math here to ensure nothing becomes 0.0 for no reason
-        # Without causing pathological edge cases you fuck
-        # Lower bound is gt_mse - est_mse, higher bound is gt_mse + est_mse
-        # 
-        # 
-        p = F.relu(1 - mse/B.variance)/self.prob(A)
-        # if p.data.cpu().numpy().mean() <= 1e-3:
-        #     IPython.embed()
-        p = p.clamp(min=1e-3, max=1-1e-3)
-        prob = torch.stack([1-p, p])
+    #     Ax = self.estimates[A.name]
+    #     Ax = Ax.detach() if A in self.anchored_tasks else Ax
+    #     Bx = self.estimates[B.name]
+    #     Bx = Bx.detach() if B in self.anchored_tasks else Bx
 
-        divergence = F.kl_div(torch.log(prob), self.dist(B))
-        print (f"{transfer}: p(F|E)={p} -> p(F)={self.prob(B)} ... transfer_mse={est_mse}, variance={B.variance}, divergence={divergence}")
-        # divergence.backward(retain_graph=True)
+    #     est_mse = transfer.dest_task.norm(Bx, transfer(Ax))[0]
+    #     gt_mse = B.variance*(1 - self.prob(B))
+    #     mse = (est_mse**2 + gt_mse**2)**(0.5)
+    #     # pdf is uniform in angle?
+    #     # Do some clever math here to ensure nothing becomes 0.0 for no reason
+    #     # Without causing pathological edge cases you fuck
+    #     # Lower bound is gt_mse - est_mse, higher bound is gt_mse + est_mse
+    #     # 
+    #     # 
+    #     p = F.relu(1 - mse/B.variance)/self.prob(A)
+    #     # if p.data.cpu().numpy().mean() <= 1e-3:
+    #     #     IPython.embed()
+    #     p = p.clamp(min=1e-3, max=1-1e-3)
+    #     prob = torch.stack([1-p, p])
 
-        return prob
+    #     divergence = F.kl_div(torch.log(prob), self.dist(B))
+    #     print (f"{transfer}: p(F|E)={p} -> p(F)={self.prob(B)} ... transfer_mse={est_mse}, variance={B.variance}, divergence={divergence}")
+    #     # divergence.backward(retain_graph=True)
 
-    def free_energy(self, sample=10, tve=False):
+    #     return prob
 
-        def tve_loss(x):
-            dx = torch.abs(x[:,:,1:,:] - x[:,:,:-1,:]).mean()
-            dy = torch.abs(x[:,:,:,1:] - x[:,:,:,:-1]).mean()
-            return (dx+dy)/2
-        def norm(transfer):
-            A, B = transfer.src_task, transfer.dest_task
-            Ax = self.estimates[A.name]
-            Ax = Ax.detach() if A in self.anchored_tasks else Ax
-            Bx = self.estimates[B.name]
-            Bx = Bx.detach() if B in self.anchored_tasks else Bx
+    # def free_energy(self, sample=10, tve=False):
 
-            tve = 0 if tve and A in self.anchored_tasks else tve_loss(Ax)
-            return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance) + tve
+    #     def tve_loss(x):
+    #         dx = torch.abs(x[:,:,1:,:] - x[:,:,:-1,:]).mean()
+    #         dy = torch.abs(x[:,:,:,1:] - x[:,:,:,:-1]).mean()
+    #         return (dx+dy)/2
+    #     def norm(transfer):
+    #         A, B = transfer.src_task, transfer.dest_task
+    #         Ax = self.estimates[A.name]
+    #         Ax = Ax.detach() if A in self.anchored_tasks else Ax
+    #         Bx = self.estimates[B.name]
+    #         Bx = Bx.detach() if B in self.anchored_tasks else Bx
 
-        task_data = [
-            norm(transfer) for transfer in random.sample(self.edges, sample)
-        ]
-        return sum(task_data)/len(task_data)
+    #         tve = 0 if tve and A in self.anchored_tasks else tve_loss(Ax)
+    #         return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance) + tve
+
+    #     task_data = [
+    #         norm(transfer) for transfer in random.sample(self.edges, sample)
+    #     ]
+    #     return sum(task_data)/len(task_data)
+
 
     def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=4):
 
@@ -181,20 +208,6 @@ class TaskGraph(TrainableModel):
             x = self.estimates[task.name]
             task.plot_func(x, task.name, logger)
 
-    def prob(self, task):
-        if task in self.anchored_tasks:
-            return torch.tensor(1.0, device=DEVICE)
-        return F.softmax(F.relu(self.p[task.name]), dim=0)[1]
-    
-    def dist(self, task):
-        if task in self.anchored_tasks:
-            return torch.tensor([0.0, 1.0], device=DEVICE)
-        return F.softmax(self.p[task.name].clamp(min=1e-3, max=1-1e-3), dim=0)
-
-    def estimate(self, task):
-        x = self.estimates[task.name]
-        return x.detach() if task in self.anchored_tasks else x
-
     # def conditional(self, transfer):
 
     #     A, B = transfer.src_task, transfer.dest_task
@@ -233,6 +246,21 @@ class TaskGraph(TrainableModel):
             norm(transfer) for transfer in random.sample(self.edges, sample)
         ]
         return sum(task_data)/len(task_data)
+
+    def averaging_step(self, sample=10):
+
+        for task in self.tasks:
+            if isinstance(task, RealityTask): continue
+            estimates = (transfer(self.estimate(transfer.src_task)) for transfer in self.in_adj[task])
+            average = sum(estimates)/len(self.in_adj[task])
+            self.estimates[task.name].data = average.data
+
+
+
+
+        
+
+
 
     # def free_energy(self, sample=12):
 

@@ -288,7 +288,6 @@ def blur_transform(x, max_val=4000.0):
 
 def sintel_depth_transform(x):
     x = (1.0/ (x+1/255.0))
-    print (x.min(), x.max())
     x = x / 255.0
     return x.clamp(min=0.0, max=1.0)
 

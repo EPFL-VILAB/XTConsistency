@@ -13,7 +13,9 @@ def experiment_id(config):
 def upload(exp_id):
     os.system(f"echo {exp_id}, 0, mount > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude",
-        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "local"])
+        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", 
+        "--exclude", "data/results", "--exclude", "local", 
+        "--exclude", "data", "--exclude", "modules", "--exclude", "old"])
     subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split())
 
 def delete(env):
