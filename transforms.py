@@ -163,8 +163,8 @@ def translate(x, radius=0.15):
 
 @sample(0.0, 0.0, 2.0, plot_range=(0.01, 4))
 def gauss(x, sigma=1):
-    filter = gaussian_filter(kernel_size=7, sigma=sigma)
-    x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=3, padding=3)
+    filter = gaussian_filter(kernel_size=7, sigma=sigma, channels=x.shape[1])
+    x = F.conv2d(x, weight=filter.to(x.device), bias=None, groups=x.shape[1], padding=3)
     return x.clamp(min=1e-3, max=1)
 
 

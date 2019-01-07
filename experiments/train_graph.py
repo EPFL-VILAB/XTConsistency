@@ -46,7 +46,7 @@ def main():
         anchored_tasks=[
             reality,
             tasks.rgb,
-            tasks.principal_curvature,
+            # tasks.principal_curvature,
             # tasks.depth_zbuffer,
             # tasks.sobel_edges,
         ],

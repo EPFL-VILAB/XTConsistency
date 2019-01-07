@@ -13,7 +13,7 @@ from models import TrainableModel, WrapperModel
 from datasets import TaskDataset
 from task_configs import get_task, task_map, tasks, get_model, RealityTask
 from transfers import Transfer, RealityTransfer, get_named_transfer
-
+import transforms
 
 
 class TaskGraph(TrainableModel):
@@ -113,15 +113,21 @@ class TaskGraph(TrainableModel):
 
         return prob
 
-    def free_energy(self, sample=10):
+    def free_energy(self, sample=10, tve=False):
 
+        def tve_loss(x):
+            dx = torch.abs(x[:,:,1:,:] - x[:,:,:-1,:]).mean()
+            dy = torch.abs(x[:,:,:,1:] - x[:,:,:,:-1]).mean()
+            return (dx+dy)/2
         def norm(transfer):
             A, B = transfer.src_task, transfer.dest_task
             Ax = self.estimates[A.name]
             Ax = Ax.detach() if A in self.anchored_tasks else Ax
             Bx = self.estimates[B.name]
             Bx = Bx.detach() if B in self.anchored_tasks else Bx
-            return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance)
+
+            tve = 0 if tve and A in self.anchored_tasks else tve_loss(Ax)
+            return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance) + tve
 
         task_data = [
             norm(transfer) for transfer in random.sample(self.edges, sample)
@@ -172,7 +178,8 @@ class TaskGraph(TrainableModel):
 
     def plot_estimates(self, logger):
         for task in self.tasks:
-            task.plot_func(self.estimates[task.name], task.name, logger)
+            x = self.estimates[task.name]
+            task.plot_func(x, task.name, logger)
 
     def prob(self, task):
         if task in self.anchored_tasks:
