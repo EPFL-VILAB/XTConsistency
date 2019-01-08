@@ -86,14 +86,14 @@ class TaskGraph(TrainableModel):
 
                     if found_src: break
 
-        # tasks_theta = list(set(self.tasks) - self.anchored_tasks)
-        # self.p = WrapperModel(
-        #     nn.ParameterDict({
-        #         task.name: nn.Parameter(
-        #             torch.tensor([2.0, 8.0]).requires_grad_(True).to(DEVICE)
-        #         ) for task in tasks_theta
-        #     })
-        # )
+        tasks_theta = list(set(self.tasks) - self.anchored_tasks)
+        self.p = WrapperModel(
+            nn.ParameterDict({
+                task.name: nn.Parameter(
+                    torch.tensor([2.0, 8.0]).requires_grad_(True).to(DEVICE)
+                ) for task in tasks_theta
+            })
+        )
 
     def prob(self, task):
         if task in self.anchored_tasks:
@@ -161,47 +161,50 @@ class TaskGraph(TrainableModel):
     #     return sum(task_data)/len(task_data)
 
 
-    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=4):
+    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=3):
 
-        def dfs(task, X, max_len=max_len, history=[]):
-            if task in dest_tasks: yield (history, X)
-            if isinstance(task, RealityTask) or max_len == 0: return
+        with torch.no_grad():
+            def dfs(task, X, max_len=max_len, history=[]):
+                if task in dest_tasks: yield (history, X)
+                if isinstance(task, RealityTask) or max_len == 0: return
 
-            for transfer in self.adj[task]:
-                yield from dfs(
-                    transfer.dest_task, transfer(X), max_len=max_len-1, 
-                    history=history+[transfer]
-                )
+                for transfer in self.adj[task]:
+                    yield from dfs(
+                        transfer.dest_task, transfer(X), max_len=max_len-1, 
+                        history=history+[transfer]
+                    )
 
-        self.mse, self.pathnames, images = defaultdict(list), defaultdict(list), defaultdict(list)
-        for history, Y in itertools.chain.from_iterable(
-            dfs(src_task, self.estimates[src_task.name], history=[src_task]) \
-            for src_task in self.anchored_tasks
-        ):
-            print ("DFS path: ", history)
-            dest_task = history[-1].dest_task
-            pathname = reduce(lambda a, b: f"{b}({a})", history)
-            mse = dest_task.norm(self.reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
+            self.mse, self.pathnames, images = defaultdict(list), defaultdict(list), defaultdict(list)
+            for history, Y in itertools.chain.from_iterable(
+                dfs(src_task, self.estimates[src_task.name], history=[src_task]) \
+                for src_task in self.anchored_tasks
+            ):
+                print ("DFS path: ", history)
+                dest_task = history[-1].dest_task
+                pathname = reduce(lambda a, b: f"{b}({a})", history)
+                mse = dest_task.norm(self.reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
+                print (mse)
 
-            self.mse[dest_task] += [mse]
-            self.pathnames[dest_task] += [pathname]
-            images[dest_task] += [(-mse, pathname, Y)]
+                self.mse[dest_task] += [mse]
+                self.pathnames[dest_task] += [pathname]
+                images[dest_task] += [(-mse, pathname, Y.detach())]
 
-        if show_images:
-            for task in dest_tasks:
-                for mse, pathname, Y in heapq.nlargest(5, images[task]):
-                    logger.images(Y, pathname, resize=256)
-                logger.images(self.reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
+            if show_images:
+                for task in dest_tasks:
+                    for mse, pathname, Y in heapq.nlargest(5, images[task]):
+                        logger.images(Y, pathname, resize=256)
+                    logger.images(self.reality.task_data[task].to(DEVICE), f"GT {task}", resize=256)
 
         self.update_paths(logger)
 
     def update_paths(self, logger):
 
-        for task in self.pathnames:
-            curr_mse = task.norm(self.reality.task_data[task].to(DEVICE), 
-                self.estimates[task.name])[0].data.cpu().numpy().mean()
-            data, rownames = zip(*sorted(zip(self.mse[task],  self.pathnames[task])))
-            logger.bar([curr_mse] + list(data), f'{task}_path_mse', opts={'rownames': ["current"] + list(rownames)})
+        with torch.no_grad():
+            for task in self.pathnames:
+                curr_mse = task.norm(self.reality.task_data[task].to(DEVICE), 
+                    self.estimates[task.name])[0].data.cpu().numpy().mean()
+                data, rownames = zip(*sorted(zip(self.mse[task],  self.pathnames[task])))
+                logger.bar([curr_mse] + list(data), f'{task}_path_mse', opts={'rownames': ["current"] + list(rownames)})
 
     def plot_estimates(self, logger):
         for task in self.tasks:

@@ -28,8 +28,8 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
         tasks.keypoints2d,
     ]
     # tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
@@ -37,20 +37,20 @@ def main():
     reality = RealityTask('sintel', 
         dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.normal]),
         tasks=[tasks.rgb, tasks.normal],
-        batch_size=8
+        batch_size=4
     )
     graph = TaskGraph(
         tasks=[reality, *task_list],
         anchored_tasks=[reality, tasks.rgb],
         reality=reality,
-        batch_size=8,
+        batch_size=4,
         edges_exclude=[
             ('rgb', 'keypoints3d'),
             ('rgb', 'edge_occlusion'),
             ('sintel', 'normal'),
             ('sintel', 'depth_zbuffer'),
         ],
-        initialize_first_order=False,
+        initialize_first_order=True,
     )
 
     graph.p.compile(torch.optim.Adam, lr=4e-2)
@@ -68,7 +68,7 @@ def main():
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=16)
+        free_energy = graph.free_energy(sample=8)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

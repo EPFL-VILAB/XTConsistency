@@ -28,8 +28,8 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
         tasks.keypoints2d,
     ]
 
@@ -51,7 +51,7 @@ def main():
         ],
         reality=reality,
         batch_size=8,
-        initialize_first_order=False,
+        initialize_first_order=True,
     )
 
     graph.p.compile(torch.optim.Adam, lr=4e-2)
@@ -71,7 +71,7 @@ def main():
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=12)
+        free_energy = graph.free_energy(sample=6)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

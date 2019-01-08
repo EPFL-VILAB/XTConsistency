@@ -28,8 +28,8 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
         tasks.keypoints2d,
     ]
     # tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
@@ -52,23 +52,24 @@ def main():
         initialize_first_order=True,
     )
     print (graph.edges)
-    # assume all estimates are rgb2x
-    # Show that you can get a gain with the appropriate neigbor weighting (either GT or rgb2y)
-    # quantify this
-    
+    logger = VisdomLogger("train", env=JOB)
+
     for task in [tasks.normal,]:
         Y = graph.estimate(task)
         Y_hat = reality.task_data[task].to(DEVICE).detach()
         mse_orig = task.norm(Y, Y_hat)[0].data.cpu().numpy().mean()
 
+        in_neighbors = [transfer for transfer in graph.in_adj[task] \
+            if not isinstance(transfer, RealityTask) and transfer.src_task is not tasks.rgb]
+
         estimates = [
             transfer(graph.estimate(transfer.src_task)).detach() \
-            for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask) and transfer.src_task is not tasks.rgb
+            for transfer in in_neighbors
         ]
 
         weights = WrapperModel(nn.ParameterList([
             nn.Parameter(torch.tensor(1.0).requires_grad_(True).to(DEVICE)) \
-            for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask) and transfer.src_task is not tasks.rgb
+            for transfer in in_neighbors
         ]))
         weights.compile(torch.optim.Adam, lr=1e-2)
 
@@ -82,7 +83,11 @@ def main():
         print (f"Train set {task}: rgb2x={mse_orig}, best case={mse}")
 
         for i in range(0, len(estimates)):
-            print (f"{graph.in_adj[task][i]}: {weights[i]}")
+            print (f"{in_neighbors[i]}: {weights[i]}")
+
+        logger.images(Y, "n(x)", resize=256)
+        logger.images(average, "weighted_average", resize=256)
+        logger.images(Y_hat, "GT", resize=256)
         
         reality.step()
         graph.init_params()
@@ -100,8 +105,6 @@ def main():
         mse = task.norm(average, reality.task_data[task].to(DEVICE).detach())[0]
 
         print (f"Test set {task}: rgb2x={mse_orig}, best case={mse}")
-
-        logger.images()
 
 if __name__ == "__main__":
     Fire(main)

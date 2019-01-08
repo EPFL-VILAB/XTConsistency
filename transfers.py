@@ -108,7 +108,14 @@ class Transfer(object):
         saved_type, saved_path = None, None
         if model_type is None and path is None:
             saved_type, saved_path = pretrained_transfers.get((src_task.name, dest_task.name), (None, None))
+
         self.model_type, self.path = model_type or saved_type, path or saved_path
+
+        if self.model_type is None:
+            path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}.pth"
+            if os.path.exists(path):
+                self.model_type, self.path = lambda: get_model(src_task, dest_task), path
+
         self.model = None
     
     def load_model(self, optimizer=True):

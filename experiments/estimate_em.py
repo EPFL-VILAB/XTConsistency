@@ -28,8 +28,8 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
         tasks.keypoints2d,
     ]
 
@@ -65,19 +65,22 @@ def main():
         Y_hat = reality.task_data[task].to(DEVICE).detach()
         mse_orig = task.norm(Y, Y_hat)[0].data.cpu().numpy().mean()
 
-        # estimates = [
-        #     transfer(graph.estimate(transfer.src_task)).detach() \
-        #     for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask)
-        # ]
+        in_neighbors = [transfer for transfer in graph.in_adj[task] \
+            if not isinstance(transfer, RealityTask) and transfer.src_task is not tasks.rgb]
 
         estimates = [
-            transfer(reality.task_data[transfer.src_task].to(DEVICE)).detach() \
-            for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask)
+            transfer(graph.estimate(transfer.src_task)).detach() \
+            for transfer in in_neighbors
         ]
-        
+
+        # estimates = [
+        #     transfer(reality.task_data[transfer.src_task].to(DEVICE)).detach() \
+        #     for transfer in in_neighbors
+        # ]
+
         weights = WrapperModel(nn.ParameterList([
             nn.Parameter(torch.tensor(1.0).requires_grad_(True).to(DEVICE)) \
-            for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask)
+            for transfer in in_neighbors
         ]))
         weights.compile(torch.optim.Adam, lr=1e-2)
 
@@ -91,7 +94,11 @@ def main():
         print (f"Train set {task}: rgb2x={mse_orig}, best case={mse}")
 
         for i in range(0, len(estimates)):
-            print (f"{graph.in_adj[task][i]}: {weights[i]}")
+            print (f"{in_neighbors[i]}: {weights[i]}")
+
+        logger.images(Y, "n(x)", resize=256)
+        logger.images(average, "weighted_average", resize=256)
+        logger.images(Y_hat, "GT", resize=256)
         
         reality.step()
         graph.init_params()
@@ -100,15 +107,15 @@ def main():
         Y_hat = reality.task_data[task].to(DEVICE).detach()
         mse_orig = task.norm(Y, Y_hat)[0].data.cpu().numpy().mean()
 
-        # estimates = [
-        #     transfer(graph.estimate(transfer.src_task)).detach() \
-        #     for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask)
-        # ]
-
         estimates = [
-            transfer(reality.task_data[transfer.src_task].to(DEVICE)).detach() \
+            transfer(graph.estimate(transfer.src_task)).detach() \
             for transfer in graph.in_adj[task] if not isinstance(transfer, RealityTask)
         ]
+
+        # estimates = [
+        #     transfer(reality.task_data[transfer.src_task].to(DEVICE)).detach() \
+        #     for transfer in in_neighbors
+        # ]
 
         average = sum((weight*estimate for weight, estimate in zip(weights, estimates)))/sum(weights)
         mse = task.norm(average, reality.task_data[task].to(DEVICE).detach())[0]

@@ -23,8 +23,8 @@ def execute(cmd, config="default", experiment_id=None, shutdown=False, debug=Fal
 
     print(f"Running job: {run_name}")
 
-    shutil.rmtree("output/", ignore_errors=True)
-    os.makedirs("output/")
+    # shutil.rmtree("output/", ignore_errors=True)
+    # os.makedirs("output/")
     os.makedirs(f"checkpoints/{run_name}", exist_ok=True)
     os.system("echo " + run_name + ", 0, mount > scripts/jobinfo.txt")
     print ("Hello")

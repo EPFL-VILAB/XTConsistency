@@ -28,8 +28,8 @@ def main():
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
         tasks.keypoints2d,
     ]
 
@@ -43,13 +43,15 @@ def main():
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
-        anchored_tasks=[reality, tasks.rgb, tasks.principal_curvature],
+        anchored_tasks=[reality, tasks.rgb],
         reality=reality,
         batch_size=4,
         edges_exclude=[
             ('almena', 'normal'),
-            # ('almena', 'principal_curvature'), //cyclecurv
+            ('almena', 'principal_curvature'),
             ('almena', 'depth_zbuffer'),
+            ('rgb', 'keypoints3d'),
+            ('rgb', 'edge_occlusion'),
         ],
         initialize_first_order=True,
     )
@@ -68,14 +70,14 @@ def main():
 
     graph.plot_estimates(logger)
     graph.plot_paths(logger, 
-        dest_tasks=[tasks.normal, tasks.depth_zbuffer], 
+        dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
         show_images=False
     )
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=12)
+        free_energy = graph.free_energy(sample=8)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 
