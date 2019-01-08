@@ -50,10 +50,10 @@ def main():
             ('almena', 'normal'),
             ('almena', 'principal_curvature'),
             ('almena', 'depth_zbuffer'),
-            ('rgb', 'keypoints3d'),
-            ('rgb', 'edge_occlusion'),
+            # ('rgb', 'keypoints3d'),
+            # ('rgb', 'edge_occlusion'),
         ],
-        initialize_first_order=False,
+        initialize_first_order=True,
     )
 
     graph.p.compile(torch.optim.Adam, lr=4e-2)
@@ -75,7 +75,7 @@ def main():
         logger.update("epoch", epochs)
 
         with torch.no_grad():
-            free_energy = graph.free_energy(sample=12)
+            free_energy = graph.free_energy(sample=16)
             graph.averaging_step()
 
         logger.update("energy", free_energy)

@@ -36,7 +36,7 @@ def main():
     reality = RealityTask('ood', 
         dataset=ImagePairDataset(data_dir=f"{SHARED_DIR}/ood_standard_set", resize=(256, 256)),
         tasks=[tasks.rgb, tasks.rgb],
-        batch_size=8
+        batch_size=4
     )
 
     graph = TaskGraph(
@@ -50,7 +50,7 @@ def main():
             ('rgb', 'edge_occlusion'),
         ],
         reality=reality,
-        batch_size=8,
+        batch_size=4,
         initialize_first_order=True,
     )
 
@@ -71,7 +71,7 @@ def main():
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=6)
+        free_energy = graph.free_energy(sample=8)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

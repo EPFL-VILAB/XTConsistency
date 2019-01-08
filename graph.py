@@ -161,7 +161,7 @@ class TaskGraph(TrainableModel):
     #     return sum(task_data)/len(task_data)
 
 
-    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=3):
+    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=1):
 
         with torch.no_grad():
             def dfs(task, X, max_len=max_len, history=[]):
@@ -201,7 +201,7 @@ class TaskGraph(TrainableModel):
 
         with torch.no_grad():
             for task in self.pathnames:
-                curr_mse = task.norm(self.reality.task_data[task].to(DEVICE), 
+                curr_mse = task.norm(self.reality.task_data[task].to(DEVICE).detach(), 
                     self.estimates[task.name])[0].data.cpu().numpy().mean()
                 data, rownames = zip(*sorted(zip(self.mse[task],  self.pathnames[task])))
                 logger.bar([curr_mse] + list(data), f'{task}_path_mse', opts={'rownames': ["current"] + list(rownames)})
@@ -242,7 +242,7 @@ class TaskGraph(TrainableModel):
                 transfer.dest_task.norm(
                     self.estimate(transfer.dest_task), 
                     transfer(self.estimate(transfer.src_task))
-                )[0]/transfer.dest_task.variance
+                )[0]/(transfer.dest_task.variance**(0.5))
             )
 
         task_data = [
@@ -255,6 +255,7 @@ class TaskGraph(TrainableModel):
             if isinstance(task, RealityTask): continue
             estimates = (transfer(self.estimate(transfer.src_task)) for transfer in self.in_adj[task])
             average = sum(estimates)/len(self.in_adj[task])
+<<<<<<< HEAD
             self.estimates[task.name].data = average.data      
 
     def incoming_transfers(self, task):
@@ -264,6 +265,15 @@ class TaskGraph(TrainableModel):
             images.append(transfer(self.estimate(transfer.src_task)))
             task_names.append(transfer.src_task.name)
         return torch.stack(images), task_names
+=======
+            self.estimates[task.name].data = (self.estimates[task.name].data + average.data)/2.0
+
+
+
+
+        
+
+>>>>>>> mem leak
 
 
     # def free_energy(self, sample=12):

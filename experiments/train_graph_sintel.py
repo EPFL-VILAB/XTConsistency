@@ -65,10 +65,10 @@ def main():
     graph.plot_estimates(logger)
     graph.plot_paths(logger, dest_tasks=[tasks.normal], show_images=True)
 
-    for epochs in range(0, 4000):
+    for epochs in range(0, 750):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=8)
+        free_energy = graph.free_energy(sample=4)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

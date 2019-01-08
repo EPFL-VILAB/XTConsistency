@@ -38,20 +38,20 @@ def main():
             tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer]
         ),
         tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer],
-        batch_size=4
+        batch_size=8
     )
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
         anchored_tasks=[reality, tasks.rgb],
         reality=reality,
-        batch_size=4,
+        batch_size=8,
         edges_exclude=[
             ('almena', 'normal'),
             ('almena', 'principal_curvature'),
             ('almena', 'depth_zbuffer'),
-            ('rgb', 'keypoints3d'),
-            ('rgb', 'edge_occlusion'),
+            # ('rgb', 'keypoints3d'),
+            # ('rgb', 'edge_occlusion'),
         ],
         initialize_first_order=True,
     )
@@ -60,25 +60,24 @@ def main():
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
 
-    # images, task_names = graph.incoming_transfers(tasks.normal)
-
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
-    logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
-    logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
+    # logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
+    # logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.plot_estimates(logger)
-    graph.plot_paths(logger, 
-        dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
-        show_images=False
-    )
+    # graph.plot_estimates(logger)
+    # graph.plot_paths(logger, 
+    #     dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
+    #     show_images=False
+    # )
 
-    for epochs in range(0, 4000):
+    for epochs in range(0, 750):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=8)
-        graph.estimates.step(free_energy)
+        free_energy = graph.free_energy(sample=4)
+        print (epochs, free_energy)
+        # graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
         logger.update("energy", free_energy)
 
 
