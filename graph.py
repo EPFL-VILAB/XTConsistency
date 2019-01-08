@@ -248,18 +248,19 @@ class TaskGraph(TrainableModel):
         return sum(task_data)/len(task_data)
 
     def averaging_step(self, sample=10):
-
         for task in self.tasks:
             if isinstance(task, RealityTask): continue
             estimates = (transfer(self.estimate(transfer.src_task)) for transfer in self.in_adj[task])
             average = sum(estimates)/len(self.in_adj[task])
-            self.estimates[task.name].data = average.data
+            self.estimates[task.name].data = average.data      
 
-
-
-
-        
-
+    def incoming_transfers(self, task):
+        images, task_names = [], []
+        for transfer in self.edges:
+            if transfer.dest_task.name != task.name: continue
+            images.append(transfer(self.estimate(transfer.src_task)))
+            task_names.append(transfer.src_task.name)
+        return torch.stack(images), task_names
 
 
     # def free_energy(self, sample=12):
