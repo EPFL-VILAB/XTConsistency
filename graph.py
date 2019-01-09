@@ -255,8 +255,8 @@ class TaskGraph(TrainableModel):
             if isinstance(task, RealityTask): continue
             estimates = (transfer(self.estimate(transfer.src_task)) for transfer in self.in_adj[task])
             average = sum(estimates)/len(self.in_adj[task])
-<<<<<<< HEAD
-            self.estimates[task.name].data = average.data      
+            self.estimates[task.name].data = average.data
+            # self.estimates[task.name].data = (self.estimates[task.name].data + average.data)/2.0     
 
     def incoming_transfers(self, task):
         images, task_names = [], []
@@ -265,15 +265,7 @@ class TaskGraph(TrainableModel):
             images.append(transfer(self.estimate(transfer.src_task)))
             task_names.append(transfer.src_task.name)
         return torch.stack(images), task_names
-=======
-            self.estimates[task.name].data = (self.estimates[task.name].data + average.data)/2.0
 
-
-
-
-        
-
->>>>>>> mem leak
 
 
     # def free_energy(self, sample=12):
