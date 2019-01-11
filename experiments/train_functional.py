@@ -31,8 +31,8 @@ import IPython
 def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=64, **kwargs):
 
     # MODEL
-    model = DataParallelModel.load(UNet().cuda(), "standardval_rgb2normal_baseline.pth")
-    # model = functional_transfers.n.load_model() if pretrained else DataParallelModel(UNet())
+    # model = DataParallelModel.load(UNet().cuda(), "standardval_rgb2normal_baseline.pth")
+    model = functional_transfers.n.load_model() if pretrained else DataParallelModel(UNet())
     model.compile(torch.optim.Adam, lr=(3e-5 if pretrained else 3e-4), weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
@@ -50,7 +50,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=64,
     # DATA LOADING
     ood_images = load_ood(ood_path=f'{BASE_DIR}/data/ood_images/')
     train_loader, val_loader, train_step, val_step = load_train_val("rgb", "normal", batch_size=batch_size)
-        #train_buildings=["almena"], val_buildings=["almena"])
+        # train_buildings=["almena"], val_buildings=["almena"])
     test_set, test_images = load_test("rgb", "normal")
     logger.images(test_images, "images", resize=128)
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
@@ -71,7 +71,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=64,
         val_metrics = model.predict_with_metrics(val_set, loss_fn=functional, logger=logger)
         train_metrics = model.fit_with_metrics(train_set, loss_fn=functional, logger=logger)
         functional.logger_update(logger, train_metrics, val_metrics)
-        run_eval_suite(model, logger, sample=160)
+        # run_eval_suite(model, logger, sample=160)
 
 
 if __name__ == "__main__":

@@ -865,10 +865,10 @@ class FunctionalLoss(object):
     def logger_update(self, logger, train_metrics, val_metrics):
 
         for loss, metric in zip(self.loss_names, train_metrics):
-            logger.update(f"train_{loss}", metric.mean())
+            logger.update(f"train_{loss}", torch.mean(torch.tensor(metric)))
 
         for loss, metric in zip(self.loss_names, val_metrics):
-            logger.update(f"val_{loss}",metric.mean())
+            logger.update(f"val_{loss}", torch.mean(torch.tensor(metric)))
 
     def __str__(self):
         return str(self.losses.keys())
