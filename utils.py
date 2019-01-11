@@ -46,6 +46,8 @@ elif BASE_DIR == "raid":
     DATA_DIRS = ["/raid/scratch/tstand/taskonomy/", "/raid/scratch/tstand/taskonomy/"]
     RESULTS_DIR = "local/result"
     MODELS_DIR = "local/models"
+    os.system(f"mkdir -p {RESULTS_DIR}")
+    os.system(f"sudo mkdir -p {MODELS_DIR}")
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")
 
