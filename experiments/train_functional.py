@@ -28,11 +28,11 @@ from transfers import functional_transfers
 import IPython
 
 
-def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=48, **kwargs):
+def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=64, **kwargs):
 
     # MODEL
-    # model = DataParallelModel.load(UNetOld().cuda(), "mount/shared/results_fttest_mixing_percepcurv_39/model.pth")
-    model = functional_transfers.n.load_model() if pretrained else DataParallelModel(UNet())
+    model = DataParallelModel.load(UNet().cuda(), "standardval_rgb2normal_baseline.pth")
+    # model = functional_transfers.n.load_model() if pretrained else DataParallelModel(UNet())
     model.compile(torch.optim.Adam, lr=(3e-5 if pretrained else 3e-4), weight_decay=2e-6, amsgrad=True)
     scheduler = MultiStepLR(model.optimizer, milestones=[5*i + 1 for i in range(0, 80)], gamma=0.95)
 
@@ -48,7 +48,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=48,
     functional.logger_hooks(logger)
 
     # DATA LOADING
-    ood_images = load_ood()
+    ood_images = load_ood(ood_path=f'{BASE_DIR}/data/ood_images/')
     train_loader, val_loader, train_step, val_step = load_train_val("rgb", "normal", batch_size=batch_size)
         #train_buildings=["almena"], val_buildings=["almena"])
     test_set, test_images = load_test("rgb", "normal")
@@ -56,7 +56,7 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=48,
     logger.images(torch.cat(ood_images, dim=0), "ood_images", resize=128)
 
     # TRAINING
-    for epochs in range(0, 15):
+    for epochs in range(0, 800):
         preds_name = "start_preds" if epochs == 0 and pretrained else "preds"
         ood_name = "start_ood" if epochs == 0 and pretrained else "ood"
         plot_images(model, logger, test_set, dest_task="normal", ood_images=ood_images, 

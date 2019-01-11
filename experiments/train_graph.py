@@ -59,7 +59,6 @@ def main():
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
-
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)

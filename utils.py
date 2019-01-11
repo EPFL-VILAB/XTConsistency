@@ -26,6 +26,7 @@ MODELS_DIR = f"{BASE_DIR}/shared/models"
 DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/small_data"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
+USE_RAID = False
 
 if BASE_DIR == "/":
     DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
@@ -37,6 +38,12 @@ elif BASE_DIR == "locals":
     MODELS_DIR = "local/models"
 elif BASE_DIR == "cvgl":
     DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
+    RESULTS_DIR = "local/result"
+    MODELS_DIR = "local/models"
+elif BASE_DIR == "raid":
+    USE_RAID = True
+    BASE_DIR = "."
+    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/", "/raid/scratch/tstand/taskonomy/"]
     RESULTS_DIR = "local/result"
     MODELS_DIR = "local/models"
 else:

@@ -40,12 +40,9 @@ loss_configs = {
     "gt_mse": 
         (
             {
-                "f(y) -> f(y^)": lambda y, y_hat, x, norm, cache: norm(f(y), f(y_hat)),
+                "y -> y^": lambda y, y_hat, x, norm, cache: norm(y, y_hat),
             },
-            {
-                "f(y)": lambda y, y_hat, x: f(y), 
-                "f(y^)": lambda y, y_hat, x: f(y_hat), 
-            }
+            {}
         ),
     "wGTinflux_A_B_C_normalized_delay": 
         (
@@ -868,10 +865,10 @@ class FunctionalLoss(object):
     def logger_update(self, logger, train_metrics, val_metrics):
 
         for loss, metric in zip(self.loss_names, train_metrics):
-            logger.update(f"train_{loss}", np.mean(metric))
+            logger.update(f"train_{loss}", metric.mean())
 
         for loss, metric in zip(self.loss_names, val_metrics):
-            logger.update(f"val_{loss}", np.mean(metric))
+            logger.update(f"val_{loss}",metric.mean())
 
     def __str__(self):
         return str(self.losses.keys())

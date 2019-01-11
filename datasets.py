@@ -147,12 +147,15 @@ def load_sintel_train_val_test(batch_size=32):
 class TaskDataset(Dataset):
 
     def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
-            building_files=None, convert_path=None):
+            building_files=None, convert_path=None, use_raid=USE_RAID):
 
         super().__init__()
         self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
         self.building_files = building_files or self.building_files
         self.convert_path = convert_path or self.convert_path
+        if use_raid:
+            self.convert_path = self.convert_path_raid
+            self.building_files = self.building_files_raid
         # Build a map from buildings to directories
         self.file_map = {}
         for data_dir in self.data_dirs:
@@ -160,7 +163,6 @@ class TaskDataset(Dataset):
                 res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
                 if res is None: continue
                 self.file_map[file[len(data_dir)+1:]] = data_dir
-
         filtered_files = set()
         for i, task in enumerate(tasks):
             task_files = []
@@ -176,7 +178,8 @@ class TaskDataset(Dataset):
     def building_files(self, task, building):
         """ Gets all the tasks in a given building (grouping of data) """
         return get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", self.data_dirs)
-
+    def building_files_raid(self, task, building):
+        return get_files(f"{task}/{building}/*.{task.file_ext}", self.data_dirs)
     def convert_path(self, source_file, task):
         """ Converts a file from task A to task B. Can be overriden by subclasses"""
         source_file = "/".join(source_file.split('/')[-3:])
@@ -188,6 +191,14 @@ class TaskDataset(Dataset):
             return ""
         data_dir = self.file_map[f"{building}_{task.file_name}"]
         return f"{data_dir}/{dest_file}"
+
+    def convert_path_raid(self, full_file, task):
+        """ Converts a file from task A to task B. Can be overriden by subclasses"""
+        source_file = "/".join(full_file.split('/')[-3:])
+        result = parse.parse("{task}/{building}/{view}.{ext}", source_file)
+        building, _, view = (result["building"], result["task"], result["view"])
+        dest_file = f"{task}/{building}/{view}.{task.file_ext}"
+        return f"{full_file[:-len(source_file)-1]}/{dest_file}"
 
     def __len__(self):
         return len(self.idx_files)
