@@ -53,7 +53,7 @@ def main():
             # ('rgb', 'keypoints3d'),
             # ('rgb', 'edge_occlusion'),
         ],
-        initialize_first_order=True,
+        initialize_first_order=False,
     )
 
     graph.p.compile(torch.optim.Adam, lr=4e-2)
@@ -62,7 +62,7 @@ def main():
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
-    # logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
+    logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
     # logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
     # graph.plot_estimates(logger)
@@ -71,14 +71,23 @@ def main():
     #     show_images=False
     # )
 
+    logger.add_hook(lambda logger, data: logger.plot(data["loss"], "loss"), feature="loss", freq=100)
+    logger.add_hook(lambda logger, data: logger.plot(data["f(y), f(y_hat)"], "f(y), f(y_hat)"), feature="f(y), f(y_hat)", freq=100)
+    logger.add_hook(lambda logger, data: logger.plot(data["F(f(y)), F(f(y_hat))"], "F(f(y)), F(f(y_hat))"), feature="F(f(y)), F(f(y_hat))", freq=100)
+
     for epochs in range(0, 750):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=4)
-        print (epochs, free_energy)
+        loss, (curv_loss, cycle_loss) = graph.cycle_loss_test()
+        graph.estimates.step(loss)
+        logger.update("loss", loss)
+        logger.update("f(y), f(y_hat)", curv_loss)
+        logger.update("F(f(y)), F(f(y_hat))", cycle_loss)
+        # free_energy = graph.free_energy(sample=4)
+        # print (epochs, free_energy)
         # graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
-        logger.update("energy", free_energy)
-
+        # logger.update("energy", free_energy)
+        logger.step()
 
 if __name__ == "__main__":
     Fire(main)

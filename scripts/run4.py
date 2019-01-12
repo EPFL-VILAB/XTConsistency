@@ -44,7 +44,7 @@ def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4):
     print(cmd)
     os.system(f'echo \"#!/bin/sh\n' + cmd +'\" > cmd.sh')
     os.system(f'chmod +x cmd.sh')
-    srun_cmd = f"srun --partition=\"dgx\" --mem {gpus * 32}G --cpus-per-task 32 --gres=gpu:{gpus}" + \
+    srun_cmd = f"srun --partition=\"dgx\" --mem {gpus*32}G --cpus-per-task 32 --gres=gpu:{gpus}" + \
                 f" -u --job-name {run_name} cmd.sh"
     print(srun_cmd)
     process = subprocess.Popen(shlex.split(srun_cmd), shell=False, stdout=subprocess.PIPE, universal_newlines=True)

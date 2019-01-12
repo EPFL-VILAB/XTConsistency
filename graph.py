@@ -29,6 +29,7 @@ class TaskGraph(TrainableModel):
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
+        self.edge_map = {}
         self.reality=reality
 
         # construct transfer graph
@@ -54,6 +55,7 @@ class TaskGraph(TrainableModel):
             self.edges += [transfer]
             self.adj[src_task] += [transfer]
             self.in_adj[dest_task] += [transfer]
+            self.edge_map[key] = transfer
 
         self.anchored_tasks = set(anchored_tasks)
         self.initialize_first_order = initialize_first_order
@@ -249,6 +251,18 @@ class TaskGraph(TrainableModel):
             norm(transfer) for transfer in random.sample(self.edges, sample)
         ]
         return sum(task_data)/len(task_data)
+
+    def cycle_loss_test(self):
+        # <F(f(y), F(f(y^)>
+        # <f(y), f(y^)>
+        f = self.edge_map[('normal', 'principal_curvature')]
+        F = self.edge_map[('principal_curvature', 'normal')]
+        y_hat = self.reality.task_data[tasks.normal].to(DEVICE).detach()
+        y = self.estimate(tasks.normal)
+        f_y, f_y_hat = f(y), f(y_hat)
+        curv_loss, _ = tasks.principal_curvature.norm(f_y, f_y_hat)
+        cycle_loss, _ = tasks.normal.norm(F(f_y), f(f_y_hat))
+        return curv_loss + cycle_loss, (curv_loss.detach(), cycle_loss.detach())
 
     def averaging_step(self, sample=10):
         for task in self.tasks:
