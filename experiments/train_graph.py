@@ -70,23 +70,14 @@ def main():
     #     dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
     #     show_images=False
     # )
-
-    logger.add_hook(lambda logger, data: logger.plot(data["loss"], "loss"), feature="loss", freq=100)
-    logger.add_hook(lambda logger, data: logger.plot(data["f(y), f(y_hat)"], "f(y), f(y_hat)"), feature="f(y), f(y_hat)", freq=100)
-    logger.add_hook(lambda logger, data: logger.plot(data["F(f(y)), F(f(y_hat))"], "F(f(y)), F(f(y_hat))"), feature="F(f(y)), F(f(y_hat))", freq=100)
-
+    
     for epochs in range(0, 750):
         logger.update("epoch", epochs)
 
-        loss, (curv_loss, cycle_loss) = graph.cycle_loss_test()
-        graph.estimates.step(loss)
-        logger.update("loss", loss)
-        logger.update("f(y), f(y_hat)", curv_loss)
-        logger.update("F(f(y)), F(f(y_hat))", cycle_loss)
-        # free_energy = graph.free_energy(sample=4)
-        # print (epochs, free_energy)
-        # graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
-        # logger.update("energy", free_energy)
+        free_energy = graph.free_energy(sample=4)
+        print (epochs, free_energy)
+        graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
+        logger.update("energy", free_energy)
         logger.step()
 
 if __name__ == "__main__":
