@@ -11,6 +11,7 @@ from multiprocessing import Pool
 from skimage.filters import gaussian
 
 from logger import Logger, VisdomLogger
+from utils import *
 
 
 TAG_FLOAT = 202021.25
@@ -23,13 +24,25 @@ def cam_read(filename):
     N = np.fromfile(f,dtype='float64',count=12).reshape((3,4))
     return M,N
 
+def depth_read(filename):
+    """ Read depth data from file, return as numpy array. """
+    f = open(filename,'rb')
+    check = np.fromfile(f,dtype=np.float32,count=1)[0]
+    assert check == TAG_FLOAT, ' depth_read:: Wrong tag in flow file (should be: {0}, is: {1}). Big-endian machine? '.format(TAG_FLOAT,check)
+    width = np.fromfile(f,dtype=np.int32,count=1)[0]
+    height = np.fromfile(f,dtype=np.int32,count=1)[0]
+    size = width*height
+    assert width > 0 and height > 0 and size > 1 and size < 100000000, ' depth_read:: Wrong input size (width = {0}, height = {1}).'.format(width,height)
+    depth = np.fromfile(f,dtype=np.float32,count=-1).reshape((height,width))
+    return depth
+
 def normalize(v, axis=0):
     return v/np.linalg.norm(v, axis=axis, keepdims=True)
 
 def load_depth_map_in_m(file_name):
-    image = Image.open(file_name)
-    pixel = np.array(image)
-    return (1.0/pixel)
+    image = depth_read(file_name)
+    print (image.min(), image.max())
+    return image
 
 def pixel_to_ray(pixel,camera,pixel_width=320,pixel_height=240):
     x, y = pixel
@@ -47,7 +60,7 @@ def normalised_pixel_to_ray_array(camera,width=320,height=240):
     return pixel_to_ray_array
 
 def points_in_camera_coords(depth_map,pixel_to_ray_array):
-    depth_map = gaussian(depth_map, sigma=2)
+    # depth_map = gaussian(depth_map, sigma=2)
     assert depth_map.shape[0] == pixel_to_ray_array.shape[0]
     assert depth_map.shape[1] == pixel_to_ray_array.shape[1]
     assert len(depth_map.shape) == 2
@@ -72,7 +85,7 @@ def surface_normal(points, pixel_width=320, pixel_height=240):
     #  -----------
     # | 1 | 2 | 3 |
     #  -----------
-    d = 8
+    d = 2
     lookups = {0:(-d,0),1:(-d,d),2:(0,d),3:(d,d),4:(d,0),5:(d,-d),6:(0,-d),7:(-d,-d)}
     
     diff = np.zeros((points.shape[0], points.shape[1], 8))
@@ -100,7 +113,7 @@ def normal_from_depth(file_name, cam_file=None, image_file=None):
 
     if cam_file is None:
         print (file_name)
-        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", file_name)
+        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.dpt", file_name)
         building, view = (result["building"], result["view"])
         cam_file = f"mount/sintel/training/camdata_left/{building}/frame_{view}.cam"
 
@@ -119,17 +132,27 @@ def normal_from_depth(file_name, cam_file=None, image_file=None):
 
 
 if __name__ == "__main__":
-
-    files = glob.glob("mount/sintel/training/depth_viz/*/frame*.png")
+    files = glob.glob("mount/sintel/training/depth/*/frame*.dpt")
     depth_map = load_depth_map_in_m(files[0])
+    normals_list = []
+
+    logger = VisdomLogger("train", env=JOB)
 
     with Pool() as pool:
-        for i, (file, normals) in enumerate(pool.imap_unordered(normal_from_depth, files)):
+        for i, (file, normals) in enumerate(
+            pool.imap_unordered(normal_from_depth, files)
+        ):
 
-            filename = "normal" + file.split('/')[-1][5:]
+            filename = "normal" + file.split('/')[-1][5:][:-4] + ".png"
             filename = file[:-len(filename)] + "/" + filename
             print (i, len(files), filename)
             plt.imsave(filename, normals)
+            normals_list.append(normals)
+            print (len(normals_list))
+
+    # normals_list = torch.FloatTensor(np.array(normals_list).astype(np.float32))
+    # normals_list = normals_list.permute((0, 3, 1, 2))
+    # logger.images(normals_list, "normals", resize=256)
 
 
 

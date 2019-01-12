@@ -35,20 +35,17 @@ def main():
     # tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
 
     reality = RealityTask('sintel', 
-        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.normal]),
+        dataset=SintelDataset(tasks=[tasks.rgb, tasks.normal]),
         tasks=[tasks.rgb, tasks.normal],
         batch_size=4
     )
     graph = TaskGraph(
         tasks=[reality, *task_list],
-        anchored_tasks=[reality, tasks.rgb],
+        anchored_tasks=[reality, tasks.rgb, tasks.normal],
         reality=reality,
         batch_size=4,
         edges_exclude=[
-            ('rgb', 'keypoints3d'),
-            ('rgb', 'edge_occlusion'),
-            ('sintel', 'normal'),
-            ('sintel', 'depth_zbuffer'),
+            #('sintel', 'normal'),
         ],
         initialize_first_order=True,
     )
@@ -60,15 +57,15 @@ def main():
     logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
     logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
-    logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
+    # logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
-    graph.plot_estimates(logger)
-    graph.plot_paths(logger, dest_tasks=[tasks.normal], show_images=True)
+    # graph.plot_estimates(logger)
+    # graph.plot_paths(logger, dest_tasks=[tasks.normal], show_images=True)
+    # graph.update_paths(logger)
 
-    for epochs in range(0, 750):
+    for epochs in range(0, 4000):
         logger.update("epoch", epochs)
-
-        free_energy = graph.free_energy(sample=4)
+        free_energy = graph.free_energy(sample=12)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

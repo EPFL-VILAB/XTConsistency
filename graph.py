@@ -161,7 +161,7 @@ class TaskGraph(TrainableModel):
     #     return sum(task_data)/len(task_data)
 
 
-    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=1):
+    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=4):
 
         with torch.no_grad():
             def dfs(task, X, max_len=max_len, history=[]):

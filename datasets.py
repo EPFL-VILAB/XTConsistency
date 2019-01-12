@@ -17,6 +17,7 @@ from task_configs import get_task, tasks
 
 from PIL import Image
 from io import BytesIO
+from sklearn.model_selection import train_test_split
 import IPython
 
 
@@ -51,6 +52,41 @@ def load_train_val(source_task, dest_task,
 
     return train_loader, val_loader, train_step, val_step
 
+""" Default data loading configurations for training, validation, and testing. """
+def load_sintel_train_val_test(source_task, dest_task, 
+        batch_size=64, batch_transforms=cycle
+    ):
+
+    if isinstance(source_task, str) and isinstance(dest_task, str):
+        source_task, dest_task = get_task(source_task), get_task(dest_task)
+    
+    buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth/*")])
+    train_buildings, val_buildings = train_test_split(buildings, test_size=0.2)
+    print (len(train_buildings))
+    print (len(val_buildings))
+
+    train_loader = torch.utils.data.DataLoader(
+        SintelDataset(buildings=train_buildings, tasks=[source_task, dest_task]),
+        batch_size=batch_size,
+        num_workers=64, shuffle=True, pin_memory=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        SintelDataset(buildings=val_buildings, tasks=[source_task, dest_task]),
+        batch_size=batch_size,
+        num_workers=64, shuffle=True, pin_memory=True
+    )
+
+    train_step = int(2248616 // (100 * batch_size))
+    val_step = int(245592 // (100 * batch_size))
+    print("Train step: ", train_step)
+    print("Val step: ", val_step)
+
+    test_set = list(itertools.islice(val_loader, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+    
+    return train_loader, val_loader, train_step, val_step, test_set, test_images
+
+
 """ Load all buildings """
 def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", batch_transforms=cycle):
 
@@ -70,6 +106,25 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 def load_test(source_task, dest_task, 
         buildings=["almena", "albertville"], sample=6,
     ):
+    if isinstance(source_task, str) and isinstance(dest_task, str):
+        source_task, dest_task = get_task(source_task), get_task(dest_task)
+
+    test_loader1 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[0]], tasks=[source_task, dest_task]),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True
+    )
+    test_loader2 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[1]], tasks=[source_task, dest_task]),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True
+    )
+    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
+    test_images = torch.cat([x for x, y in test_set], dim=0)
+
+    return test_set, test_images
+
+def load_test(source_task, dest_task, sample=32):
     if isinstance(source_task, str) and isinstance(dest_task, str):
         source_task, dest_task = get_task(source_task), get_task(dest_task)
 
@@ -118,28 +173,6 @@ def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
     ood_images = list(itertools.islice(ood_loader, 1))
     return ood_loader, ood_images
     
-
-def load_sintel_train_val_test(batch_size=32):
-    train_loader = torch.utils.data.DataLoader(
-        ImagePairDataset(data_dir=f"{BASE_DIR}/sintel/training/clean", 
-            files=glob.glob(f"{BASE_DIR}/sintel/training/clean/*/*.png")
-        ),
-        batch_size=batch_size,
-        num_workers=batch_size, shuffle=False, pin_memory=True
-    )
-    test_files = glob.glob(f"{BASE_DIR}/sintel/test/clean/*/*.png")
-    random.Random(229).shuffle(test_files)
-    val_loader = torch.utils.data.DataLoader(
-        ImagePairDataset(data_dir=f"{BASE_DIR}/sintel/test/clean", 
-            files=test_files
-        ),
-        batch_size=batch_size,
-        num_workers=batch_size, shuffle=False, pin_memory=True
-    )
-    test_set = list(itertools.islice(val_loader, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-
-    return train_loader, val_loader, test_set, test_images
 
 
 
@@ -222,16 +255,13 @@ class TaskDataset(Dataset):
 class SintelDataset(TaskDataset):
 
     def __init__(self, *args, **kwargs):
-        if kwargs["buildings"] is None:
-            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
+        if "buildings" not in kwargs or ["buildings"] is None:
+            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth/*")])
         super().__init__(*args, **kwargs)
-
-    def load_dataset(self):
-        buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
 
     def building_files(self, task, building):
         """ Gets all the tasks in a given building (grouping of data) """
-        task_dir = {"rgb": "clean", "normal": "depth_viz", "depth_zbuffer": "depth_viz"}[task.name]
+        task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
         task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
 
         return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
@@ -241,7 +271,7 @@ class SintelDataset(TaskDataset):
         result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
         building, view = (result["building"], result["view"])
 
-        task_dir = {"rgb": "clean", "normal": "depth_viz", "depth_zbuffer": "depth_viz"}[task.name]
+        task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
         task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
 
         dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"

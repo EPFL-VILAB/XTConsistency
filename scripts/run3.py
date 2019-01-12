@@ -15,8 +15,7 @@ def upload(exp_id):
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude",
         "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", 
         "--exclude", "data/results", "--exclude", "local", 
-        "--exclude", "data", "--exclude", "modules", "--exclude", "old", "--exclude", "jobs", 
-        "--exclude", "__pycache__", "--exclude", "scripts", "--exclude", "experiments/__pycache__"])
+        "--exclude", "__pycache__", "--exclude", "experiments/__pycache__"])
     subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split())
 
 def delete(env):

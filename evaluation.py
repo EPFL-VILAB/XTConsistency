@@ -12,7 +12,7 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from task_configs import get_task, get_model, tasks
 from logger import Logger, VisdomLogger
-from datasets import TaskDataset, load_ood
+from datasets import SintelDataset, load_ood
 import transforms
 
 torch.manual_seed(229) # cpu  vars
@@ -54,7 +54,8 @@ class ValidationMetrics(object):
     def load_dataset(self):
         self.dataset = TaskDataset(["almena", "albertville"], tasks=[self.src_task, self.dest_task])
 
-    def build_dataloader(self, sample=None, batch_size=32, seed=229):
+    def build_dataloader(self, sample=None, batch_size=16, seed=229):
+        print ("Dataset length: ", len(self.dataset))
         sampler = torch.utils.data.SequentialSampler() if sample is None else \
             torch.utils.data.SubsetRandomSampler(random.Random(seed).sample(range(len(self.dataset)), sample))
 
@@ -120,7 +121,7 @@ class ValidationMetrics(object):
             data = np.stack((logger.data[key] for key in keys), axis=1)
             logger.plot(data, metric, opts={"legend": keys})
 
-    def evaluate(self, model, logger=None, sample=None, show_images=False):
+    def evaluate(self, model, logger=None, sample=None, show_images=False, image_limit=64):
         """ Evaluates dataset on model. """
 
         eval_loader = self.build_dataloader(sample=sample)
@@ -131,7 +132,7 @@ class ValidationMetrics(object):
             for metric in ValidationMetrics.PLOT_METRICS:
                 logger.update(f"{self.name}_{metric}", metrics[metric])
             if show_images:
-                logger.images_grouped([images, preds, targets], self.name, resize=256)
+                logger.images_grouped([images[0:image_limit], preds[0:image_limit], targets[0:image_limit]], self.name, resize=256)
 
         return metrics
 
@@ -228,41 +229,22 @@ class SintelMetrics(ValidationMetrics):
         super().__init__(*args, **kwargs)
 
     def load_dataset(self):
-        buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth_viz/*")])
-        self.dataset = TaskDataset(buildings, tasks=[self.src_task, self.dest_task], 
-            building_files=self.building_files, convert_path=self.convert_path)
-
-    def building_files(self, task, building):
-        """ Gets all the tasks in a given building (grouping of data) """
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
-        return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
-
-    def convert_path(self, source_file, task):
-        """ Converts a file from task A to task B. Can be overriden by subclasses"""
-        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
-        building, view = (result["building"], result["view"])
-
-        task_dir = {"rgb": "clean", "normal": "depth_viz"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal"}[task.name]
-
-        dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
-        return dest_file
-
+        self.dataset = SintelDataset(tasks=[self.src_task, self.dest_task])
 
 datasets = [
-    ValidationMetrics("almena"),
+    # ValidationMetrics("almena"),
     # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
     # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
     # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
     # ImageCorruptionMetrics("almena_corrupted4", corruption=4),
-    # # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
+    # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
     # AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
-    # SintelMetrics("sintel"),
+    SintelMetrics("sintel"),
 ]
 
 
-def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=80, show_images=False):
+def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=400, show_images=False):
+    print ("Model: ", model)
     load_ood()
     model = model or DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/{model_file}")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
@@ -277,15 +259,6 @@ def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth"
 
 
 if __name__ == "__main__":
-    # Fire(run_eval_suite)
-    cherry_pick()
-
-
-
-
-
-
-
-
+    Fire(run_eval_suite)
 
 

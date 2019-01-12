@@ -35,7 +35,7 @@ def main():
     # tasks.depth_zbuffer.image_transform = tasks.depth_zbuffer.sintel_depth.image_transform
 
     reality = RealityTask('sintel', 
-        dataset=SintelDataset(buildings=None, tasks=[tasks.rgb, tasks.normal]),
+        dataset=SintelDataset(tasks=[tasks.rgb, tasks.normal]),
         tasks=[tasks.rgb, tasks.normal],
         batch_size=48
     )
@@ -60,7 +60,7 @@ def main():
         mse_orig = task.norm(Y, Y_hat)[0].data.cpu().numpy().mean()
 
         in_neighbors = [transfer for transfer in graph.in_adj[task] \
-            if not isinstance(transfer, RealityTask) and transfer.src_task is not tasks.rgb]
+            if not isinstance(transfer, RealityTask)]
 
         estimates = [
             transfer(graph.estimate(transfer.src_task)).detach() \

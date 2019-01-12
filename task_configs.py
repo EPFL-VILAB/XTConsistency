@@ -81,7 +81,6 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.variance = Task.variances.get(name, 1.0)
-        print (self.name, self.variance)
 
     def norm(self, pred, target):
         loss = ((pred - target)**2).mean()
