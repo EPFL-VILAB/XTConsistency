@@ -237,7 +237,7 @@ class SintelDataset(TaskDataset):
 
     def __init__(self, *args, **kwargs):
         if "buildings" not in kwargs or ["buildings"] is None:
-            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth/*")])
+            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("{BASE_DIR}/sintel/training/depth/*")])
         super().__init__(*args, **kwargs)
 
     def building_files(self, task, building):
@@ -245,7 +245,7 @@ class SintelDataset(TaskDataset):
         task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
         task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
 
-        return sorted(glob.glob(f"mount/sintel/training/{task_dir}/{building}/{task_val}*.png"))
+        return sorted(glob.glob(f"{BASE_DIR}/sintel/training/{task_dir}/{building}/{task_val}*.png"))
 
     def convert_path(self, source_file, task):
         """ Converts a file from task A to task B. Can be overriden by subclasses"""
@@ -255,7 +255,7 @@ class SintelDataset(TaskDataset):
         task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
         task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
 
-        dest_file = f"mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
+        dest_file = f"{BASE_DIR}/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
         return dest_file
             
 

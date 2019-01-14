@@ -42,7 +42,7 @@ elif BASE_DIR == "cvgl":
     MODELS_DIR = "local/models"
 elif BASE_DIR == "raid":
     USE_RAID = True
-    BASE_DIR = "."
+    BASE_DIR = "/raid/scratch/rsuri2"
     DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
     RESULTS_DIR = f"results/results_{EXPERIMENT}"
     MODELS_DIR = "/raid/scratch/rsuri2/models"

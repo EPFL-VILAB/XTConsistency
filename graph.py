@@ -164,8 +164,9 @@ class TaskGraph(TrainableModel):
     #     return sum(task_data)/len(task_data)
 
 
-    def plot_paths(self, logger, dest_tasks=[tasks.normal], show_images=False, max_len=4):
+    def plot_paths(self, logger, src_tasks=None, dest_tasks=[tasks.normal], show_images=False, max_len=4):
 
+        src_tasks = src_tasks or self.anchored_tasks
         with torch.no_grad():
             def dfs(task, X, max_len=max_len, history=[]):
                 if task in dest_tasks: yield (history, X)
@@ -180,9 +181,11 @@ class TaskGraph(TrainableModel):
             self.mse, self.pathnames, images = defaultdict(list), defaultdict(list), defaultdict(list)
             for history, Y in itertools.chain.from_iterable(
                 dfs(src_task, self.estimates[src_task.name], history=[src_task]) \
-                for src_task in self.anchored_tasks
+                for src_task in src_tasks
             ):
                 print ("DFS path: ", history)
+                if len(history) == 1:
+                    continue
                 dest_task = history[-1].dest_task
                 pathname = reduce(lambda a, b: f"{b}({a})", history)
                 mse = dest_task.norm(self.reality.task_data[dest_task].to(DEVICE), Y)[0].data.cpu().numpy().mean()
@@ -253,18 +256,6 @@ class TaskGraph(TrainableModel):
         ]
         return sum(task_data)/len(task_data)
 
-    def cycle_loss_test(self):
-        # <F(f(y), F(f(y^)>
-        # <f(y), f(y^)>
-        f = self.edge_map[('normal', 'principal_curvature')]
-        F = self.edge_map[('principal_curvature', 'normal')]
-        y_hat = self.reality.task_data[tasks.normal].to(DEVICE).detach()
-        y = self.estimate(tasks.normal)
-        f_y, f_y_hat = f(y), f(y_hat)
-        curv_loss, _ = tasks.principal_curvature.norm(f_y, f_y_hat)
-        cycle_loss, _ = tasks.normal.norm(F(f_y), f(f_y_hat))
-        return curv_loss + cycle_loss, (curv_loss.detach(), cycle_loss.detach())
-
     def averaging_step(self, sample=10):
         for task in self.tasks:
             if isinstance(task, RealityTask): continue
@@ -281,6 +272,36 @@ class TaskGraph(TrainableModel):
             task_names.append(transfer.src_task.name)
         return torch.stack(images), task_names
 
+    def cycle_loss_test(self):
+
+        f = self.edge_map[('normal', 'principal_curvature')]
+        F = self.edge_map[('principal_curvature', 'normal')]
+        y_hat = self.reality.task_data[tasks.normal].to(DEVICE).detach()
+        y = self.estimate(tasks.normal)
+        f_y, f_y_hat = f(y), f(y_hat)
+        curv_loss, _ = tasks.principal_curvature.norm(f_y, f_y_hat)
+        cycle_loss, _ = tasks.normal.norm(F(f_y), y)
+        return curv_loss + cycle_loss, (curv_loss.detach(), cycle_loss.detach())
+
+    def cycle_synthesis_test(self):
+
+        f = self.edge_map[('normal', 'principal_curvature')]
+        F = self.edge_map[('principal_curvature', 'normal')]
+        y_hat = self.reality.task_data[tasks.normal].to(DEVICE).detach()
+
+        y = self.estimate(tasks.normal)
+        z = self.estimate(tasks.principal_curvature)
+        f_y, f_y_hat = f(y), f(y_hat)
+
+        # f(y) -> f(y_hat)
+        # z -> f(y)
+        # F(z) -> y
+        
+        curv_loss, _ = tasks.principal_curvature.norm(f_y, f_y_hat)
+        cycle_step1, _ = tasks.principal_curvature.norm(f_y, z)
+        cycle_step2, _ = tasks.normal.norm(F(z), y)
+        normal_error, _ = tasks.normal.norm(y, y_hat)
+        return curv_loss + cycle_step1 + cycle_step2, (curv_loss.detach(), cycle_step1.detach(), cycle_step2.detach(), normal_error.detach())
 
 
     # def free_energy(self, sample=12):
