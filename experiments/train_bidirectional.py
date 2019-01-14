@@ -29,15 +29,15 @@ from graph import TaskGraph
 import IPython
 
 
-def main(pretrained=False, batch_size=48, fast=False, **kwargs):
-    if fast: batch_size = 8
+def main(pretrained=False, batch_size=20, fast=False, **kwargs):
+    # if fast: batch_size = 8
     task_list = [
         tasks.rgb, 
         tasks.normal, 
         tasks.principal_curvature, 
-        # tasks.sobel_edges,
-        # tasks.depth_zbuffer,
-        # tasks.reshading,
+        tasks.sobel_edges,
+        tasks.depth_zbuffer,
+        tasks.reshading,
         # tasks.edge_occlusion,
         # tasks.keypoints3d,
         # tasks.keypoints2d,
@@ -83,7 +83,9 @@ def main(pretrained=False, batch_size=48, fast=False, **kwargs):
         mse, _ = tasks.normal.norm(pred, target['normal'])
         total = 0
         for transfer in in_transfers:
-            loss, val = transfer.dest_task.norm(pred, transfer(target[transfer.src_task.name]))
+            with torch.no_grad():
+                gt = transfer(target[transfer.src_task.name])
+            loss, val = transfer.dest_task.norm(pred, gt)
             losses[transfer.name].append(val[0].data.cpu())
             total += loss
         for transfer in out_transfers:

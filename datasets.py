@@ -193,7 +193,7 @@ class TaskDataset(Dataset):
         """ Gets all the tasks in a given building (grouping of data) """
         return get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", self.data_dirs)
     def building_files_raid(self, task, building):
-        return get_files(f"{task}/{building}/*.{task.file_ext}", self.data_dirs)
+        return get_files(f"{task.file_name}/{building}/*.{task.file_ext}", self.data_dirs)
     def convert_path(self, source_file, task):
         """ Converts a file from task A to task B. Can be overriden by subclasses"""
         source_file = "/".join(source_file.split('/')[-3:])
@@ -211,7 +211,7 @@ class TaskDataset(Dataset):
         source_file = "/".join(full_file.split('/')[-3:])
         result = parse.parse("{task}/{building}/{view}.{ext}", source_file)
         building, _, view = (result["building"], result["task"], result["view"])
-        dest_file = f"{task}/{building}/{view}.{task.file_ext}"
+        dest_file = f"{task.file_name}/{building}/{view}.{task.file_ext}"
         return f"{full_file[:-len(source_file)-1]}/{dest_file}"
 
     def __len__(self):
