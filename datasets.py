@@ -22,25 +22,25 @@ import IPython
 
 
 """ Default data loading configurations for training, validation, and testing. """
-def load_train_val(source_task, dest_task, 
-        train_buildings=None, val_buildings=None, split_file="data/split.txt", 
-        batch_size=64, batch_transforms=cycle
+def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
+        split_file="data/split.txt", batch_size=64, batch_transforms=cycle
     ):
 
-    if isinstance(source_task, str) and isinstance(dest_task, str):
-        source_task, dest_task = get_task(source_task), get_task(dest_task)
-    
+    train_tasks = [get_task(t) if isinstance(t, str) else t for t in train_tasks]
+    if val_tasks is None: val_tasks = train_tasks
+    val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
+
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or data["train_buildings"]
     val_buildings = val_buildings or data["val_buildings"]
 
     train_loader = torch.utils.data.DataLoader(
-        TaskDataset(buildings=train_buildings, tasks=[source_task, dest_task]),
+        TaskDataset(buildings=train_buildings, tasks=train_tasks),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
-        TaskDataset(buildings=val_buildings, tasks=[source_task, dest_task]),
+        TaskDataset(buildings=val_buildings, tasks=val_tasks),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
@@ -104,27 +104,8 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 def load_test(source_task, dest_task, 
-        buildings=["almena", "albertville"], sample=6,
+        buildings=["almena", "albertville"], sample=12,
     ):
-    if isinstance(source_task, str) and isinstance(dest_task, str):
-        source_task, dest_task = get_task(source_task), get_task(dest_task)
-
-    test_loader1 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[0]], tasks=[source_task, dest_task]),
-        batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True
-    )
-    test_loader2 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[1]], tasks=[source_task, dest_task]),
-        batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True
-    )
-    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-
-    return test_set, test_images
-
-def load_test(source_task, dest_task, sample=32):
     if isinstance(source_task, str) and isinstance(dest_task, str):
         source_task, dest_task = get_task(source_task), get_task(dest_task)
 
@@ -289,8 +270,8 @@ class ImageDataset(Dataset):
         def crop(x):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-        os.system(f"ls {data_dir}/*.png")
-        os.system(f"sudo ls {data_dir}/*.png")
+        # os.system(f"ls {data_dir}/*.png")
+        # os.system(f"sudo ls {data_dir}/*.png")
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         self.files = sorted(self.files)
         print("num files = ", len(self.files))

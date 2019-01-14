@@ -57,7 +57,8 @@ pretrained_transfers = {
     ('depth_zbuffer', 'principal_curvature'):
         (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
     ('rgb', 'normal'):
-        (lambda: UNetOld(), f"{MODELS_DIR}/unet_baseline.pth"),
+        # (lambda: UNetOld(), f"{MODELS_DIR}/unet_baseline.pth"),
+        (lambda: UNet(), f"{MODELS_DIR}/unet_baseline_standardval.pth"),
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):

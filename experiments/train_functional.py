@@ -24,6 +24,7 @@ from functools import partial
 from fire import Fire
 
 from transfers import functional_transfers
+from task_configs import tasks
 
 import IPython
 
@@ -45,11 +46,11 @@ def main(loss_config="gt_mse", mode="standard", pretrained=False, batch_size=64,
     logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
     logger.add_hook(lambda logger, data: model.save(f"{RESULTS_DIR}/model.pth"), feature="loss", freq=400)
     logger.add_hook(lambda logger, data: scheduler.step(), feature="epoch", freq=1)
-    functional.logger_hooks(logger)
+    functional.logger_hooks(loggers)
 
     # DATA LOADING
     ood_images = load_ood(ood_path=f'{BASE_DIR}/data/ood_images/')
-    train_loader, val_loader, train_step, val_step = load_train_val("rgb", "normal", batch_size=batch_size)
+    train_loader, val_loader, train_step, val_step = load_train_val([tasks.rgb, tasks.normal], batch_size=batch_size)
         # train_buildings=["almena"], val_buildings=["almena"])
     test_set, test_images = load_test("rgb", "normal")
     logger.images(test_images, "images", resize=128)

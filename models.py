@@ -123,7 +123,9 @@ class TrainableModel(AbstractModel):
 
         self.train(train)
         out = []
-        for batch, y in datagen:
+        for data in datagen:
+            batch, y = data[0], data[1:]
+            if len(y) == 1: y = y[0]
             y_pred, loss, metric_data = self.fit_on_batch(batch, y, loss_fn=loss_fn, train=train)
             if logger is not None:
                 logger.update("loss", float(loss))

@@ -60,7 +60,8 @@ class TaskGraph(TrainableModel):
         self.anchored_tasks = set(anchored_tasks)
         self.initialize_first_order = initialize_first_order
         self.batch_size = batch_size
-        self.init_params()
+        if batch_size > 0: 
+            self.init_params()
 
     def init_params(self):
         self.estimates = WrapperModel(

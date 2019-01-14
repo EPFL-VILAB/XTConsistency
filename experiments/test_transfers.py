@@ -39,7 +39,7 @@ def main():
         logger.add_hook(lambda x: model.save(f"{RESULTS_DIR}/{src_task.name}2{dest_task.name}.pth"), feature="loss", freq=400)
 
         # DATA LOADING
-        train_loader, val_loader, train_step, val_step = load_train_val(src_task, dest_task, 
+        train_loader, val_loader, train_step, val_step = load_train_val([src_task, dest_task] 
             batch_size=64, train_buildings=["almena"], val_buildings=["almena"])
         test_set, test_images = load_test(src_task, dest_task)
         src_task.plot_func(test_images, "images", logger, resize=128)

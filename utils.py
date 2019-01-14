@@ -43,7 +43,7 @@ elif BASE_DIR == "cvgl":
 elif BASE_DIR == "raid":
     USE_RAID = True
     BASE_DIR = "."
-    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/", "/raid/scratch/tstand/taskonomy/"]
+    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
     RESULTS_DIR = f"results/results_{EXPERIMENT}"
     MODELS_DIR = "/raid/scratch/rsuri2/models"
     os.system(f"mkdir -p {RESULTS_DIR}")
