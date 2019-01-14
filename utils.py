@@ -26,6 +26,7 @@ MODELS_DIR = f"{BASE_DIR}/shared/models"
 DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/small_data"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
+OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
 if BASE_DIR == "/":
@@ -46,6 +47,7 @@ elif BASE_DIR == "raid":
     DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
     RESULTS_DIR = f"results/results_{EXPERIMENT}"
     MODELS_DIR = "/raid/scratch/rsuri2/models"
+    OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
     os.system(f"mkdir -p {RESULTS_DIR}")
 else:
     os.system(f"sudo mkdir -p {RESULTS_DIR}")

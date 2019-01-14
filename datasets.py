@@ -125,7 +125,7 @@ def load_test(source_task, dest_task,
     return test_set, test_images
 
 
-def load_ood(ood_path=f"{SHARED_DIR}/ood_standard_set", resize=256):
+def load_ood(ood_path=OOD_DIR, resize=256):
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir=ood_path, resize=(resize, resize)),
         batch_size=10,

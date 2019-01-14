@@ -66,7 +66,8 @@ def main(pretrained=False, batch_size=20, fast=False, **kwargs):
         logger.add_hook(lambda logger, data, name=t.name: logger.plot(data[name], name), feature=t.name, freq=1)
 
     # DATA LOADING
-    ood_images = load_ood(ood_path=f'./data/ood_images/')
+    
+    ood_images = load_ood()
     data_loaders = load_train_val(task_list, batch_size=batch_size, val_tasks=['rgb', 'normal'],
         train_buildings=(["almena"] if fast else None), val_buildings=(["almena"] if fast else None))
     train_loader, val_loader, train_step, val_step = data_loaders
