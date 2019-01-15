@@ -29,7 +29,7 @@ from graph import TaskGraph
 import IPython
 
 
-def main(pretrained=False, batch_size=20, fast=False, **kwargs):
+def main(pretrained=False, batch_size=12, fast=False, **kwargs):
     # if fast: batch_size = 8
     task_list = [
         tasks.rgb, 
@@ -38,9 +38,9 @@ def main(pretrained=False, batch_size=20, fast=False, **kwargs):
         tasks.sobel_edges,
         tasks.depth_zbuffer,
         tasks.reshading,
-        # tasks.edge_occlusion,
-        # tasks.keypoints3d,
-        # tasks.keypoints2d,
+        tasks.edge_occlusion,
+        tasks.keypoints3d,
+        tasks.keypoints2d,
     ]
 
     # MODEL
