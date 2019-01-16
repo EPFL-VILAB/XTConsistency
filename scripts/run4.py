@@ -14,7 +14,7 @@ def elapsed(last_time=[time.time()]):
 
 ##### run.py for slurm on sc #####
 
-def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4, cpus=32):
+def execute(cmd, config="default", machine='dgx', experiment_id=None, debug=False, gpus=4, cpus=32):
     elapsed()
     try:
         run_log = yaml.load(open("checkpoints/runlog.yml")) or {}
@@ -50,7 +50,7 @@ def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4, cpus
     print(cmd)
     os.system(f'echo \"#!/bin/sh\n' + cmd +'\" > cmd.sh')
     os.system(f'chmod +x cmd.sh')
-    srun_cmd = f"srun --partition=\"dgx\" --mem {gpus*32}G --cpus-per-task {cpus} --gres=gpu:{gpus}" + \
+    srun_cmd = f"srun --partition=\"{machine}\" --mem {gpus*32}G --cpus-per-task {cpus} --gres=gpu:{gpus}" + \
                 f" -u --job-name {run_name} cmd.sh"
     print(srun_cmd)
     process = subprocess.Popen(shlex.split(srun_cmd), shell=False, stdout=subprocess.PIPE, universal_newlines=True)

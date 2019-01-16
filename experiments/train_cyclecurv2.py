@@ -11,10 +11,9 @@ from plotting import *
 from models import TrainableModel, DataParallelModel
 from logger import Logger, VisdomLogger
 from task_configs import get_task, tasks, RealityTask
-from transfers import functional_transfers
+from transfers import functional_transfers, TRANSFER_MAP
 from datasets import TaskDataset
-from graph imp cort TaskGraph
-from transfers import TRANSFER_MAP
+from graph import TaskGraph
 from fire import Fire
 import IPython
 
@@ -22,9 +21,9 @@ import IPython
 def main():
 
     task_list = [
-        tasks.rgb, 
-        tasks.normal, 
-        tasks.principal_curvature, 
+        tasks.rgb,
+        tasks.normal,
+        tasks.principal_curvature,
     ]
 
     reality = RealityTask('almena', 
@@ -44,8 +43,6 @@ def main():
             ('almena', 'normal'),
             ('almena', 'principal_curvature'),
             ('almena', 'depth_zbuffer'),
-            # ('rgb', 'keypoints3d'),
-            # ('rgb', 'edge_occlusion'),
         ],
         initialize_first_order=False,
     )
@@ -53,28 +50,36 @@ def main():
     graph.p.compile(torch.optim.Adam, lr=4e-2)
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
-    logger = VisdomLogger("train", env=JOB)
-    logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
-    logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
-    logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
-    # logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
+    graph.estimates['principal_curvature'].data = functional_transfers.f(reality.task_data[tasks.normal].to(DEVICE)).data
 
-    # graph.plot_estimates(logger)
-    # graph.plot_paths(logger, 
-    #     dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
-    #     show_images=False
-    # )
-    
+    logger = VisdomLogger("train", env=JOB)
+    logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=16)
+    logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
+
+    logger.add_hook(lambda logger, data: logger.plot(data["loss"], "loss"), feature="loss", freq=100)
+    logger.add_hook(lambda logger, data: logger.plot(data["consistency"], "f(y), f(y_hat)"), feature="consistency", freq=100)
+    logger.add_hook(lambda logger, data: logger.plot(data["cycle_loss"], "F(f(y)), y"), feature="cycle_loss", freq=100)
+    logger.add_hook(lambda logger, data: logger.plot(data["normal_error"], "y, y_hat"), feature="normal_error", freq=100)
+
+    logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
+
+    graph.plot_estimates(logger)
+    graph.plot_paths(logger,
+        dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
+        show_images=False, max_len=2,
+    )
+
     for epochs in range(0, 750):
         logger.update("epoch", epochs)
+        loss, (consistency, cycle_loss, normal_error) = graph.cycle()
+        graph.estimates.step(loss)
 
-        free_energy = graph.free_energy(sample=4)
-        print (epochs, free_energy)
-        graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
-        logger.update("energy", free_energy)
-        logger.step()
+        logger.update("loss", loss)
+        logger.update("consistency", consistency)
+        logger.update("cycle_step1", cycle_step1)
+        logger.update("cycle_step2", cycle_step2)
+        logger.update("normal_error", normal_error)
+
 
 if __name__ == "__main__":
     Fire(main)
-
-

@@ -45,6 +45,7 @@ class TaskGraph(TrainableModel):
                 self.edges += [transfer]
                 self.adj[src_task] += [transfer]
                 self.in_adj[dest_task] += [transfer]
+                self.edge_map[key] = transfer
                 continue
 
             if isinstance(dest_task, RealityTask): continue
@@ -114,58 +115,6 @@ class TaskGraph(TrainableModel):
         x = self.estimates[task.name]
         return x.detach() if task in self.anchored_tasks else x
 
-    # def conditional(self, transfer):
-
-    #     A, B = transfer.src_task, transfer.dest_task
-
-    #     Ax = self.estimates[A.name]
-    #     Ax = Ax.detach() if A in self.anchored_tasks else Ax
-    #     Bx = self.estimates[B.name]
-    #     Bx = Bx.detach() if B in self.anchored_tasks else Bx
-
-    #     est_mse = transfer.dest_task.norm(Bx, transfer(Ax))[0]
-    #     gt_mse = B.variance*(1 - self.prob(B))
-    #     mse = (est_mse**2 + gt_mse**2)**(0.5)
-    #     # pdf is uniform in angle?
-    #     # Do some clever math here to ensure nothing becomes 0.0 for no reason
-    #     # Without causing pathological edge cases you fuck
-    #     # Lower bound is gt_mse - est_mse, higher bound is gt_mse + est_mse
-    #     # 
-    #     # 
-    #     p = F.relu(1 - mse/B.variance)/self.prob(A)
-    #     # if p.data.cpu().numpy().mean() <= 1e-3:
-    #     #     IPython.embed()
-    #     p = p.clamp(min=1e-3, max=1-1e-3)
-    #     prob = torch.stack([1-p, p])
-
-    #     divergence = F.kl_div(torch.log(prob), self.dist(B))
-    #     print (f"{transfer}: p(F|E)={p} -> p(F)={self.prob(B)} ... transfer_mse={est_mse}, variance={B.variance}, divergence={divergence}")
-    #     # divergence.backward(retain_graph=True)
-
-    #     return prob
-
-    # def free_energy(self, sample=10, tve=False):
-
-    #     def tve_loss(x):
-    #         dx = torch.abs(x[:,:,1:,:] - x[:,:,:-1,:]).mean()
-    #         dy = torch.abs(x[:,:,:,1:] - x[:,:,:,:-1]).mean()
-    #         return (dx+dy)/2
-    #     def norm(transfer):
-    #         A, B = transfer.src_task, transfer.dest_task
-    #         Ax = self.estimates[A.name]
-    #         Ax = Ax.detach() if A in self.anchored_tasks else Ax
-    #         Bx = self.estimates[B.name]
-    #         Bx = Bx.detach() if B in self.anchored_tasks else Bx
-
-    #         tve = 0 if tve and A in self.anchored_tasks else tve_loss(Ax)
-    #         return (transfer.dest_task.norm(Bx, transfer(Ax))[0]/B.variance) + tve
-
-    #     task_data = [
-    #         norm(transfer) for transfer in random.sample(self.edges, sample)
-    #     ]
-    #     return sum(task_data)/len(task_data)
-
-
     def plot_paths(self, logger, src_tasks=None, dest_tasks=[tasks.normal], show_images=False, max_len=4):
 
         src_tasks = src_tasks or self.anchored_tasks
@@ -225,39 +174,34 @@ class TaskGraph(TrainableModel):
             interleave = torch.stack([y for x in zip(*grouped) for y in x])
             task.plot_func(interleave, task.name + suffix, logger, nrow=len(grouped))
 
-    # def conditional(self, transfer):
+    # def free_energy(self, sample=10):
 
-    #     A, B = transfer.src_task, transfer.dest_task
+    #     def norm(transfer):
+    #         return (
+    #             transfer.dest_task.norm(
+    #                 self.estimate(transfer.dest_task), 
+    #                 transfer(self.estimate(transfer.src_task))
+    #             )[0]/(transfer.dest_task.variance**(0.5))
+    #         )
 
-    #     Ax = self.estimate(A)
-    #     Bx = self.estimate(B)
-
-    #     est_mse = transfer.dest_task.norm(Bx, transfer(Ax))[0]
-    #     gt_mse = B.variance*(1 - self.prob(B))
-    #     mse = (est_mse**2 + gt_mse**2)**(0.5)
-        
-    #     # pdf is uniform in angle?
-    #     # Do some clever math here to ensure nothing becomes 0.0 for no reason
-    #     # Without causing pathological edge cases
-
-    #     p = F.relu(1 - mse/B.variance)/self.prob(A)
-    #     p = p.clamp(min=1e-3, max=1-1e-3)
-    #     prob = torch.stack([1-p, p])
-
-    #     divergence = F.kl_div(torch.log(prob), self.dist(B))
-    #     print (f"{transfer}: p(F|E)={p} -> p(F)={self.prob(B)} ... transfer_mse={est_mse}, variance={B.variance}, divergence={divergence}")
-
-    #     return prob
+    #     task_data = [
+    #         norm(transfer) for transfer in random.sample(self.edges, sample)
+    #     ]
+    #     return sum(task_data)/len(task_data)
 
     def free_energy(self, sample=10):
 
         def norm(transfer):
-            return (
-                transfer.dest_task.norm(
-                    self.estimate(transfer.dest_task), 
-                    transfer(self.estimate(transfer.src_task))
-                )[0]/(transfer.dest_task.variance**(0.5))
-            )
+            y, z = self.estimate(transfer.src_task), self.estimate(transfer.dest_task)
+            f_y = transfer(y)
+            loss = transfer.dest_task.norm(z, f_y)[0]/(transfer.dest_task.variance)
+
+            if (transfer.dest_task.name, transfer.src_task.name) in self.edge_map:
+                inverse = self.edge_map[(transfer.dest_task.name, transfer.src_task.name)]
+                F_f_y = inverse(f_y)
+                loss = loss + transfer.src_task.norm(inverse(z), F_f_y)[0]/(transfer.src_task.variance)
+
+            return loss
 
         task_data = [
             norm(transfer) for transfer in random.sample(self.edges, sample)
@@ -300,47 +244,12 @@ class TaskGraph(TrainableModel):
         y = self.estimate(tasks.normal)
         z = self.estimate(tasks.principal_curvature)
         f_y, f_y_hat = f(y), f(y_hat)
-
-        # f(y) -> f(y_hat)
-        # z -> f(y)
-        # F(z) -> y
         
         curv_loss, _ = tasks.principal_curvature.norm(f_y, f_y_hat)
         cycle_step1, _ = tasks.principal_curvature.norm(f_y, z)
         cycle_step2, _ = tasks.normal.norm(F(z), y)
         normal_error, _ = tasks.normal.norm(y, y_hat)
         return curv_loss + cycle_step1 + cycle_step2, (curv_loss.detach(), cycle_step1.detach(), cycle_step2.detach(), normal_error.detach())
-
-
-    # def free_energy(self, sample=12):
-
-    #     losses = []
-    #     for transfer in self.edges:
-    #         if transfer.src_task in [tasks.normal, tasks.sobel_edges, tasks.reshading, tasks.edge_occlusion]:
-
-    #             losses.append(transfer.dest_task.norm( 
-    #                 self.estimates[transfer.dest_task.name].detach(),
-    #                 transfer(self.estimates[transfer.src_task.name])
-    #             )[0]/transfer.dest_task.variance)
-
-    #         if transfer.dest_task in [tasks.normal, tasks.sobel_edges, tasks.reshading, tasks.edge_occlusion]:
-
-    #             losses.append(transfer.dest_task.norm( 
-    #                 self.estimates[transfer.dest_task.name],
-    #                 transfer(self.estimates[transfer.src_task.name]).detach()
-    #             )[0]/transfer.dest_task.variance)
-        
-    #     return sum(losses)
-    
-    # def free_energy(self, sample=10):
-    #     task_data = [
-    #         F.kl_div( 
-    #             torch.log(self.conditional(transfer)),
-    #             self.dist(transfer.dest_task)
-    #         ) for transfer in random.sample(self.edges, sample)
-    #     ]
-
-    #     return sum(task_data)/len(task_data)
 
 
 

@@ -30,6 +30,7 @@ import IPython
 
 
 def main(pretrained=False, batch_size=12, fast=False, **kwargs):
+
     # if fast: batch_size = 8
     task_list = [
         tasks.rgb, 
@@ -83,16 +84,16 @@ def main(pretrained=False, batch_size=12, fast=False, **kwargs):
         target = {task_list[i+1].name : target[i] for i in range(len(target))}
         mse, _ = tasks.normal.norm(pred, target['normal'])
         total = 0
-        for transfer in in_transfers:
+        for transfer in random.sample(in_transfers, 6):
             with torch.no_grad():
                 gt = transfer(target[transfer.src_task.name])
             loss, val = transfer.dest_task.norm(pred, gt)
             losses[transfer.name].append(val[0].data.cpu())
             total += loss
-        for transfer in out_transfers:
-            loss, val = transfer.dest_task.norm(transfer(pred), target[transfer.src_task.name])
-            losses[transfer.name].append(val[0].data.cpu())
-            total += loss
+        # for transfer in random.sample(out_transfers, 6):
+        #     loss, val = transfer.dest_task.norm(transfer(pred), target[transfer.src_task.name])
+        #     losses[transfer.name].append(val[0].data.cpu())
+        #     total += loss
         return mse + total, (mse.detach(),)
     
     # TRAINING
@@ -113,7 +114,7 @@ def main(pretrained=False, batch_size=12, fast=False, **kwargs):
         logger.update("train_mse_loss", torch.mean(torch.tensor(train_mse_data)))
         logger.update("val_mse_loss", torch.mean(torch.tensor(val_mse_data)))
         for name, data in losses.items():
-            logger.update(name, torch.mean(torch.tensor(data[1:][-train_step:])))
+            logger.update(name, torch.mean(torch.tensor(data[-train_step:])))
         # run_eval_suite(model, logger, sample=160)
 
 

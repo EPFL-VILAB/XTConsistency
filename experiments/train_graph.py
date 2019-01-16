@@ -74,11 +74,10 @@ def main(batch_size=4):
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=8)
+        free_energy = graph.free_energy(sample=1)
         # print (epochs, free_energy)
         graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
         logger.update("energy", free_energy)
-        logger.step()
 
 if __name__ == "__main__":
     Fire(main)
