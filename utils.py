@@ -61,7 +61,6 @@ def elapsed(last_time=[time.time()]):
     last_time[0] = current_time
     return diff
 
-
 def cycle(iterable):
     """ Cycles through iterable without making extra copies. """
     while True:

@@ -2,13 +2,19 @@
 import random, sys, os, glob, yaml, time
 import argparse, subprocess, shutil, shlex
 from fire import Fire
-from utils import elapsed
 
 import IPython
 
+def elapsed(last_time=[time.time()]):
+    """ Returns the time passed since elapsed() was last called. """
+    current_time = time.time()
+    diff = current_time - last_time[0]
+    last_time[0] = current_time
+    return diff
+
 ##### run.py for slurm on sc #####
 
-def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4):
+def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4, cpus=32):
     elapsed()
     try:
         run_log = yaml.load(open("checkpoints/runlog.yml")) or {}
@@ -44,7 +50,7 @@ def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4):
     print(cmd)
     os.system(f'echo \"#!/bin/sh\n' + cmd +'\" > cmd.sh')
     os.system(f'chmod +x cmd.sh')
-    srun_cmd = f"srun --partition=\"dgx\" --mem {gpus*32}G --cpus-per-task 32 --gres=gpu:{gpus}" + \
+    srun_cmd = f"srun --partition=\"dgx\" --mem {gpus*32}G --cpus-per-task {cpus} --gres=gpu:{gpus}" + \
                 f" -u --job-name {run_name} cmd.sh"
     print(srun_cmd)
     process = subprocess.Popen(shlex.split(srun_cmd), shell=False, stdout=subprocess.PIPE, universal_newlines=True)
@@ -81,10 +87,13 @@ def execute(cmd, config="default", experiment_id=None, debug=False, gpus=4):
     interval = elapsed()
     print(f"Program ended after {interval:0.4f} seconds.")
 
-def run(cmd, config="default", experiment_id=None, debug=False, gpus=4):
-    cmd = f""" screen -S {config} bash -c "python -m scripts.run4 execute \\"{cmd}\\" --config {config} --experiment-id {experiment_id} --gpus {gpus} --debug {debug}; bash" """
+def run(cmd, config="default", experiment_id=None, debug=False, gpus=4, cpus=32):
+    cmd = f""" screen -S {config} bash -c "python -m scripts.run4 execute \\"{cmd}\\" --config {config} --experiment-id {experiment_id} --gpus {gpus} --debug {debug} --cpus {cpus}; bash" """
     subprocess.call(shlex.split(cmd))
 
+def shell(gpus=1, cpus=8, mem=32):
+    srun_cmd = f"srun --partition=\"dgx\" --mem {mem}G --cpus-per-task={cpus} --gres=gpu:{gpus} --pty bash"
+    subprocess.call(shlex.split(srun_cmd))
 
 if __name__ == "__main__":
-    Fire({"run": run, "execute": execute})
+    Fire({"run": run, "execute": execute, "shell": shell})

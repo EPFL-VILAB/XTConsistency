@@ -166,8 +166,8 @@ class ImageTask(Task):
         mask = ImageTask.build_mask(target, val=self.mask_val)
         return super().norm(pred*mask.float(), target*mask.float())
 
-    def plot_func(self, data, name, logger, resize=None):
-        logger.images(data.clamp(min=0, max=1), name, nrow=2, resize=resize or self.resize)
+    def plot_func(self, data, name, logger, resize=None, nrow=2):
+        logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
     def file_loader(self, path):
         # print ("Image transform: ", self.image_transform(Image.open(path)))

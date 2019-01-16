@@ -19,7 +19,7 @@ from fire import Fire
 import IPython
 
 
-def main():
+def main(batch_size=4):
 
     task_list = [
         tasks.rgb, 
@@ -35,24 +35,24 @@ def main():
 
     reality = RealityTask('almena', 
         dataset=TaskDataset(buildings=['almena'], 
-            tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer]
+            tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer, tasks.reshading]
         ),
-        tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer],
-        batch_size=4
+        tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer, tasks.reshading],
+        batch_size=batch_size
     )
 
     graph = TaskGraph(
         tasks=[reality, *task_list],
         anchored_tasks=[reality, tasks.rgb],
         reality=reality,
-        batch_size=4,
-        edges_exclude=[
-            ('almena', 'normal'),
-            ('almena', 'principal_curvature'),
-            ('almena', 'depth_zbuffer'),
-            # ('rgb', 'keypoints3d'),
-            # ('rgb', 'edge_occlusion'),
-        ],
+        batch_size=batch_size,
+        # edges_exclude=[
+        #     ('almena', 'normal'),
+        #     ('almena', 'principal_curvature'),
+        #     ('almena', 'depth_zbuffer'),
+        #     # ('rgb', 'keypoints3d'),
+        #     # ('rgb', 'edge_occlusion'),
+        # ],
         initialize_first_order=True,
     )
 

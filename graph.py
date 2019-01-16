@@ -31,14 +31,16 @@ class TaskGraph(TrainableModel):
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map = {}
         self.reality=reality
+        self.anchored_tasks = set(anchored_tasks)
 
         # construct transfer graph
         for src_task, dest_task in itertools.product(self.tasks, self.tasks):
             key = (src_task.name, dest_task.name)
             if edges is not None and key not in edges: continue
-            if edges_exclude is not None and key in edges_exclude: continue
+            # if edges_exclude is not None and key in edges_exclude: continue
             if isinstance(src_task, RealityTask):
                 if dest_task not in src_task.tasks: continue
+                if dest_task not in anchored_tasks: continue
                 transfer = RealityTransfer(src_task, dest_task)
                 self.edges += [transfer]
                 self.adj[src_task] += [transfer]
@@ -57,7 +59,6 @@ class TaskGraph(TrainableModel):
             self.in_adj[dest_task] += [transfer]
             self.edge_map[key] = transfer
 
-        self.anchored_tasks = set(anchored_tasks)
         self.initialize_first_order = initialize_first_order
         self.batch_size = batch_size
         if batch_size > 0: 
@@ -77,6 +78,7 @@ class TaskGraph(TrainableModel):
             if task is self.reality: continue
             self.estimates[task.name].data = self.reality.task_data[task].to(DEVICE)
 
+        
         if self.initialize_first_order:
             for dest_task in self.tasks:
                 found_src = False
@@ -88,7 +90,7 @@ class TaskGraph(TrainableModel):
                             break
 
                     if found_src: break
-
+        self.init = {task.name:torch.tensor(self.estimates[task.name]).cpu() for task in self.tasks}
         tasks_theta = list(set(self.tasks) - self.anchored_tasks)
         self.p = WrapperModel(
             nn.ParameterDict({
@@ -212,10 +214,16 @@ class TaskGraph(TrainableModel):
                 data, rownames = zip(*sorted(zip(self.mse[task],  self.pathnames[task])))
                 logger.bar([curr_mse] + list(data), f'{task}_path_mse', opts={'rownames': ["current"] + list(rownames)})
 
-    def plot_estimates(self, logger):
+    def plot_estimates(self, logger, suffix=""):
         for task in self.tasks:
-            x = self.estimates[task.name]
-            task.plot_func(x, task.name, logger)
+            if task in self.anchored_tasks:
+                task.plot_func(self.estimates[task.name], task.name + suffix, logger, nrow=1)
+                continue
+            grouped = [self.estimates[task.name].cpu(), self.init[task.name].cpu()]
+            if task in self.reality.task_data:
+                grouped.append(self.reality.task_data[task].cpu())
+            interleave = torch.stack([y for x in zip(*grouped) for y in x])
+            task.plot_func(interleave, task.name + suffix, logger, nrow=len(grouped))
 
     # def conditional(self, transfer):
 
