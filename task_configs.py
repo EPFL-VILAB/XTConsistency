@@ -83,7 +83,10 @@ class Task(object):
         self.variance = Task.variances.get(name, 1.0)
 
     def norm(self, pred, target):
-        loss = ((pred - target)**2).mean()
+        t = torch.abs(pred - target)/(self.variance/10.0)
+        # print ((t < 1).float().mean())
+        loss = torch.where(t < 1, 0.5 * t ** 2, t - 0.5).mean()
+
         return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger, **kwargs):
@@ -111,13 +114,13 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 class RealityTask(Task):
     """ General task output space"""
 
-    def __init__(self, name, dataset, tasks, batch_size=64):
+    def __init__(self, name, dataset, tasks, shuffle=False, batch_size=64):
 
         super().__init__(name=name)
         self.tasks = tasks
         loader = torch.utils.data.DataLoader(
             dataset, batch_size=batch_size,
-            num_workers=64, shuffle=True, pin_memory=True
+            num_workers=64, shuffle=shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
         self.shape = (1,)

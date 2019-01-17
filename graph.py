@@ -70,42 +70,34 @@ class TaskGraph(TrainableModel):
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.randn(
                         *([self.batch_size] + list(task.shape))
-                    ).requires_grad_(True).to(DEVICE)*task.variance
+                    ).requires_grad_(True).to(DEVICE)*(task.variance**(0.5))
                 ) for task in self.tasks
             })
         )
 
+        self.init = {}
+
         for task in self.anchored_tasks:
             if task is self.reality: continue
             self.estimates[task.name].data = self.reality.task_data[task].to(DEVICE)
+            self.init[task.name] = self.estimates[task.name].data.cpu()
 
-        
-        if self.initialize_first_order:
-            for dest_task in self.tasks:
-                found_src = False
-                for src_task in self.anchored_tasks:
-                    for transfer in self.adj[src_task]:
-                        if transfer.dest_task == dest_task:
-                            self.estimates[dest_task.name].data = transfer(self.estimates[src_task.name]).data
-                            found_src = True
-                            break
+        for dest_task in self.tasks:
+            found_src = False
+            for src_task in self.anchored_tasks:
+                for transfer in self.adj[src_task]:
+                    if transfer.dest_task == dest_task:
+                        
+                        x = transfer(self.estimates[src_task.name]).data
+                        self.init[dest_task.name] = x.data.cpu()
+                        if self.initialize_first_order:
+                            self.estimates[dest_task.name].data = x.data
 
-                    if found_src: break
-        self.init = {task.name:self.estimates[task.name].clone().detach().cpu() for task in self.tasks}
-        tasks_theta = list(set(self.tasks) - self.anchored_tasks)
-        self.p = WrapperModel(
-            nn.ParameterDict({
-                task.name: nn.Parameter(
-                    torch.tensor([2.0, 8.0]).requires_grad_(True).to(DEVICE)
-                ) for task in tasks_theta
-            })
-        )
+                        found_src = True
+                        break
 
-    def prob(self, task):
-        if task in self.anchored_tasks:
-            return torch.tensor(1.0, device=DEVICE)
-        return F.softmax(F.relu(self.p[task.name]), dim=0)[1]
-    
+                if found_src: break
+
     def dist(self, task):
         if task in self.anchored_tasks:
             return torch.tensor([0.0, 1.0], device=DEVICE)
@@ -165,18 +157,16 @@ class TaskGraph(TrainableModel):
 
     def plot_estimates(self, logger, suffix=""):
         for task in self.tasks:
-            if task in self.anchored_tasks:
-                task.plot_func(self.estimates[task.name], task.name + suffix, logger, nrow=1)
-                continue
-            grouped = [self.estimates[task.name].cpu(), self.init[task.name].cpu()]
+            if task is self.reality: continue
+            # if task in self.anchored_tasks:
+            #     task.plot_func(self.estimates[task.name], task.name + suffix, logger, nrow=1)
+            #     continue
+            grouped = [self.estimate(task).cpu(), self.init[task.name].cpu(),  self.std(task).cpu()]
             if task in self.reality.task_data:
                 grouped.append(self.reality.task_data[task].cpu())
             interleave = torch.stack([y for x in zip(*grouped) for y in x])
             task.plot_func(interleave, task.name + suffix, logger, nrow=len(grouped))
 
-<<<<<<< HEAD
-    # def free_energy(self, sample=10):
-=======
         torch.cuda.empty_cache()
 
     def plot_metrics(self, logger, log_transfers=False, task_list=None):
@@ -224,11 +214,29 @@ class TaskGraph(TrainableModel):
         return loss
 
     def free_energy(self, sample=10):
-
         task_data = [
             self.transfer_loss(transfer) for transfer in random.sample(self.edges, sample)
         ]
         return sum(task_data)/len(task_data)
+
+    # def free_energy(self, sample=10):
+
+    #     def norm(transfer):
+    #         y, z = self.estimate(transfer.src_task), self.estimate(transfer.dest_task)
+    #         f_y = transfer(y)
+    #         loss = transfer.dest_task.norm(z, f_y)[0]/(transfer.dest_task.variance)
+
+    #         if (transfer.dest_task.name, transfer.src_task.name) in self.edge_map:
+    #             inverse = self.edge_map[(transfer.dest_task.name, transfer.src_task.name)]
+    #             F_f_y = inverse(f_y)
+    #             loss = loss + transfer.src_task.norm(inverse(z), F_f_y)[0]/(transfer.src_task.variance)
+
+    #         return loss
+
+    #     task_data = [
+    #         norm(transfer) for transfer in random.sample(self.edges, sample)
+    #     ]
+    #     return sum(task_data)/len(task_data)
 
     def averaging_step(self, sample=10):
         for task in self.tasks:
@@ -275,19 +283,66 @@ class TaskGraph(TrainableModel):
 
 
 
-if __name__ == "__main__":
 
-    reality = RealityTask('albertville', 
-        dataset=TaskDataset(
-            buildings=['albertville'],
-            tasks=[tasks.rgb, tasks.normal],
-        ),
-        tasks=[tasks.rgb, tasks.normal],
-        batch_size=64
-    )
 
-    graph = TaskGraph(
-        tasks=[reality, tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.depth_zbuffer]
-    )
-    print (graph.edges)
+
+class ProbabilisticTaskGraph(TaskGraph):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def init_params(self):
+        super().init_params()
+
+        self.precision = WrapperModel(
+            nn.ParameterDict({
+                task.name: nn.Parameter(torch.ones(
+                        *([self.batch_size] + list(task.shape))
+                    ).requires_grad_(True).to(DEVICE)*(task.variance**(0.5))
+                ) for task in self.tasks
+            })
+        )
+
+    def std(self, task):
+        x = self.precision[task.name]
+        return (1/x) **(0.5) #.detach() if task in self.anchored_tasks else (1/x)
+
+    def nll(self, image, task):
+
+        scale = self.std(task)
+        loc = self.estimate(task)
+        precision = self.precision[task.name]
+
+        log_scale = -0.5*torch.log(precision)
+        A = -((image - loc) ** 2)
+        B = math.log(math.sqrt(2 * math.pi))
+        
+        loss = -torch.mean(0.5*A*precision - log_scale - B)
+
+        if torch.isnan(loss):
+            IPython.embed()
+
+        # print (A.mean(), torch.mean(A / (2 * var.clamp(min=1e-2))), loss)
+
+        return loss
     
+    # def nll(self, image, task):
+    #     dist = torch.distributions.Normal(self.estimate(task), self.std(task))
+    #     return -dist.log_prob(image).mean()
+
+    def free_energy(self, sample=10):
+
+        task_data = [
+            self.nll(
+                transfer(self.estimate(transfer.src_task)),
+                transfer.dest_task,
+            ) for transfer in random.sample(self.edges, sample)
+        ]
+
+        return sum(task_data)/len(task_data)
+
+
+
+
+
+
