@@ -307,6 +307,7 @@ class ProbabilisticTaskGraph(TaskGraph):
         x = self.precision[task.name]
         return (1/x) **(0.5) #.detach() if task in self.anchored_tasks else (1/x)
 
+
     def nll(self, image, task):
 
         scale = self.std(task)
