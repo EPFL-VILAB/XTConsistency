@@ -60,24 +60,27 @@ def main(batch_size=4):
     graph.estimates.compile(torch.optim.Adam, lr=1e-2)
 
     logger = VisdomLogger("train", env=JOB)
-    logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
-    logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=100)
+    # logger.add_hook(lambda logger, data: logger.step(), feature="energy", freq=16)
+    logger.add_hook(lambda logger, data: logger.plot(data["energy"], "free_energy"), feature="energy", freq=32)
     logger.add_hook(lambda logger, data: graph.plot_estimates(logger), feature="epoch", freq=32)
+    logger.add_hook(lambda logger, data: graph.plot_metrics(logger, log_transfers=False), feature="epoch", freq=32)
     # logger.add_hook(lambda logger, data: graph.update_paths(logger), feature="epoch", freq=32)
 
     graph.plot_estimates(logger)
+    graph.plot_metrics(logger, log_transfers=False)
     # graph.plot_paths(logger, 
     #     dest_tasks=[tasks.normal, tasks.depth_zbuffer, tasks.principal_curvature], 
     #     show_images=True
     # )
 
-    for epochs in range(0, 4000):
+    for epochs in range(0, 256):
         logger.update("epoch", epochs)
 
-        free_energy = graph.free_energy(sample=1)
-        # print (epochs, free_energy)
-        graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
+        free_energy = graph.free_energy(sample=8)
         logger.update("energy", free_energy)
+
+        graph.estimates.step(free_energy) # if you uncomment this it eventually runs out of mem at epoch 15
+        logger.step()
 
 if __name__ == "__main__":
     Fire(main)

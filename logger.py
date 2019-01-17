@@ -43,16 +43,18 @@ class BaseLogger(object):
                 hook(self, self.data)
 
     def step(self):
-        self.text (f"({self.name}) ", end="")
+        buf = ""
+        buf += f"({self.name}) "
         for feature in self.running_data.keys():
             if len(self.running_data[feature]) == 0: continue
             val = np.mean(self.running_data[feature])
             if float(val).is_integer(): 
-                self.text (f"{feature}: {int(val)}", end=", ")
+                buf += f"{feature}: {int(val)}, "
             else:
-                self.text (f"{feature}: {val:0.4f}", end=", ")
+                buf += f"{feature}: {val:0.4f}" + ", "
             self.reset_running[feature] = True
-        self.text (f" ... {elapsed():0.2f} sec")
+        buf += f" ... {elapsed():0.2f} sec"
+        self.text (buf)
 
     def text(self, text, end="\n"):
         raise NotImplementedError()
@@ -63,6 +65,12 @@ class BaseLogger(object):
     def images(self, data, image_name):
         raise NotImplementedError()
 
+    def plot_feature(self, feature, opts={}):
+        self.plot(self.data[feature], feature, opts)
+
+    def plot_features(self, features, name, opts={}):
+        stacked = np.stack([self.data[feature] for feature in features], axis=1)
+        self.plot(stacked, name, opts={"legend": features})
 
 
 class Logger(BaseLogger):
@@ -79,7 +87,6 @@ class Logger(BaseLogger):
         plt.plot(data)
         plt.savefig(f"{self.results}/{plot_name}.jpg"); 
         plt.clf()
-
 
 
 class VisdomLogger(BaseLogger):

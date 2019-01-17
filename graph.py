@@ -91,7 +91,7 @@ class TaskGraph(TrainableModel):
                             break
 
                     if found_src: break
-        self.init = {task.name:torch.tensor(self.estimates[task.name]).cpu() for task in self.tasks}
+        self.init = {task.name:self.estimates[task.name].clone().detach().cpu() for task in self.tasks}
         tasks_theta = list(set(self.tasks) - self.anchored_tasks)
         self.p = WrapperModel(
             nn.ParameterDict({
@@ -174,37 +174,59 @@ class TaskGraph(TrainableModel):
             interleave = torch.stack([y for x in zip(*grouped) for y in x])
             task.plot_func(interleave, task.name + suffix, logger, nrow=len(grouped))
 
+<<<<<<< HEAD
     # def free_energy(self, sample=10):
+=======
+        torch.cuda.empty_cache()
 
-    #     def norm(transfer):
-    #         return (
-    #             transfer.dest_task.norm(
-    #                 self.estimate(transfer.dest_task), 
-    #                 transfer(self.estimate(transfer.src_task))
-    #             )[0]/(transfer.dest_task.variance**(0.5))
-    #         )
+    def plot_metrics(self, logger, log_transfers=False, task_list=None):
+        # Show per task loss
+        total_energy, labels = [], []
+        for task in task_list or self.tasks:
+            if task in self.anchored_tasks: continue
+            with torch.no_grad():
+                losses = [self.transfer_loss(transfer) for transfer in self.in_adj[task]]
+            if log_transfers:
+                t_names = [t.name for t in self.in_adj[task]]
+                for loss, name in zip(losses, t_names):
+                    logger.update(name, loss)
+                logger.plot_features(t_names, f"{task}_energy_transfers")
+            
+            total_energy.append(average(losses))
+            logger.update(f"{task}_energy", total_energy[-1])
+            labels.append(f"{task}_energy")
 
-    #     task_data = [
-    #         norm(transfer) for transfer in random.sample(self.edges, sample)
-    #     ]
-    #     return sum(task_data)/len(task_data)
+        logger.update("total_energy", average(total_energy))
+        logger.plot_feature("total_energy")
+        logger.plot_features(labels, "task_energy")
+
+
+        torch.cuda.empty_cache()
+
+    def transfer_loss(self, transfer):
+        return (
+            transfer.dest_task.norm(
+                self.estimate(transfer.dest_task), 
+                transfer(self.estimate(transfer.src_task))
+            )[0]/(transfer.dest_task.variance**(0.5))
+        )
+
+    def cycle_loss(self, transfer):
+        y, z = self.estimate(transfer.src_task), self.estimate(transfer.dest_task)
+        f_y = transfer(y)
+        loss = transfer.dest_task.norm(z, f_y)[0]/(transfer.dest_task.variance)
+
+        if (transfer.dest_task.name, transfer.src_task.name) in self.edge_map:
+            inverse = self.edge_map[(transfer.dest_task.name, transfer.src_task.name)]
+            F_f_y = inverse(f_y)
+            loss = loss + transfer.src_task.norm(inverse(z), F_f_y)[0]/(transfer.src_task.variance)
+
+        return loss
 
     def free_energy(self, sample=10):
 
-        def norm(transfer):
-            y, z = self.estimate(transfer.src_task), self.estimate(transfer.dest_task)
-            f_y = transfer(y)
-            loss = transfer.dest_task.norm(z, f_y)[0]/(transfer.dest_task.variance)
-
-            if (transfer.dest_task.name, transfer.src_task.name) in self.edge_map:
-                inverse = self.edge_map[(transfer.dest_task.name, transfer.src_task.name)]
-                F_f_y = inverse(f_y)
-                loss = loss + transfer.src_task.norm(inverse(z), F_f_y)[0]/(transfer.src_task.variance)
-
-            return loss
-
         task_data = [
-            norm(transfer) for transfer in random.sample(self.edges, sample)
+            self.transfer_loss(transfer) for transfer in random.sample(self.edges, sample)
         ]
         return sum(task_data)/len(task_data)
 

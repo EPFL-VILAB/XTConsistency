@@ -65,7 +65,7 @@ def main():
 
     for epochs in range(0, 4000):
         logger.update("epoch", epochs)
-        free_energy = graph.free_energy(sample=12)
+        free_energy = graph.free_energy(sample=8)
         graph.estimates.step(free_energy)
         logger.update("energy", free_energy)
 

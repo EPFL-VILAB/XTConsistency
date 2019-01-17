@@ -67,6 +67,9 @@ def cycle(iterable):
         for i in iterable:
             yield i
 
+def average(arr):
+    return sum(arr) / len(arr)
+
 # def random_resize(iterable, vals=[128, 192, 256, 320]):
 #    """ Cycles through iterable while randomly resizing batch values. """
 #     from transforms import resize
