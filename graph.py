@@ -298,7 +298,7 @@ class ProbabilisticTaskGraph(TaskGraph):
             nn.ParameterDict({
                 task.name: nn.Parameter(torch.ones(
                         *([self.batch_size] + list(task.shape))
-                    ).requires_grad_(True).to(DEVICE)*(task.variance**(0.5))
+                    ).requires_grad_(True).to(DEVICE)/(task.variance**(0.5))
                 ) for task in self.tasks
             })
         )
@@ -312,7 +312,7 @@ class ProbabilisticTaskGraph(TaskGraph):
 
         scale = self.std(task)
         loc = self.estimate(task)
-        precision = self.precision[task.name]
+        precision = self.precision[task.name].clamp(min=1e-3)
 
         log_scale = -0.5*torch.log(precision)
         A = -((image - loc) ** 2)
