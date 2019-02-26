@@ -42,7 +42,7 @@ def main():
     logger = VisdomLogger("train", env=JOB)
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
-    for resize in range(256, 512+1, 64):
+    for resize in range(128, 512+1, 64):
         # DATA LOADING
         train_loader, val_loader, test_set, test_images, ood_images, train_step, val_step = \
             load_data("rgb", "normal", batch_size=48, resize=resize)

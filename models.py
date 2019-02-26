@@ -150,7 +150,7 @@ class TrainableModel(AbstractModel):
                 datagen, loss_fn=loss_fn, train=True, logger=logger
             )
         ]
-        return zip(*metrics)
+        return list(zip(*metrics))
 
     def predict_with_data(self, datagen, loss_fn=None, logger=None):
         images, preds, targets, losses, metrics = zip(
@@ -169,7 +169,7 @@ class TrainableModel(AbstractModel):
                 datagen, loss_fn=loss_fn, train=False, logger=logger
             )
         ]
-        return zip(*metrics)
+        return list(zip(*metrics))
 
     def predict(self, datagen):
         preds = [self.predict_on_batch(x) for x in datagen]

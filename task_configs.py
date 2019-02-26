@@ -36,6 +36,7 @@ model_types = {
     ('depth_zbuffer', 'principal_curvature'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
     ('rgb', 'normal'): lambda : UNet(downsample=6),
+    ('rgb', 'keypoints2d'): lambda : UNet(downsample=3),
 }
 
 def get_model(src_task, dest_task):
@@ -143,12 +144,8 @@ class ImageTask(Task):
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
         self.resize = kwargs.pop("resize", 256)
-        self.image_transform = transforms.Compose([
-            transforms.Resize(self.resize, interpolation=PIL.Image.NEAREST), 
-            transforms.CenterCrop(256), 
-            transforms.ToTensor(),
-            self.transform]
-        )
+        print ("Image task: ", self.resize)
+        self.load_image_transform()
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -176,6 +173,13 @@ class ImageTask(Task):
         # print ("Image transform: ", self.image_transform(Image.open(path)))
         return self.image_transform(Image.open(open(path, 'rb')))[0:3]
 
+    def load_image_transform(self):
+        self.image_transform = transforms.Compose([
+            transforms.Resize(self.resize, interpolation=PIL.Image.NEAREST), 
+            transforms.CenterCrop(self.resize), 
+            transforms.ToTensor(),
+            self.transform]
+        )
 
 class ImageClassTask(ImageTask):
     """ Output space for image-class segmentation tasks """

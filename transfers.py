@@ -28,12 +28,10 @@ pretrained_transfers = {
         (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth"),
     ('normal', 'depth_zbuffer'): 
         (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth"),
-    
     ('normal', 'sobel_edges'): 
         (lambda: UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d_sobel_unet4.pth"),
     ('sobel_edges', 'normal'): 
         (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
-
     ('normal', 'grayscale'): 
         (lambda: UNet(out_channels=1, downsample=6).cuda(), f"{MODELS_DIR}/normals2gray_unet.pth"),
     ('principal_curvature', 'normal'): 
@@ -62,14 +60,14 @@ pretrained_transfers = {
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d.pth"),
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d_new.pth"),
     ('rgb', 'reshading'):
         (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
     ('rgb', 'depth_zbuffer'):
         (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_buffer.pth"),
 
     ('keypoints2d', 'principal_curvature'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_temp.pth"),
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_new.pth"),
     
 
     ('keypoints3d', 'principal_curvature'):
@@ -114,6 +112,8 @@ class Transfer(object):
 
         if self.model_type is None:
             path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}.pth"
+            if src_task.name == "keypoints2d" or dest_task.name == "keypoints2d":
+                path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}_new.pth"
             if os.path.exists(path):
                 self.model_type, self.path = lambda: get_model(src_task, dest_task), path
 

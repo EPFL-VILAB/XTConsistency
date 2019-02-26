@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from torchvision import datasets, transforms, models
 from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.checkpoint import checkpoint
 
 from models import TrainableModel
 from utils import *

@@ -128,8 +128,8 @@ def load_test(source_task, dest_task,
 def load_ood(ood_path=OOD_DIR, resize=256):
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir=ood_path, resize=(resize, resize)),
-        batch_size=10,
-        num_workers=10, shuffle=False, pin_memory=True
+        batch_size=22,
+        num_workers=22, shuffle=False, pin_memory=True
     )
     ood_images = list(itertools.islice(ood_loader, 1))
     return ood_images
