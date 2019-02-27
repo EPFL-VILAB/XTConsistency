@@ -82,7 +82,7 @@ class AbstractModel(nn.Module):
 
         self.zero_grad()
         self.optimizer.zero_grad()
-        self.train()
+        self.train(train)
         self.zero_grad()
         self.optimizer.zero_grad()
 

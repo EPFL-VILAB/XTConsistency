@@ -144,7 +144,6 @@ class ImageTask(Task):
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
         self.resize = kwargs.pop("resize", 256)
-        print ("Image task: ", self.resize)
         self.load_image_transform()
         super().__init__(*args, **kwargs)
 

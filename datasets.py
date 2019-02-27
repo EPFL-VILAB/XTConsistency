@@ -23,9 +23,10 @@ import IPython
 
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
-        split_file="data/split.txt", batch_size=64, batch_transforms=cycle
+        split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle
     ):
-
+    
+    dataset_cls = dataset_cls or TaskDataset
     train_tasks = [get_task(t) if isinstance(t, str) else t for t in train_tasks]
     if val_tasks is None: val_tasks = train_tasks
     val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
@@ -35,12 +36,12 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
     val_buildings = val_buildings or data["val_buildings"]
 
     train_loader = torch.utils.data.DataLoader(
-        TaskDataset(buildings=train_buildings, tasks=train_tasks),
+        dataset_cls(buildings=train_buildings, tasks=train_tasks),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
-        TaskDataset(buildings=val_buildings, tasks=val_tasks),
+        dataset_cls(buildings=val_buildings, tasks=val_tasks),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
@@ -317,6 +318,26 @@ class ImagePairDataset(Dataset):
             return self.__getitem__(random.randrange(0, len(self.files)))
         # print(image.shape, file)
         return image, image
+
+
+
+
+class DualSubsetDataset(TaskDataset):
+
+    def __init__(self, *args, **kwargs):
+        self.subset_percent = kwargs.pop('subset_percent', 0.01)
+        super().__init__(*args, **kwargs)
+
+        self.subset_idxs = random.sample(range(len(self)), int(self.subset_percent*len(self)))
+
+    def __getitem__(self, idx):
+        data1 = TaskDataset.__getitem__(self, idx)
+        data2 = TaskDataset.__getitem__(self, self.subset_idxs[idx % len(self.subset_idxs)])
+        return (*data1, *data2)
+
+
+
+    
 
 
 if __name__ == "__main__":

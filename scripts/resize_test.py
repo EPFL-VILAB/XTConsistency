@@ -28,10 +28,6 @@ def main():
 
     model = DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/augmented_base.pth")
     model.compile(torch.optim.Adam, lr=5e-4, weight_decay=2e-6, amsgrad=True)
-
-    print (model.forward(torch.randn(8, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(16, 3, 256, 256)).shape)
-    print (model.forward(torch.randn(32, 3, 256, 256)).shape)
     
     def mixed_loss(pred, target):
         mask = build_mask(target.detach(), val=0.502)
