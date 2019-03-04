@@ -71,7 +71,7 @@ class Task(object):
 
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
-            plot_func=None, transform=None, 
+            plot_func=None, transform=None, kind=None,
         ):
 
         super().__init__()
@@ -82,19 +82,17 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.variance = Task.variances.get(name, 1.0)
+        self.kind = kind or self.name
 
     def norm(self, pred, target):
-        t = torch.abs(pred - target)/(self.variance/10.0)
-        # print ((t < 1).float().mean())
-        loss = torch.where(t < 1, 0.5 * t ** 2, t - 0.5).mean()
-
+        loss = ((pred - target)**2).mean()
         return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger, **kwargs):
         ### Non-image tasks cannot be easily plotted, default to nothing
         pass
 
-    def file_loader(self, path):
+    def file_loader(self, path, resize=None):
         raise NotImplementedError()
 
     def __eq__(self, other):
@@ -115,24 +113,42 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 class RealityTask(Task):
     """ General task output space"""
 
-    def __init__(self, name, dataset, tasks, shuffle=False, batch_size=64):
+    def __init__(self, name, dataset, tasks, use_dataset=True, shuffle=False, batch_size=64):
 
         super().__init__(name=name)
         self.tasks = tasks
+        self.shape = (1,)
+        if not use_dataset: return
         loader = torch.utils.data.DataLoader(
             dataset, batch_size=batch_size,
             num_workers=64, shuffle=shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
-        self.shape = (1,)
         self.step()
+        self.static = False
+
+    @classmethod
+    def from_dataloader(cls, name, loader, tasks):
+        reality = cls(name, None, tasks, use_dataset=False)
+        reality.loader = loader
+        reality.generator = cycle(loader)
+        reality.static = False
+        reality.step()
+        return reality
+
+    @classmethod
+    def from_static(cls, name, data, tasks):
+        reality = cls(name, None, tasks, use_dataset=False)
+        reality.task_data = {task: x.requires_grad_() for task, x in zip(tasks, data)}
+        reality.static = True
+        return reality
 
     def norm(self, pred, target):
         loss = torch.tensor(0.0, device=pred.device)
         return loss, (loss.detach(),)
 
     def step(self):
-        self.task_data = {task: x for task, x in zip(self.tasks, next(self.generator))}
+        self.task_data = {task: x.requires_grad_() for task, x in zip(self.tasks, next(self.generator))}
 
 
 class ImageTask(Task):
@@ -143,8 +159,8 @@ class ImageTask(Task):
         self.shape = kwargs.pop("shape", (3, 256, 256))
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
-        self.resize = kwargs.pop("resize", 256)
-        self.load_image_transform()
+        self.resize = kwargs.pop("resize", self.shape[1])
+        self.image_transform = self.load_image_transform()
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -168,14 +184,15 @@ class ImageTask(Task):
     def plot_func(self, data, name, logger, resize=None, nrow=2):
         logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
-    def file_loader(self, path):
-        # print ("Image transform: ", self.image_transform(Image.open(path)))
-        return self.image_transform(Image.open(open(path, 'rb')))[0:3]
+    def file_loader(self, path, resize=None):
+        # print ("Image transform: ", self.image_transform(Image.openself(path)))
+        image_transform = self.image_transform if resize is None else self.load_image_transform(resize=resize)
+        return image_transform(Image.open(open(path, 'rb')))[0:3]
 
-    def load_image_transform(self):
-        self.image_transform = transforms.Compose([
-            transforms.Resize(self.resize, interpolation=PIL.Image.NEAREST), 
-            transforms.CenterCrop(self.resize), 
+    def load_image_transform(self, resize=None):
+        return transforms.Compose([
+            transforms.Resize(resize or self.resize, interpolation=PIL.Image.NEAREST), 
+            transforms.CenterCrop(resize or self.resize), 
             transforms.ToTensor(),
             self.transform]
         )
@@ -198,7 +215,8 @@ class ImageClassTask(ImageTask):
         idx = idx.unsqueeze(1).expand(-1, 3, -1, -1)
         logger.images(idx.clamp(min=0, max=1), name, nrow=2, resize=resize or self.resize)
 
-    def file_loader(self, path):
+    def file_loader(self, path, resize=None):
+
         data = (self.image_transform(Image.open(open(path, 'rb')))*255.0).long()
         one_hot = torch.zeros((self.classes, data.shape[1], data.shape[2]))
         one_hot = one_hot.scatter_(0, data, 1)
@@ -236,9 +254,8 @@ class ClassTask(Task):
             output += "<br>"
 
         logger.window(name, logger.visdom.text, output)
-        
 
-    def file_loader(self, path):
+    def file_loader(self, path, resize=None):
         return torch.log(torch.tensor(np.load(path)).float())
 
 
@@ -255,7 +272,7 @@ class PointInfoTask(Task):
     def plot_func(self, data, name, logger):
         logger.window(name, logger.visdom.text, str(data.data.cpu().numpy()))
 
-    def file_loader(self, path):
+    def file_loader(self, path, resize=None):
         points = json.load(open(path))[self.point_type]
         return np.array(points['x'] + points['y'] + points['z'])
 
@@ -317,6 +334,9 @@ tasks = [
     #     batch_size=64
     # )
     ImageTask('rgb'),
+    ImageTask('rgb320', shape=(3, 320, 320), resize=320, kind='rgb', file_name='rgb'),
+    ImageTask('rgb384', shape=(3, 384, 384), resize=384, kind='rgb', file_name='rgb'),
+    ImageTask('rgb512', shape=(3, 512, 512), resize=512, kind='rgb', file_name='rgb'),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
     ImageTask('depth_zbuffer',

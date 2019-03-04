@@ -38,40 +38,23 @@ def main():
         tasks.keypoints2d,
     ]
 
-    for task in task_list: 
-        task.resize = 512
-        task.load_image_transform()
-
-    reality = RealityTask('almena', 
-        dataset=TaskDataset(
-            buildings=['almena'],
-            tasks=task_list,
-        ),
-        tasks=task_list,
-        batch_size=4,
-        shuffle=False,
-    )
-
-    graph = TaskGraph(
-        tasks=[reality, *task_list],
-        batch_size=4
-    )
-
     for resize in range(128, 512+1, 64):
 
-        print ("Resize: ", resize)
-        
-        task = tasks.rgb
-        inp = reality.task_data[task]
-        transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize(resize),
-            transforms.ToTensor()
-        ])
-        inp = torch.stack([transform(x.cpu()) for x in inp])
-        print (inp.shape)
-        images = [inp]
-        sources = [task.name]
+        reality = RealityTask('almena', 
+            dataset=TaskDataset(
+                buildings=['almena'],
+                tasks=task_list,
+            ),
+            tasks=task_list,
+            resize=resize,
+            batch_size=4,
+            shuffle=False,
+        )
+
+        graph = TaskGraph(
+            tasks=[reality, *task_list],
+            batch_size=4
+        )
         
         with torch.no_grad():
             for _, edge in sorted(((edge.dest_task.name, edge) for edge in graph.adj[task])):

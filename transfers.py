@@ -96,9 +96,13 @@ pretrained_transfers = {
         (lambda: UNet(downsample=4), None),
 }
 
-class Transfer(object):
+class Transfer(nn.Module):
     
-    def __init__(self, src_task, dest_task, checkpoint=True, name=None, model_type=None, path=None):
+    def __init__(self, src_task, dest_task, 
+        checkpoint=True, name=None, model_type=None, path=None, 
+        pretrained=False, finetuned=False
+    ):
+        super().__init__()
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
 
@@ -109,22 +113,31 @@ class Transfer(object):
             saved_type, saved_path = pretrained_transfers.get((src_task.name, dest_task.name), (None, None))
 
         self.model_type, self.path = model_type or saved_type, path or saved_path
+        self.model = None
+
+        if finetuned:
+            path = f"{MODELS_DIR}/ft_perceptual/{src_task.name}2{dest_task.name}.pth"
+            if os.path.exists(path):
+                self.model_type, self.path = saved_type or (lambda: get_model(src_task, dest_task)), path
+                return
 
         if self.model_type is None:
+
             path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}.pth"
             if src_task.name == "keypoints2d" or dest_task.name == "keypoints2d":
                 path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}_new.pth"
             if os.path.exists(path):
                 self.model_type, self.path = lambda: get_model(src_task, dest_task), path
+        
+        if pretrained:
+            self.path = None
 
-        self.model = None
-    
-    def load_model(self, optimizer=True):
+    def load_model(self):
         if self.model is None:
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().to(DEVICE), self.path)
-                if optimizer:
-                    self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+                # if optimizer:
+                #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
                 self.model = self.model_type()
         return self.model

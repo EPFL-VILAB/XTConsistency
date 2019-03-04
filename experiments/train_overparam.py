@@ -71,7 +71,7 @@ def main(pretrained=False, batch_size=24):
         model.train(True)
         for X, Y, X2, Y2 in itertools.islice(train_loader, train_step):
             loss1, _ = tasks.principal_curvature.norm(functional_transfers.f(model(X)), functional_transfers.f(Y))
-            loss2, _ = tasks.principal_curvature.norm(model(X2), Y2.to(DEVICE))
+            loss2, _ = tasks.normal.norm(model(X2), Y2.to(DEVICE))
             loss = loss1 + loss2
             model.step(loss)
             logger.update("loss", loss)
@@ -86,7 +86,7 @@ def main(pretrained=False, batch_size=24):
             model.train(False)
             for X, Y, X2, Y2 in itertools.islice(val_loader, val_step):
                 loss1, _ = tasks.principal_curvature.norm(functional_transfers.f(model(X)), functional_transfers.f(Y))
-                loss2, _ = tasks.principal_curvature.norm(model(X2), Y2.to(DEVICE))
+                loss2, _ = tasks.normal.norm(model(X2), Y2.to(DEVICE))
 
                 val_consistency.append(loss1.cpu().data.numpy().mean())
                 val_correctness.append(loss2.cpu().data.numpy().mean())

@@ -23,7 +23,8 @@ import IPython
 
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
-        split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle
+        split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle,
+        resize=None,
     ):
     
     dataset_cls = dataset_cls or TaskDataset
@@ -36,12 +37,12 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
     val_buildings = val_buildings or data["val_buildings"]
 
     train_loader = torch.utils.data.DataLoader(
-        dataset_cls(buildings=train_buildings, tasks=train_tasks),
+        dataset_cls(buildings=train_buildings, tasks=train_tasks, resize=resize),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
     val_loader = torch.utils.data.DataLoader(
-        dataset_cls(buildings=val_buildings, tasks=val_tasks),
+        dataset_cls(buildings=val_buildings, tasks=val_tasks, resize=resize),
         batch_size=batch_size,
         num_workers=64, shuffle=True, pin_memory=True
     )
@@ -104,26 +105,23 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(source_task, dest_task, 
-        buildings=["almena", "albertville"], sample=12,
-    ):
-    if isinstance(source_task, str) and isinstance(dest_task, str):
-        source_task, dest_task = get_task(source_task), get_task(dest_task)
+def load_test(all_tasks, buildings=["almena", "albertville"], sample=12):
 
+    all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[0]], tasks=[source_task, dest_task]),
+        TaskDataset(buildings=[buildings[0]], tasks=all_tasks),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True
     )
     test_loader2 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[1]], tasks=[source_task, dest_task]),
+        TaskDataset(buildings=[buildings[1]], tasks=all_tasks),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True
     )
-    test_set = list(itertools.islice(test_loader1, 1)) + list(itertools.islice(test_loader2, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-
-    return test_set, test_images
+    set1 = list(itertools.islice(test_loader1, 1))[0]
+    set2 = list(itertools.islice(test_loader2, 1))[0]
+    test_set = tuple(torch.cat([x, y], dim=0) for x, y in zip(set1, set2))
+    return test_set
 
 
 def load_ood(ood_path=OOD_DIR, resize=256):
@@ -132,7 +130,8 @@ def load_ood(ood_path=OOD_DIR, resize=256):
         batch_size=22,
         num_workers=22, shuffle=False, pin_memory=True
     )
-    ood_images = list(itertools.islice(ood_loader, 1))
+    ood_images = list(itertools.islice(ood_loader, 1))[0]
+    print (ood_images.shape)
     return ood_images
 
 
@@ -162,12 +161,13 @@ def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
 class TaskDataset(Dataset):
 
     def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
-            building_files=None, convert_path=None, use_raid=USE_RAID):
+            building_files=None, convert_path=None, use_raid=USE_RAID, resize=None):
 
         super().__init__()
         self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
         self.building_files = building_files or self.building_files
         self.convert_path = convert_path or self.convert_path
+        self.resize = resize
         if use_raid:
             self.convert_path = self.convert_path_raid
             self.building_files = self.building_files_raid
@@ -193,8 +193,10 @@ class TaskDataset(Dataset):
     def building_files(self, task, building):
         """ Gets all the tasks in a given building (grouping of data) """
         return get_files(f"{building}_{task.file_name}/{task.file_name}/*.{task.file_ext}", self.data_dirs)
+
     def building_files_raid(self, task, building):
         return get_files(f"{task.file_name}/{building}/*.{task.file_ext}", self.data_dirs)
+
     def convert_path(self, source_file, task):
         """ Converts a file from task A to task B. Can be overriden by subclasses"""
         source_file = "/".join(source_file.split('/')[-3:])
@@ -226,7 +228,7 @@ class TaskDataset(Dataset):
                 for task in self.tasks:
                     file_name = self.convert_path(self.idx_files[idx], task)
                     if len(file_name) == 0: raise Exception("unable to convert file")
-                    image = task.file_loader(file_name)
+                    image = task.file_loader(file_name, resize=self.resize)
                     res.append(image)
                 return tuple(res)
             except Exception as e:
@@ -271,8 +273,8 @@ class ImageDataset(Dataset):
         def crop(x):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-        # os.system(f"ls {data_dir}/*.png")
-        # os.system(f"sudo ls {data_dir}/*.png")
+        os.system(f"ls {data_dir}/*.png")
+        os.system(f"sudo ls {data_dir}/*.png")
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         self.files = sorted(self.files)
         print("num files = ", len(self.files))
@@ -335,6 +337,24 @@ class DualSubsetDataset(TaskDataset):
         data2 = TaskDataset.__getitem__(self, self.subset_idxs[idx % len(self.subset_idxs)])
         return (*data1, *data2)
 
+
+
+class OODResolutionDataset(TaskDataset):
+
+    def __init__(self, *args, **kwargs):
+        self.subset_percent = kwargs.pop('subset_percent', 0.01)
+        super().__init__(*args, **kwargs)
+
+        for task in self.tasks: 
+            task.resize = 512
+            task.load_image_transform()
+
+        self.subset_idxs = random.sample(range(len(self)), int(self.subset_percent*len(self)))
+
+    def __getitem__(self, idx):
+        data1 = TaskDataset.__getitem__(self, idx)
+        
+        return (*data1, data2)
 
 
     

@@ -51,7 +51,6 @@ class UNet_down_block(nn.Module):
         self.down_size = down_size
 
     def forward(self, x):
-
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
