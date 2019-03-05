@@ -341,7 +341,12 @@ tasks = [
     ImageTask('rgb'),
     ImageTask('rgb320', shape=(3, 320, 320), resize=320, kind='rgb', file_name='rgb'),
     ImageTask('rgb384', shape=(3, 384, 384), resize=384, kind='rgb', file_name='rgb'),
+    ImageTask('rgb448', shape=(3, 448, 448), resize=448, kind='rgb', file_name='rgb'),
     ImageTask('rgb512', shape=(3, 512, 512), resize=512, kind='rgb', file_name='rgb'),
+    ImageTask('normal320', shape=(3, 320, 320), resize=320, kind='normal', file_name='normal'),
+    ImageTask('normal384', shape=(3, 384, 384), resize=384, kind='normal', file_name='normal'),
+    ImageTask('normal448', shape=(3, 448, 448), resize=448, kind='normal', file_name='normal'),
+    ImageTask('normal512', shape=(3, 512, 512), resize=512, kind='normal', file_name='normal'),
     ImageTask('rgb512_crop_256', 
         shape=(3, 512, 512), crop=256, 
         kind='rgb', file_name='rgb'

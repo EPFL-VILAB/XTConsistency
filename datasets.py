@@ -274,7 +274,7 @@ class ImageDataset(Dataset):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
         os.system(f"ls {data_dir}/*.png")
-        os.system(f"sudo ls {data_dir}/*.png")
+        # os.system(f"sudo ls {data_dir}/*.png")
         self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         self.files = sorted(self.files)
         print("num files = ", len(self.files))
