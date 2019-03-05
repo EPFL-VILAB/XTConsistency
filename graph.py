@@ -27,6 +27,8 @@ class TaskGraph(TrainableModel):
 
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
+        self.edge_list, self.edge_list_exclude = edges, edges_exclude
+        self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map, self.reality = {}, reality
 
@@ -71,6 +73,24 @@ class TaskGraph(TrainableModel):
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
         return x
+
+    def save(self, weights_file=None):
+        torch.save({
+            "state": self.state_dict(),
+            "tasks": self.tasks,
+            "edges": self.edge_list,
+            "edges_exclude": self.edge_list_exclude,
+            "pretrained": self.pretrained,
+            "finetuned": self.finetuned,
+        }, weights_file)
+
+    @classmethod
+    def load(cls, weights_file=None, **kwargs):
+        kwargs = {**torch.load(weights_file), **kwargs}
+        state = kwargs.pop('state')
+        model = cls(**kwargs)
+        model.load_state_dict(state)
+        return model
 
 
 

@@ -1,5 +1,5 @@
 
-import os, sys, random, yaml
+import os, sys, random, yaml, dill
 from itertools import product
 from tqdm import tqdm
 

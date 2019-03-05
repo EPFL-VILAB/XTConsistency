@@ -160,6 +160,7 @@ class ImageTask(Task):
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
         self.resize = kwargs.pop("resize", self.shape[1])
+        self.crop = kwargs.pop("crop", self.resize)
         self.image_transform = self.load_image_transform()
         super().__init__(*args, **kwargs)
 
@@ -189,10 +190,10 @@ class ImageTask(Task):
         image_transform = self.image_transform if resize is None else self.load_image_transform(resize=resize)
         return image_transform(Image.open(open(path, 'rb')))[0:3]
 
-    def load_image_transform(self, resize=None):
+    def load_image_transform(self, resize=None, crop=None):
         return transforms.Compose([
             transforms.Resize(resize or self.resize, interpolation=PIL.Image.NEAREST), 
-            transforms.CenterCrop(resize or self.resize), 
+            transforms.RandomCrop(crop or self.crop or resize or self.resize), 
             transforms.ToTensor(),
             self.transform]
         )
@@ -288,6 +289,10 @@ def clamp_maximum_transform(x, max_val=8000.0):
     x = x.unsqueeze(0).float() / max_val
     return x[0].clamp(min=0, max=1)
 
+def crop_transform(x, max_val=8000.0):
+    x = x.unsqueeze(0).float() / max_val
+    return x[0].clamp(min=0, max=1)
+
 def sobel_transform(x):
     image = x.data.cpu().numpy().mean(axis=0)
     blur = ndimage.filters.gaussian_filter(image, sigma=2, )
@@ -337,6 +342,10 @@ tasks = [
     ImageTask('rgb320', shape=(3, 320, 320), resize=320, kind='rgb', file_name='rgb'),
     ImageTask('rgb384', shape=(3, 384, 384), resize=384, kind='rgb', file_name='rgb'),
     ImageTask('rgb512', shape=(3, 512, 512), resize=512, kind='rgb', file_name='rgb'),
+    ImageTask('rgb512_crop_256', 
+        shape=(3, 512, 512), crop=256, 
+        kind='rgb', file_name='rgb'
+    ),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
     ImageTask('depth_zbuffer',
