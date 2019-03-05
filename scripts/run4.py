@@ -78,7 +78,7 @@ def execute(cmd, config="default", machine='dgx', experiment_id=None, debug=Fals
         return 
 
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + run_name, "--exclude", 
-        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "mount", "--exclude", "local"],
+        "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", "--exclude", "data/results", "--exclude", "mount", "--exclude", "local", "--exclude", "results"],
         stdout=subprocess.DEVNULL);
 
     yaml.safe_dump(run_log, open("checkpoints/runlog.yml", "w"), allow_unicode=True, default_flow_style=False)
