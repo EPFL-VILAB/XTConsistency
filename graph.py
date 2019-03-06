@@ -11,7 +11,7 @@ from utils import *
 from models import TrainableModel, WrapperModel
 from datasets import TaskDataset
 from task_configs import get_task, task_map, tasks, get_model, RealityTask
-from transfers import Transfer, RealityTransfer, get_named_transfer
+from transfers import Transfer, RealityTransfer, get_transfer_name
 import transforms
 
 
@@ -27,6 +27,9 @@ class TaskGraph(TrainableModel):
 
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
+        self.tasks = self.tasks + list(set(
+            get_task(task.kind) for task in self.tasks if task.name in task_map
+        ))
         self.edge_list, self.edge_list_exclude = edges, edges_exclude
         self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
@@ -34,19 +37,23 @@ class TaskGraph(TrainableModel):
 
         # construct transfer graph
         for src_task, dest_task in itertools.product(self.tasks, self.tasks):
+            key = (src_task, dest_task)
             if edges is not None and key not in edges: continue
             if edges_exclude is not None and key in edges_exclude: continue
             if src_task == dest_task: continue
             if isinstance(dest_task, RealityTask): continue
             if src_task.name != src_task.kind: continue
-
-            transfer = get_named_transfer(Transfer(src_task, dest_task, 
-                pretrained=pretrained, finetuned=finetuned
-            ))
+            if not isinstance(src_task, RealityTask) and dest_task.name != dest_task.kind: continue
+            print (src_task, dest_task)
+            transfer = None
             if isinstance(src_task, RealityTask):
                 if dest_task not in src_task.tasks: continue
                 transfer = RealityTransfer(src_task, dest_task)
-
+            else:
+                transfer = Transfer(src_task, dest_task, 
+                    pretrained=pretrained, finetuned=finetuned
+                )
+                transfer.name = get_transfer_name(transfer)
             if transfer.model_type is None: continue
 
             self.edges += [transfer]
@@ -76,21 +83,14 @@ class TaskGraph(TrainableModel):
 
     def save(self, weights_file=None):
         torch.save({
-            "state": self.state_dict(),
-            "tasks": self.tasks,
-            "edges": self.edge_list,
-            "edges_exclude": self.edge_list_exclude,
-            "pretrained": self.pretrained,
-            "finetuned": self.finetuned,
+            key: model.state_dict() for key, model in self.edge_map.items() \
+            if not isinstance(model, RealityTransfer)
         }, weights_file)
 
-    @classmethod
-    def load(cls, weights_file=None, **kwargs):
-        kwargs = {**torch.load(weights_file), **kwargs}
-        state = kwargs.pop('state')
-        model = cls(**kwargs)
-        model.load_state_dict(state)
-        return model
+    def load_weights(self, weights_file=None):
+        for key, state_dict in torch.load(weights_file).items():
+            if key in self.edge_map:
+                self.edge_map[key].load_state_dict(state_dict)
 
 
 

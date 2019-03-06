@@ -100,8 +100,9 @@ class Transfer(nn.Module):
     
     def __init__(self, src_task, dest_task, 
         checkpoint=True, name=None, model_type=None, path=None, 
-        pretrained=False, finetuned=False
+        pretrained=True, finetuned=False
     ):
+        print ("Transfer finetuning: ", finetuned)
         super().__init__()
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
@@ -119,6 +120,7 @@ class Transfer(nn.Module):
             path = f"{MODELS_DIR}/ft_perceptual/{src_task.name}2{dest_task.name}.pth"
             if os.path.exists(path):
                 self.model_type, self.path = saved_type or (lambda: get_model(src_task, dest_task)), path
+                print ("Using finetuned: ", path)
                 return
 
         if self.model_type is None:
@@ -129,7 +131,8 @@ class Transfer(nn.Module):
             if os.path.exists(path):
                 self.model_type, self.path = lambda: get_model(src_task, dest_task), path
         
-        if pretrained:
+        if not pretrained:
+            print ("Not using pretrained [heavily discouraged]")
             self.path = None
 
     def load_model(self):
@@ -139,7 +142,7 @@ class Transfer(nn.Module):
                 # if optimizer:
                 #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
-                self.model = self.model_type()
+                self.model = DataParallelModel(self.model_type())
         return self.model
 
     def __call__(self, x):
@@ -182,7 +185,7 @@ class FineTunedTransfer(Transfer):
             else:
                 print(f"{model_path} found, loading finetuned")
                 self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
-        
+                print(f"")
         self.model = self.cached_models[model_path]
         return self.model
 
@@ -248,11 +251,11 @@ finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_tr
 TRANSFER_MAP = {t.name:t for t in functional_transfers}
 functional_transfers = namedtuple('functional_transfers', TRANSFER_MAP.keys())(**TRANSFER_MAP)
 
-def get_named_transfer(transfer):
+def get_transfer_name(transfer):
     for t in functional_transfers:
         if transfer.src_task == t.src_task and transfer.dest_task == t.dest_task:
-            return t
-    return transfer
+            return t.name
+    return transfer.name
 
 (f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
 
