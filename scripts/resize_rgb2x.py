@@ -27,7 +27,12 @@ def main():
     logger.add_hook(lambda x: logger.step(), feature="loss", freq=25)
 
     task_list = [
+        tasks.rgb192,
         tasks.rgb,
+        tasks.rgb320,
+        tasks.rgb384,
+        tasks.rgb448,
+        tasks.rgb512,
         tasks.normal,
         tasks.principal_curvature,
         tasks.sobel_edges,
@@ -38,24 +43,19 @@ def main():
         tasks.keypoints2d,
     ]
 
-    for resize in range(128, 512+1, 64):
-
-        reality = RealityTask('almena', 
-            dataset=TaskDataset(
-                buildings=['almena'],
-                tasks=task_list,
-            ),
+    reality = RealityTask('almena', 
+        dataset=TaskDataset(
+            buildings=['almena'],
             tasks=task_list,
-            resize=resize,
-            batch_size=4,
-            shuffle=False,
-        )
+        ),
+        tasks=task_list,
+        resize=resize,
+        batch_size=4,
+        shuffle=False,
+    )
 
-        graph = TaskGraph(
-            tasks=[reality, *task_list],
-            batch_size=4
-        )
-        
+    for  in []:
+                
         with torch.no_grad():
             for _, edge in sorted(((edge.dest_task.name, edge) for edge in graph.adj[task])):
                 print (edge)

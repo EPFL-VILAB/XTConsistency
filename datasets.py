@@ -24,7 +24,7 @@ import IPython
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
         split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle,
-        resize=None,
+        resize=None, return_dataset=False,
     ):
     
     dataset_cls = dataset_cls or TaskDataset
@@ -35,17 +35,20 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or data["train_buildings"]
     val_buildings = val_buildings or data["val_buildings"]
+    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, resize=resize)
+    val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks, resize=resize)
 
-    train_loader = torch.utils.data.DataLoader(
-        dataset_cls(buildings=train_buildings, tasks=train_tasks, resize=resize),
-        batch_size=batch_size,
-        num_workers=64, shuffle=True, pin_memory=True
-    )
-    val_loader = torch.utils.data.DataLoader(
-        dataset_cls(buildings=val_buildings, tasks=val_tasks, resize=resize),
-        batch_size=batch_size,
-        num_workers=64, shuffle=True, pin_memory=True
-    )
+    if not return_dataset:
+        train_loader = torch.utils.data.DataLoader(
+            train_loader,
+            batch_size=batch_size,
+            num_workers=64, shuffle=True, pin_memory=True
+        )
+        val_loader = torch.utils.data.DataLoader(
+            val_loader,
+            batch_size=batch_size,
+            num_workers=64, shuffle=True, pin_memory=True
+        )
 
     train_step = int(2248616 // (100 * batch_size))
     val_step = int(245592 // (100 * batch_size))
@@ -186,7 +189,7 @@ class TaskDataset(Dataset):
             print(f"{task.name} file len: {len(task_files)}")
             task_set = {self.convert_path(x, tasks[0]) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-
+        self.T = 0
         self.idx_files = sorted(list(filtered_files))
         print ("Intersection files len: ", len(self.idx_files))
 
@@ -225,10 +228,11 @@ class TaskDataset(Dataset):
         for i in range(200):
             try:
                 res = []
+                seed = random.randint(0, 1e10)
                 for task in self.tasks:
                     file_name = self.convert_path(self.idx_files[idx], task)
                     if len(file_name) == 0: raise Exception("unable to convert file")
-                    image = task.file_loader(file_name, resize=self.resize)
+                    image = task.file_loader(file_name, resize=self.resize, seed=seed, T=self.T)
                     res.append(image)
                 return tuple(res)
             except Exception as e:

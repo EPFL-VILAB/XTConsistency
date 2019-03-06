@@ -11,6 +11,7 @@ from scipy import ndimage
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms.functional as TF
 import torch.optim as optim
 from torchvision import transforms
 
@@ -92,7 +93,7 @@ class Task(object):
         ### Non-image tasks cannot be easily plotted, default to nothing
         pass
 
-    def file_loader(self, path, resize=None):
+    def file_loader(self, path, resize=None, seed=0, T=0):
         raise NotImplementedError()
 
     def __eq__(self, other):
@@ -119,9 +120,10 @@ class RealityTask(Task):
         self.tasks = tasks
         self.shape = (1,)
         if not use_dataset: return
+        self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
         loader = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size,
-            num_workers=64, shuffle=shuffle, pin_memory=True
+            self.dataset, batch_size=self.batch_size,
+            num_workers=64, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
         self.step()
@@ -150,6 +152,13 @@ class RealityTask(Task):
     def step(self):
         self.task_data = {task: x.requires_grad_() for task, x in zip(self.tasks, next(self.generator))}
 
+    def timestep(self):
+        self.dataset.T += 1
+        loader = torch.utils.data.DataLoader(
+            self.dataset, batch_size=self.batch_size,
+            num_workers=64, shuffle=self.shuffle, pin_memory=True
+        )
+        self.generator = cycle(loader)
 
 class ImageTask(Task):
     """ Output space for image-style tasks """
@@ -185,15 +194,22 @@ class ImageTask(Task):
     def plot_func(self, data, name, logger, resize=None, nrow=2):
         logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
-    def file_loader(self, path, resize=None):
+    def file_loader(self, path, resize=None, crop=None, seed=0, T=0):
         # print ("Image transform: ", self.image_transform(Image.openself(path)))
-        image_transform = self.image_transform if resize is None else self.load_image_transform(resize=resize)
+        image_transform = self.load_image_transform(resize=resize, crop=crop, seed=seed, T=T)
         return image_transform(Image.open(open(path, 'rb')))[0:3]
 
-    def load_image_transform(self, resize=None, crop=None):
+    def load_image_transform(self, resize=None, crop=None, seed=0, T=0):
+
+        size = resize or self.resize
+        crop = crop or self.crop
+        random.seed(seed)
+        i = random.randint(0, size - crop)
+        j = random.randint(0, size - crop)
+
         return transforms.Compose([
-            transforms.Resize(resize or self.resize, interpolation=PIL.Image.NEAREST), 
-            transforms.RandomCrop(crop or self.crop or resize or self.resize), 
+            transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
+            lambda x: x if crop is None else TF.crop(x, i, j, crop, crop), 
             transforms.ToTensor(),
             self.transform]
         )
@@ -321,6 +337,23 @@ def sintel_depth_transform(x):
 def get_task(task_name):
     return task_map[task_name]
 
+def smooth_resolution_file_loader(path, resize=None, crop=None, seed=0, T=0):
+    size = [128, 192, 256, 320, 384, 448, 512][T]
+    image_transform = transforms.Compose([
+        transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
+        transforms.ToTensor()
+    ])
+    return image_transform(Image.open(open(path, 'rb')))[0:3]
+
+def ds_us_file_loader(path, resize=None, crop=None, seed=0, T=0):
+    image_transform = transforms.Compose([
+        transforms.Resize(256, interpolation=PIL.Image.NEAREST),
+        transforms.Resize(512, interpolation=PIL.Image.NEAREST),
+        transforms.ToTensor()
+    ])
+    return image_transform(Image.open(open(path, 'rb')))[0:3]
+    
+
 tasks = [
     # RealityTask('almena', 
     #     dataset=TaskDataset(
@@ -343,16 +376,74 @@ tasks = [
     ImageTask('rgb384', shape=(3, 384, 384), resize=384, kind='rgb', file_name='rgb'),
     ImageTask('rgb448', shape=(3, 448, 448), resize=448, kind='rgb', file_name='rgb'),
     ImageTask('rgb512', shape=(3, 512, 512), resize=512, kind='rgb', file_name='rgb'),
-    ImageTask('normal320', shape=(3, 320, 320), resize=320, kind='normal', file_name='normal'),
-    ImageTask('normal384', shape=(3, 384, 384), resize=384, kind='normal', file_name='normal'),
-    ImageTask('normal448', shape=(3, 448, 448), resize=448, kind='normal', file_name='normal'),
-    ImageTask('normal512', shape=(3, 512, 512), resize=512, kind='normal', file_name='normal'),
+    ImageTask('rgb576', shape=(3, 576, 576), resize=576, kind='rgb', file_name='rgb'),
+    ImageTask('rgb640', shape=(3, 640, 640), resize=640, kind='rgb', file_name='rgb'),
+    ImageTask('rgb_domain_shift', kind='rgb', 
+        file_name='rgb', 
+        file_loader=smooth_resolution_file_loader,
+    ),
+    ImageTask('rgb256_us512', kind='rgb', 
+        file_name='rgb', 
+        file_loader=ds_us_file_loader,
+    ),
+    ImageTask('rgb384_crop_256', 
+        shape=(3, 384, 384), crop=256, 
+        kind='rgb', file_name='rgb'
+    ),
     ImageTask('rgb512_crop_256', 
         shape=(3, 512, 512), crop=256, 
         kind='rgb', file_name='rgb'
     ),
+    ImageTask('rgb256_crop_192', 
+        shape=(3, 256, 256), crop=192, 
+        kind='rgb', file_name='rgb'
+    ),
+    ImageTask('rgb512_crop_192', 
+        shape=(3, 512, 512), crop=192, 
+        kind='rgb', file_name='rgb'
+    ),
     ImageTask('normal', mask_val=0.502),
+    ImageTask('normal_domain_shift', kind='normal', 
+        file_name='normal', 
+        file_loader=smooth_resolution_file_loader,
+    ),
+    ImageTask('normal384_crop_256', 
+        shape=(3, 384, 384), crop=256, 
+        kind='normal', file_name='normal'
+    ),
+    ImageTask('normal512_crop_256', 
+        shape=(3, 512, 512), crop=256, 
+        kind='normal', file_name='normal'
+    ),
+    ImageTask('normal256_crop_192', 
+        shape=(3, 256, 256), crop=192, 
+        kind='normal', file_name='normal'
+    ),
+    ImageTask('normal512_crop_192', 
+        shape=(3, 512, 512), crop=192, 
+        kind='normal', file_name='normal'
+    ),
     ImageTask('principal_curvature', mask_val=0.0),
+    ImageTask('principal_curvature384_crop_256', 
+        shape=(3, 384, 384), crop=256, 
+        kind='principal_curvature', file_name='principal_curvature'
+    ),
+    ImageTask('principal_curvature512_crop_256', 
+        shape=(3, 512, 512), crop=256, 
+        kind='principal_curvature', file_name='principal_curvature'
+    ),
+    ImageTask('principal_curvature256_crop_192', 
+        shape=(3, 256, 256), crop=192, 
+        kind='principal_curvature', file_name='principal_curvature'
+    ),
+    ImageTask('principal_curvature512_crop_192', 
+        shape=(3, 512, 512), crop=192, 
+        kind='principal_curvature', file_name='principal_curvature'
+    ),
+    ImageTask('principal_curvature_domain_shift', kind='principal_curvature', 
+        file_name='principal_curvature', 
+        file_loader=smooth_resolution_file_loader,
+    ),
     ImageTask('depth_zbuffer',
         shape=(1, 256, 256), 
         mask_val=1.0, 
