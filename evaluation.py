@@ -12,7 +12,7 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from task_configs import get_task, get_model, tasks
 from logger import Logger, VisdomLogger
-from datasets import SintelDataset, load_ood
+from datasets import TaskDataset, SintelDataset, load_ood
 import transforms
 
 torch.manual_seed(229) # cpu  vars
@@ -54,7 +54,7 @@ class ValidationMetrics(object):
     def load_dataset(self):
         self.dataset = TaskDataset(["almena", "albertville"], tasks=[self.src_task, self.dest_task])
 
-    def build_dataloader(self, sample=None, batch_size=16, seed=229):
+    def build_dataloader(self, sample=None, batch_size=32, seed=229):
         print ("Dataset length: ", len(self.dataset))
         sampler = torch.utils.data.SequentialSampler() if sample is None else \
             torch.utils.data.SubsetRandomSampler(random.Random(seed).sample(range(len(self.dataset)), sample))
@@ -168,7 +168,7 @@ class ImageCorruptionMetrics(ValidationMetrics):
         super().__init__(*args, **kwargs)
 
     def build_dataloader(self, sample=None, seed=229):
-        eval_loader = super().build_dataloader(sample=sample, batch_size=1, seed=seed)
+        eval_loader = super().build_dataloader(sample=sample, batch_size=8, seed=seed)
 
         for i, (X, Y) in enumerate(eval_loader):
             transform = self.transforms[i % len(self.transforms)]
@@ -194,7 +194,7 @@ class AdversarialMetrics(ValidationMetrics):
         super().__init__(*args, **kwargs)
 
     def build_dataloader(self, sample=None, seed=229):
-        eval_loader = super().build_dataloader(sample=sample, batch_size=16, seed=seed)
+        eval_loader = super().build_dataloader(sample=sample, batch_size=32, seed=seed)
 
         for i, (X, Y) in enumerate(eval_loader):
 
@@ -230,6 +230,7 @@ class SintelMetrics(ValidationMetrics):
 
     def load_dataset(self):
         self.dataset = SintelDataset(tasks=[self.src_task, self.dest_task])
+        print (len(self.dataset))
 
 datasets = [
     # ValidationMetrics("almena"),
@@ -245,8 +246,8 @@ datasets = [
 
 def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=400, show_images=False):
     print ("Model: ", model)
-    load_ood()
-    model = model or DataParallelModel.load(UNetOld().cuda(), f"{MODELS_DIR}/{model_file}")
+    # load_ood()
+    model = model or DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/{model_file}")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
     logger = logger or VisdomLogger("eval", env=JOB)

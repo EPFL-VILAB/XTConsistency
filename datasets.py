@@ -24,7 +24,7 @@ import IPython
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
         split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle,
-        resize=None, return_dataset=False,
+        resize=None, return_dataset=False, subset=None, subset_size=None,
     ):
     
     dataset_cls = dataset_cls or TaskDataset
@@ -37,6 +37,14 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
     val_buildings = val_buildings or data["val_buildings"]
     train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, resize=resize)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks, resize=resize)
+
+    if subset_size is not None or subset is not None:
+        train_loader = torch.utils.data.Subset(train_loader, 
+            random.sample(range(len(train_loader)), subset_size or int(len(train_loader)*subset)),
+        )
+        val_loader = torch.utils.data.Subset(val_loader, 
+            random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
+        )
 
     if not return_dataset:
         train_loader = torch.utils.data.DataLoader(
@@ -108,18 +116,18 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(all_tasks, buildings=["almena", "albertville"], sample=12):
+def load_test(all_tasks, buildings=["almena", "albertville"], sample=4, resize=256):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[0]], tasks=all_tasks),
+        TaskDataset(buildings=[buildings[0]], tasks=all_tasks, resize=resize),
         batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True
+        num_workers=sample, shuffle=False, pin_memory=True,
     )
     test_loader2 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[1]], tasks=all_tasks),
+        TaskDataset(buildings=[buildings[1]], tasks=all_tasks, resize=resize),
         batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True
+        num_workers=sample, shuffle=False, pin_memory=True,
     )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
@@ -127,7 +135,7 @@ def load_test(all_tasks, buildings=["almena", "albertville"], sample=12):
     return test_set
 
 
-def load_ood(ood_path=OOD_DIR, resize=256):
+def load_ood(ood_path=OOD_DIR, resize=256, sample=21):
     ood_loader = torch.utils.data.DataLoader(
         ImageDataset(data_dir=ood_path, resize=(resize, resize)),
         batch_size=22,
@@ -135,7 +143,7 @@ def load_ood(ood_path=OOD_DIR, resize=256):
     )
     ood_images = list(itertools.islice(ood_loader, 1))[0]
     print (ood_images.shape)
-    return ood_images
+    return ood_images[0:sample]
 
 
 def load_video_games(ood_path=f"{BASE_DIR}/video_games", resize=256):
@@ -189,7 +197,6 @@ class TaskDataset(Dataset):
             print(f"{task.name} file len: {len(task_files)}")
             task_set = {self.convert_path(x, tasks[0]) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-        self.T = 0
         self.idx_files = sorted(list(filtered_files))
         print ("Intersection files len: ", len(self.idx_files))
 
@@ -232,7 +239,7 @@ class TaskDataset(Dataset):
                 for task in self.tasks:
                     file_name = self.convert_path(self.idx_files[idx], task)
                     if len(file_name) == 0: raise Exception("unable to convert file")
-                    image = task.file_loader(file_name, resize=self.resize, seed=seed, T=self.T)
+                    image = task.file_loader(file_name, resize=self.resize, seed=seed)
                     res.append(image)
                 return tuple(res)
             except Exception as e:
@@ -272,15 +279,30 @@ class ImageDataset(Dataset):
     def __init__(
         self,
         data_dir=f"data/ood_images",
+        files=None,
         resize=(256, 256),
+        return_tuple=False,
     ):
         def crop(x):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
+        
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-        os.system(f"ls {data_dir}/*.png")
-        os.system(f"sudo ls {data_dir}/*.png")
-        self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
-        self.files = sorted(self.files)
+        if not USE_RAID and files is None:
+            os.system(f"ls {data_dir}/*.png")
+            os.system(f"sudo ls {data_dir}/*.png")
+            os.system(f"sudo ls {data_dir}/*.png")
+            os.system(f"sudo ls {data_dir}/*.png")
+            os.system(f"ls {data_dir}/*.png")
+
+        self.return_tuple = return_tuple
+        self.files = files \
+            or sorted(
+                glob.glob(f"{data_dir}/*.png") 
+                + glob.glob(f"{data_dir}/*.jpg") 
+                + glob.glob(f"{data_dir}/*.jpeg")
+            )
+
+        
         print("num files = ", len(self.files))
 
     def __len__(self):
@@ -295,18 +317,18 @@ class ImageDataset(Dataset):
             if image.shape[0] == 1: image = image.expand(3, -1, -1)
         except Exception as e:
             return self.__getitem__(random.randrange(0, len(self.files)))
+        if self.return_tuple:
+            return (image,)
         return image
 
 
 class ImagePairDataset(Dataset):
     """Face Landmarks dataset."""
-    def __init__(self, data_dir, resize=(256, 256), files=None):
+    def __init__(self, data_dir, resize=256, files=None):
 
         self.data_dir = data_dir
-        def crop(x):
-            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
-        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-
+        
+        self.resize = resize
         self.files = files or glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         print("num files = ", len(self.files))
 
@@ -315,50 +337,19 @@ class ImagePairDataset(Dataset):
 
     def __getitem__(self, idx):
 
+        def crop(x):
+            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
+        transform = transforms.Compose([crop, transforms.Resize(self.resize), transforms.ToTensor()])
+
         file = self.files[idx]
         try:
             image = Image.open(file)
-            image = self.transforms(image).float()[0:3, :, :]
+            image = transform(image).float()[0:3, :, :]
             if image.shape[0] == 1: image = image.expand(3, -1, -1)
         except Exception as e:
             return self.__getitem__(random.randrange(0, len(self.files)))
         # print(image.shape, file)
         return image, image
-
-
-
-
-class DualSubsetDataset(TaskDataset):
-
-    def __init__(self, *args, **kwargs):
-        self.subset_percent = kwargs.pop('subset_percent', 0.01)
-        super().__init__(*args, **kwargs)
-
-        self.subset_idxs = random.sample(range(len(self)), int(self.subset_percent*len(self)))
-
-    def __getitem__(self, idx):
-        data1 = TaskDataset.__getitem__(self, idx)
-        data2 = TaskDataset.__getitem__(self, self.subset_idxs[idx % len(self.subset_idxs)])
-        return (*data1, *data2)
-
-
-
-class OODResolutionDataset(TaskDataset):
-
-    def __init__(self, *args, **kwargs):
-        self.subset_percent = kwargs.pop('subset_percent', 0.01)
-        super().__init__(*args, **kwargs)
-
-        for task in self.tasks: 
-            task.resize = 512
-            task.load_image_transform()
-
-        self.subset_idxs = random.sample(range(len(self)), int(self.subset_percent*len(self)))
-
-    def __getitem__(self, idx):
-        data1 = TaskDataset.__getitem__(self, idx)
-        
-        return (*data1, data2)
 
 
     

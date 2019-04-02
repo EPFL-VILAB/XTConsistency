@@ -89,11 +89,6 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
     ('keypoints3d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
-
-    ('normal', 'imagenet_percep'):
-        (lambda: ResNetClass(), None),
-    ('normal', 'random_network'):
-        (lambda: UNet(downsample=4), None),
 }
 
 class Transfer(nn.Module):
@@ -243,8 +238,6 @@ functional_transfers = (
     Transfer('normal', 'keypoints3d', name='Nk3'),
 
     Transfer('sobel_edges', 'reshading', name='Er'),
-    # Transfer('normal', 'imagenet_percep', name='NIm'),
-    # Transfer('normal', 'random_network', name='RND'),
 )
 
 finetuned_transfers = [FineTunedTransfer(transfer) for transfer in functional_transfers]

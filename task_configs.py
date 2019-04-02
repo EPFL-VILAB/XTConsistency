@@ -18,7 +18,6 @@ from torchvision import transforms
 from utils import *
 from models import DataParallelModel
 from modules.unet import UNet, UNetOld2, UNetOld
-from modules.resnet import ResNet
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
 
@@ -26,7 +25,6 @@ import IPython
 
 
 """ Model definitions for launching new transfer jobs between tasks. """
-
 model_types = {
     ('normal', 'principal_curvature'): lambda : Dense1by1Net(),
     ('normal', 'depth_zbuffer'): lambda : UNetDepth(),
@@ -72,7 +70,7 @@ class Task(object):
 
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
-            plot_func=None, transform=None, kind=None,
+            plot_func=None, transform=None,
         ):
 
         super().__init__()
@@ -83,7 +81,6 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.variance = Task.variances.get(name, 1.0)
-        self.kind = kind or self.name
 
     def norm(self, pred, target):
         loss = ((pred - target)**2).mean()
@@ -114,10 +111,10 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 class RealityTask(Task):
     """ General task output space"""
 
-    def __init__(self, name, dataset, tasks, use_dataset=True, shuffle=False, batch_size=64):
+    def __init__(self, name, dataset, tasks=None, use_dataset=True, shuffle=False, batch_size=64):
 
         super().__init__(name=name)
-        self.tasks = tasks
+        self.tasks = tasks or dataset.tasks
         self.shape = (1,)
         if not use_dataset: return
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
@@ -152,8 +149,7 @@ class RealityTask(Task):
     def step(self):
         self.task_data = {task: x.requires_grad_() for task, x in zip(self.tasks, next(self.generator))}
 
-    def timestep(self):
-        self.dataset.T += 1
+    def reload(self):
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
             num_workers=64, shuffle=self.shuffle, pin_memory=True
@@ -169,7 +165,6 @@ class ImageTask(Task):
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
         self.resize = kwargs.pop("resize", self.shape[1])
-        self.crop = kwargs.pop("crop", self.resize)
         self.image_transform = self.load_image_transform()
         super().__init__(*args, **kwargs)
 
@@ -194,22 +189,23 @@ class ImageTask(Task):
     def plot_func(self, data, name, logger, resize=None, nrow=2):
         logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
-    def file_loader(self, path, resize=None, crop=None, seed=0, T=0):
-        # print ("Image transform: ", self.image_transform(Image.openself(path)))
-        image_transform = self.load_image_transform(resize=resize, crop=crop, seed=seed, T=T)
+    def file_loader(self, path, resize=None, crop=None, seed=0):
+        image_transform = self.load_image_transform(resize=resize, crop=crop, seed=seed)
         return image_transform(Image.open(open(path, 'rb')))[0:3]
 
-    def load_image_transform(self, resize=None, crop=None, seed=0, T=0):
+    def load_image_transform(self, resize=None, crop=None, seed=0):
 
         size = resize or self.resize
-        crop = crop or self.crop
         random.seed(seed)
-        i = random.randint(0, size - crop)
-        j = random.randint(0, size - crop)
-
+        crop_transform = lambda x: x
+        if crop is not None:
+            i = random.randint(0, size - crop)
+            j = random.randint(0, size - crop)
+            crop_transform = TF.crop(x, i, j, crop, crop)
+        
         return transforms.Compose([
             transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
-            lambda x: x if crop is None else TF.crop(x, i, j, crop, crop), 
+            crop_transform, 
             transforms.ToTensor(),
             self.transform]
         )
@@ -372,77 +368,8 @@ tasks = [
     #     batch_size=64
     # )
     ImageTask('rgb'),
-    ImageTask('rgb320', shape=(3, 320, 320), resize=320, kind='rgb', file_name='rgb'),
-    ImageTask('rgb384', shape=(3, 384, 384), resize=384, kind='rgb', file_name='rgb'),
-    ImageTask('rgb512', shape=(3, 512, 512), resize=512, kind='rgb', file_name='rgb'),
-    ImageTask('rgb576', shape=(3, 576, 576), resize=576, kind='rgb', file_name='rgb'),
-    ImageTask('rgb640', shape=(3, 640, 640), resize=640, kind='rgb', file_name='rgb'),
-    ImageTask('rgb_domain_shift', kind='rgb', 
-        file_name='rgb', 
-        file_loader=smooth_resolution_file_loader,
-    ),
-    ImageTask('rgb256_us512', kind='rgb', 
-        file_name='rgb', 
-        file_loader=ds_us_file_loader,
-    ),
-    ImageTask('rgb384_crop_256', 
-        shape=(3, 384, 384), crop=256, 
-        kind='rgb', file_name='rgb'
-    ),
-    ImageTask('rgb512_crop_256', 
-        shape=(3, 512, 512), crop=256, 
-        kind='rgb', file_name='rgb'
-    ),
-    ImageTask('rgb256_crop_192', 
-        shape=(3, 256, 256), crop=192, 
-        kind='rgb', file_name='rgb'
-    ),
-    ImageTask('rgb512_crop_192', 
-        shape=(3, 512, 512), crop=192, 
-        kind='rgb', file_name='rgb'
-    ),
     ImageTask('normal', mask_val=0.502),
-    ImageTask('normal_domain_shift', kind='normal', 
-        file_name='normal', 
-        file_loader=smooth_resolution_file_loader,
-    ),
-    ImageTask('normal384_crop_256', 
-        shape=(3, 384, 384), crop=256, 
-        kind='normal', file_name='normal'
-    ),
-    ImageTask('normal512_crop_256', 
-        shape=(3, 512, 512), crop=256, 
-        kind='normal', file_name='normal'
-    ),
-    ImageTask('normal256_crop_192', 
-        shape=(3, 256, 256), crop=192, 
-        kind='normal', file_name='normal'
-    ),
-    ImageTask('normal512_crop_192', 
-        shape=(3, 512, 512), crop=192, 
-        kind='normal', file_name='normal'
-    ),
     ImageTask('principal_curvature', mask_val=0.0),
-    ImageTask('principal_curvature384_crop_256', 
-        shape=(3, 384, 384), crop=256, 
-        kind='principal_curvature', file_name='principal_curvature'
-    ),
-    ImageTask('principal_curvature512_crop_256', 
-        shape=(3, 512, 512), crop=256, 
-        kind='principal_curvature', file_name='principal_curvature'
-    ),
-    ImageTask('principal_curvature256_crop_192', 
-        shape=(3, 256, 256), crop=192, 
-        kind='principal_curvature', file_name='principal_curvature'
-    ),
-    ImageTask('principal_curvature512_crop_192', 
-        shape=(3, 512, 512), crop=192, 
-        kind='principal_curvature', file_name='principal_curvature'
-    ),
-    ImageTask('principal_curvature_domain_shift', kind='principal_curvature', 
-        file_name='principal_curvature', 
-        file_loader=smooth_resolution_file_loader,
-    ),
     ImageTask('depth_zbuffer',
         shape=(1, 256, 256), 
         mask_val=1.0, 

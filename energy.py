@@ -23,6 +23,7 @@ def get_energy_loss(
     config="", mode="standard",
     pretrained=True, finetuned=True, **kwargs,
 ):
+    """ Loads energy loss from config dict. """
     if isinstance(mode, str): 
         mode = {"standard": EnergyLoss}[mode]
     return mode(**energy_configs[config], 
@@ -31,315 +32,220 @@ def get_energy_loss(
 
 
 energy_configs = {
-    "consistency_two_path": {
-        "tasks": [
-            tasks.rgb, 
-            tasks.normal, 
-            tasks.principal_curvature, 
+    "consistency_two_path_ood": {
+        "realities": [
+            "train",
+            "val",
+            "ood_consistency",
+            "test",
+            "ood_test",
+            "ood_consistency_test",
         ],
-        "paths": {
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(x)": [tasks.rgb, tasks.normal],
-            "y^": [tasks.normal],
-            "z^": [tasks.principal_curvature],
-            "F(z^)": [tasks.principal_curvature, tasks.normal],
-        },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "...": {"test": 128},
-        }
-    },
-    "consistency_two_path_multiresolution": {
         "tasks": [
-            tasks.rgb, 
-            tasks.normal, 
+            tasks.rgb,
+            tasks.normal,
             tasks.principal_curvature,
-            tasks.rgb384,
         ],
         "paths": {
-            "n(x)": [tasks.rgb, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "x": [tasks.rgb],
             "y^": [tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb384, tasks.normal],
-            "F(RC(~x))": [tasks.rgb384, tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
         },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
+        "losses": {
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                ("F(z^)", "y^"),
+                ("RC(x)", "z^"),
+                ("F(RC(x))", "y^"),
+                ("F(RC(x))", "n(x)")
+            ],
+            ("ood_consistency",): [
+                ("F(RC(x))", "n(x)"),
+            ],
+        },
+        "plots": {
+            ("test", "ood_test"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("ood_consistency_test",): dict(size=512, paths=[
+                "x",
+                "n(x)",
+                "F(RC(x))",
+            ]),
         },
     },
-    "consistency_ood_crop": {
+    "consistency_two_path_ood_subset": {
+        "realities": [
+            "train",
+            "val",
+            "train_subset",
+            "ood_consistency",
+            "test",
+            "ood_test",
+            "ood_consistency_test",
+        ],
         "tasks": [
-            tasks.rgb, 
-            tasks.normal, 
+            tasks.rgb,
+            tasks.normal,
             tasks.principal_curvature,
-            tasks.rgb512_crop_256,
         ],
         "paths": {
-            "n(x)": [tasks.rgb, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "x": [tasks.rgb],
             "y^": [tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb512_crop_256, tasks.normal],
-            "F(RC(~x))": [tasks.rgb512_crop_256, tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
         },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 256, "ood": 256},
-            "F(RC(~x))": {"test": 256, "ood": 256},
-            "...": {"test": 128},
+        "losses": {
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                ("F(z^)", "y^"),
+                ("RC(x)", "z^"),
+                ("F(RC(x))", "y^"),
+                ("F(RC(x))", "n(x)")
+            ],
+            ("train_subset",): [
+                ("n(x)", "y^"),
+            ],
+            ("ood_consistency",): [
+                ("F(RC(x))", "n(x)"),
+            ],
         },
-    },
-    "consistency_id_384_crop_256_ood_512": {
-        "tasks": [
-            tasks.rgb384_crop_256, 
-            tasks.normal384_crop_256, 
-            tasks.principal_curvature384_crop_256,
-            tasks.rgb512,
-        ],
-        "paths": {
-            "x": [tasks.rgb384_crop_256],
-            "~x": [tasks.rgb512],
-            "n(x)": [tasks.rgb384_crop_256, tasks.normal],
-            "F(RC(x))": [tasks.rgb384_crop_256, tasks.principal_curvature, tasks.normal],
-            "y^": [tasks.normal384_crop_256],
-            "RC(x)": [tasks.rgb384_crop_256, tasks.principal_curvature],
-            "z^": [tasks.principal_curvature384_crop_256],
-            "F(z^)": [tasks.principal_curvature384_crop_256, tasks.normal],
-            "n(~x)": [tasks.rgb512, tasks.normal],
-            "F(RC(~x))": [tasks.rgb512, tasks.principal_curvature, tasks.normal],
-        },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
+        "plots": {
+            ("test", "ood_test"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("ood_consistency_test",): dict(size=512, paths=[
+                "x",
+                "n(x)",
+                "F(RC(x))",
+            ]),
         },
     },
-    "consistency_id_512_crop_256_ood_640": {
+    "consistency_baseline_ood_subset": {
+        "realities": [
+            "train",
+            "val",
+            "train_subset",
+            "ood_consistency",
+            "test",
+            "ood_test",
+            "ood_consistency_test",
+        ],
         "tasks": [
-            tasks.rgb512_crop_256, 
-            tasks.normal512_crop_256, 
-            tasks.principal_curvature512_crop_256,
-            tasks.rgb512,
-        ],
-        "paths": {
-            "x": [tasks.rgb512_crop_256],
-            "~x": [tasks.rgb512],
-            "n(x)": [tasks.rgb512_crop_256, tasks.normal],
-            "F(RC(x))": [tasks.rgb512_crop_256, tasks.principal_curvature, tasks.normal],
-            "y^": [tasks.normal512_crop_256],
-            "RC(x)": [tasks.rgb512_crop_256, tasks.principal_curvature],
-            "z^": [tasks.principal_curvature512_crop_256],
-            "F(z^)": [tasks.principal_curvature512_crop_256, tasks.normal],
-            "n(~x)": [tasks.rgb512, tasks.normal],
-            "F(RC(~x))": [tasks.rgb512, tasks.principal_curvature, tasks.normal],
-        },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
-        },
-    },
-
-    "visualize": {
-        "tasks": [
-            tasks.rgb_domain_shift, 
-            tasks.normal_domain_shift, 
-            tasks.principal_curvature_domain_shift, 
-        ],
-        "paths": {
-            "RC(x)": [tasks.rgb_domain_shift, tasks.principal_curvature],
-            "F(RC(x))": [tasks.rgb_domain_shift, tasks.principal_curvature, tasks.normal],
-            "n(x)": [tasks.rgb_domain_shift, tasks.normal],
-            "y^": [tasks.normal_domain_shift],
-            "z^": [tasks.principal_curvature_domain_shift],
-            "F(z^)": [tasks.principal_curvature_domain_shift, tasks.normal],
-        },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "...": {"test": 128},
-        }
-    },
-    "domain_adaptation": {
-        "tasks": [
-            tasks.rgb, 
-            tasks.normal, 
+            tasks.rgb,
+            tasks.normal,
             tasks.principal_curvature,
-            tasks.rgb_domain_shift,
         ],
         "paths": {
-            "n(x)": [tasks.rgb, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "x": [tasks.rgb],
             "y^": [tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb_domain_shift, tasks.normal],
-            "F(RC(~x))": [tasks.rgb_domain_shift, tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
         },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
+        "losses": {
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                ("F(z^)", "y^"),
+                ("RC(x)", "z^"),
+                ("F(RC(x))", "y^"),
+                # ("F(RC(x))", "n(x)")
+            ],
+            ("train_subset",): [
+                ("n(x)", "y^"),
+            ],
+            ("ood_consistency",): [
+                # ("F(RC(x))", "n(x)"),
+            ],
+        },
+        "plots": {
+            ("test", "ood_test"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("ood_consistency_test",): dict(size=512, paths=[
+                "x",
+                "n(x)",
+                "F(RC(x))",
+            ]),
         },
     },
-    "consistency_ood_ds_256_us_512": {
+    "baseline": {
+        "realities": [
+            "train",
+            "val",
+            "train_subset",
+            "ood_consistency",
+            "test",
+            "ood_test",
+            "ood_consistency_test",
+        ],
         "tasks": [
-            tasks.rgb, 
-            tasks.normal, 
+            tasks.rgb,
+            tasks.normal,
             tasks.principal_curvature,
-            tasks.rgb256_us512,
         ],
         "paths": {
-            "n(x)": [tasks.rgb, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "x": [tasks.rgb],
             "y^": [tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb256_us512, tasks.normal],
-            "F(RC(~x))": [tasks.rgb256_us512, tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
         },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
+        "losses": {
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                # ("F(z^)", "y^"),
+                # ("RC(x)", "z^"),
+                # ("F(RC(x))", "y^"),
+                # ("F(RC(x))", "n(x)")
+            ],
+            ("train_subset",): [
+                ("n(x)", "y^"),
+            ],
+            ("ood_consistency",): [
+                # ("F(RC(x))", "n(x)"),
+            ],
         },
-    },
-
-    "consistency_id_256_crop_192_ood_512_crop_192": {
-        "tasks": [
-            tasks.rgb256_crop_192, 
-            tasks.normal256_crop_192, 
-            tasks.principal_curvature256_crop_192,
-            tasks.rgb512_crop_192,
-        ],
-        "paths": {
-            "x": [tasks.rgb256_crop_192],
-            "~x": [tasks.rgb512],
-            "n(x)": [tasks.rgb512_crop_256, tasks.normal],
-            "F(RC(x))": [tasks.rgb512_crop_256, tasks.principal_curvature, tasks.normal],
-            "y^": [tasks.normal512_crop_256],
-            "RC(x)": [tasks.rgb512_crop_256, tasks.principal_curvature],
-            "z^": [tasks.principal_curvature512_crop_256],
-            "F(z^)": [tasks.principal_curvature512_crop_256, tasks.normal],
-            "n(~x)": [tasks.rgb512, tasks.normal],
-            "F(RC(~x))": [tasks.rgb512, tasks.principal_curvature, tasks.normal],
-        },
-        "losses": [
-            ("RC(x)", "z^"),
-            ("F(z^)", "y^"),
-            ("F(RC(x))", "y^"),
-            ("n(x)", "y^"),
-            ("F(RC(x))", "n(x)"),
-            ("F(RC(~x))", "n(~x)"),
-        ],
-        "plot_config": {
-            "n(x)": {"test": 256, "ood": 256},
-            "F(RC(x))": {"test": 256, "ood": 256},
-            "F(z^)": {"test": 256},
-            "y^": {"test": 256},
-            "n(~x)": {"test": 512, "ood": 512},
-            "F(RC(~x))": {"test": 512, "ood": 512},
-            "...": {"test": 128},
+        "plots": {
+            ("test", "ood_test"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("ood_consistency_test",): dict(size=512, paths=[
+                "x",
+                "n(x)",
+                "F(RC(x))",
+            ]),
         },
     },
 }
@@ -347,19 +253,17 @@ energy_configs = {
 
 class EnergyLoss(object):
 
-    def __init__(self, tasks, paths, losses, 
-        pretrained=True, finetuned=False, plot_config=None,
+    def __init__(self, realities, tasks, paths, losses, plots, 
+        pretrained=True, finetuned=False,
     ):
 
-        self.tasks, self.paths, self.losses = tasks, paths, losses
-        self.plot_config = plot_config or {"...": {"test": 256, "ood": 256}}
-        if "..." in self.plot_config:
-            for path in self.paths:
-                self.plot_config[path] = self.plot_config.get(path, 
-                    self.plot_config["..."]
-                )
-        self.plot_config.pop("...")
+        self.realities, self.tasks, self.paths, self.losses, self.plots = \
+            realities, tasks, paths, losses, plots
         self.metrics = {}
+
+    def load_realities(self, realities):
+        assert set(self.realities) == set(reality.name for reality in realities)
+        self.realities = {reality.name: reality for reality in realities}
 
     def compute_paths(self, graph, reality=None, paths=None):
         path_cache = {}
@@ -369,48 +273,89 @@ class EnergyLoss(object):
                 reality=reality, use_cache=True, cache=path_cache,
             ) for name, path in paths.items()
         }
+        del path_cache
         return {k: v for k, v in path_values.items() if v is not None}
 
     def __call__(self, graph, reality=None):
 
-        loss = None
-        path_values = self.compute_paths(graph, reality=reality)
-        self.metrics[reality] = defaultdict(list)
-        for path1, path2 in self.losses:
-            if self.paths[path1][-1].kind != self.paths[path2][-1].kind:
+        loss, losses = None, None
+        for realities, data in self.losses.items():
+            if reality.name in realities:
+                losses = data
+
+        path_values = self.compute_paths(graph, 
+            paths={
+                path: self.paths[path] for path in \
+                    set(path for paths in losses for path in paths)
+                },
+            reality=reality)
+
+        self.metrics[reality.name] = defaultdict(list)
+
+        for path1, path2 in losses:
+            if self.paths[path1][-1] != self.paths[path2][-1]:
                 raise Exception("Paths have different endpoints.")
 
             output_task = self.paths[path1][-1]
-            # if path1 not in path_values or path2 not in path_values:
-            #     IPython.embed()
             path_loss, _ = output_task.norm(path_values[path1], path_values[path2])
             loss = path_loss if loss is None else (path_loss + loss)
-            self.metrics[reality][path1 + " -> " + path2] += [path_loss.detach()]
+            self.metrics[reality.name][path1 + " -> " + path2] += [path_loss.detach()]
 
         return loss
 
     def logger_hooks(self, logger):
-        for path1, path2 in self.losses:
-            name = path1 + " -> " + path2
-            logger.add_hook(
-                partial(jointplot, loss_type=f"{name}"), feature=f"val_{name}", freq=1
-            )
+        
+        name_to_realities = defaultdict(list)
+        for realities, losses in self.losses.items():
+            for path1, path2 in losses:
+                name = path1 + " -> " + path2
+                name_to_realities[name] += list(realities)
 
-    def logger_update(self, logger, reality=None):
-        for path1, path2 in self.losses:
-            name = path1 + " -> " + path2
-            logger.update(f"{reality.name}_{name}", torch.mean(torch.stack(self.metrics[reality][name])))
+        for name, realities in name_to_realities.items():
+            def jointplot(logger, data, name=name, realities=realities):
+                names = [f"{reality}_{name}" for reality in realities]
+                data = np.stack([data[x] for x in names], axis=1)
+                logger.plot(data, name, opts={"legend": names})
 
-    def plot_paths(self, graph, logger, reality=None):
-        path_values = self.compute_paths(graph, reality=reality)
-        for path, X in path_values.items():
-            config = self.plot_config.get(path, {})
-            if reality.name not in config: continue
-            X = path_values[path]
-            output_task = self.paths[path][-1]
-            output_task.plot_func(X.clamp(min=0.0, max=1.0), 
-                f"{reality.name}_{path}", 
-                logger, resize=config[reality.name],
+            logger.add_hook(partial(jointplot, name=name, realities=realities), feature=f"{realities[-1]}_{name}", freq=1)
+
+
+    def logger_update(self, logger):
+
+        name_to_realities = defaultdict(list)
+        for realities, losses in self.losses.items():
+            for path1, path2 in losses:
+                name = path1 + " -> " + path2
+                name_to_realities[name] += list(realities)
+
+        for name, realities in name_to_realities.items():
+            for reality in realities:
+                # IPython.embed()
+                logger.update(
+                    f"{reality}_{name}", 
+                    torch.mean(torch.stack(self.metrics[reality][name])),
+                )
+        self.metrics = {}
+
+    def plot_paths(self, graph, logger, prefix=""):
+        
+        for realities, config in self.plots.items():
+            paths = config["paths"]
+            images = [[] for _ in range(0, len(paths))]
+            for reality in realities:
+                with torch.no_grad():
+                    path_values = self.compute_paths(graph, paths={path: self.paths[path] for path in paths}, reality=self.realities[reality])
+                shape = path_values[list(path_values.keys())[0]].shape
+                for i, path in enumerate(paths):
+                    X = path_values.get(path, torch.zeros(shape, device=DEVICE))
+                    images[i].append(X.clamp(min=0, max=1))
+
+            for i in range(0, len(paths)):
+                images[i] = torch.cat(images[i], dim=0)
+
+            logger.images_grouped(images, 
+                f"{str(tuple(realities))}_{prefix}_[{', '.join(paths)}]",
+                resize=config["size"],
             )
 
     def __repr__(self):
