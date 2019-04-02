@@ -38,7 +38,7 @@ def main(
 		train_buildings=["almena"] if fast else None, 
 		val_buildings=["almena"] if fast else None,
 	)
-	train_step, val_step = train_step/4, val_step/4
+	train_step, val_step = train_step // 4, val_step // 4
 	if fast: train_step, val_step = 20, 20
 	test_set = load_test(energy_loss.tasks)
 	ood_images = load_ood()
@@ -53,6 +53,7 @@ def main(
 	ood = RealityTask.from_static("ood", (ood_images,), [tasks.rgb])
 
 	# GRAPH
+	print('energy_loss tasks', energy_loss.tasks)
 	graph = TaskGraph(tasks=energy_loss.tasks + [train, val, test, ood], finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	# graph.load_weights(f"{MODELS_DIR}/conservative/graph_rgb_normal_curv.pth")

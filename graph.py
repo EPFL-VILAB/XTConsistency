@@ -34,7 +34,7 @@ class TaskGraph(TrainableModel):
         self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map, self.reality = {}, reality
-
+        print('graph tasks', self.tasks)
         # construct transfer graph
         for src_task, dest_task in itertools.product(self.tasks, self.tasks):
             key = (src_task, dest_task)
