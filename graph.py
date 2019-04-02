@@ -27,9 +27,6 @@ class TaskGraph(TrainableModel):
 
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
-        self.tasks = self.tasks + list(set(
-            get_task(task.kind) for task in self.tasks if task.name in task_map
-        ))
         self.edge_list, self.edge_list_exclude = edges, edges_exclude
         self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
@@ -42,8 +39,6 @@ class TaskGraph(TrainableModel):
             if edges_exclude is not None and key in edges_exclude: continue
             if src_task == dest_task: continue
             if isinstance(dest_task, RealityTask): continue
-            if src_task.name != src_task.kind: continue
-            if not isinstance(src_task, RealityTask) and dest_task.name != dest_task.kind: continue
             print (src_task, dest_task)
             transfer = None
             if isinstance(src_task, RealityTask):
@@ -57,15 +52,15 @@ class TaskGraph(TrainableModel):
             if transfer.model_type is None: continue
 
             self.edges += [transfer]
-            self.adj[src_task.kind] += [transfer]
+            self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
-            self.edge_map[str((src_task.kind, dest_task.name))] = transfer
+            self.edge_map[str((src_task.name, dest_task.name))] = transfer
             transfer.load_model()
 
         self.edge_map = nn.ModuleDict(self.edge_map)
 
     def edge(self, src_task, dest_task):
-        return self.edge_map[str((src_task.kind, dest_task.name))]
+        return self.edge_map[str((src_task.name, dest_task.name))]
 
     def sample_path(self, path, reality=None, use_cache=False, cache={}):
         
@@ -79,13 +74,22 @@ class TaskGraph(TrainableModel):
             except KeyError:
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
+
         return x
 
-    def save(self, weights_file=None):
-        torch.save({
-            key: model.state_dict() for key, model in self.edge_map.items() \
-            if not isinstance(model, RealityTransfer)
-        }, weights_file)
+    def save(self, weights_file=None, weights_dir=None):
+        if weights_file:
+            torch.save({
+                key: model.state_dict() for key, model in self.edge_map.items() \
+                if not isinstance(model, RealityTransfer)
+            }, weights_file)
+
+        if weights_dir:
+            os.makedirs(weights_dir, exist_ok=True)
+            for key, model in self.edge_map.items():
+                if isinstance(model, RealityTransfer): continue
+                model.model.save(f"{weights_dir}/{model.name}.pth")
+
 
     def load_weights(self, weights_file=None):
         for key, state_dict in torch.load(weights_file).items():

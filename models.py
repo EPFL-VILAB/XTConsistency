@@ -95,11 +95,11 @@ class AbstractModel(nn.Module):
     def load(cls, weights_file=None):
         model = cls()
         if weights_file is not None:
-            model.load_state_dict(torch.load(weights_file, pickle_module=dill))
+            model.load_state_dict(torch.load(weights_file))
         return model
 
     def save(self, weights_file):
-        torch.save(self.state_dict(), weights_file, pickle_module=dill)
+        torch.save(self.state_dict(), weights_file)
 
     # Subclasses: override for custom loss + forward functions
     def loss(self, pred, target):
