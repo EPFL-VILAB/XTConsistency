@@ -18,9 +18,9 @@ from fire import Fire
 import IPython
 
 
-def main(src_task, dest_task):
+def main(src_task, dest_task, fast=False):
 
-    src_task, dest_task = get_task(src_task), get_task(dest_task)
+    # src_task, dest_task = get_task(src_task), get_task(dest_task)
     model = DataParallelModel(get_model(src_task, dest_task).cuda())
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
@@ -32,8 +32,9 @@ def main(src_task, dest_task):
 
     # DATA LOADING
     train_loader, val_loader, train_step, val_step = load_train_val([src_task, dest_task], batch_size=48,
-        #train_buildings=["almena", "albertville"], val_buildings=["almena"]
+        train_buildings=["almena"], val_buildings=["almena"]
     )
+    train_step, val_step = 5, 5
     test_set, test_images = load_test(src_task, dest_task)
     src_task.plot_func(test_images, "images", logger, resize=128)
 

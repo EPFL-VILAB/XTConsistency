@@ -99,6 +99,8 @@ class VisdomLogger(BaseLogger):
         self.visdom.delete_env(self.env)
         self.windows = {}
         super().__init__(*args, **kwargs)
+        
+        self.add_hook(lambda logger, data: self.save(), feature="epoch", freq=20)
 
     def text(self, text, end='\n'):
         print (text, end=end)
@@ -138,6 +140,9 @@ class VisdomLogger(BaseLogger):
 
     def bar(self, data, plot_name, opts={}):
         self.window(plot_name, self.visdom.bar, np.array(data), opts=opts)
+
+    def save(self):
+        self.visdom.save([self.env])
 
     def images(self, data, plot_name, opts={}, nrow=2, normalize=False, resize=64):
 

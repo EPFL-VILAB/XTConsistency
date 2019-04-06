@@ -287,12 +287,7 @@ class ImageDataset(Dataset):
             return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
         
         self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
-<<<<<<< HEAD
-        os.system(f"ls {data_dir}/*.png")
-        # os.system(f"sudo ls {data_dir}/*.png")
-        self.files = glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
-        self.files = sorted(self.files)
-=======
+
         if not USE_RAID and files is None:
             os.system(f"ls {data_dir}/*.png")
             os.system(f"sudo ls {data_dir}/*.png")
@@ -308,8 +303,6 @@ class ImageDataset(Dataset):
                 + glob.glob(f"{data_dir}/*.jpeg")
             )
 
-        
->>>>>>> b06bfca9c71bac404a7e1e32f34040b5e7359733
         print("num files = ", len(self.files))
 
     def __len__(self):
