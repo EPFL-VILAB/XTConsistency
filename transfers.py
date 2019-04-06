@@ -1,5 +1,5 @@
 
-import os, sys, math, random, itertools
+import os, sys, math, random, itertools, functools
 from collections import namedtuple
 import numpy as np
 
@@ -13,6 +13,7 @@ from torchvision import models
 from utils import *
 from models import TrainableModel, DataParallelModel
 from task_configs import get_task, task_map, get_model, Task, RealityTask
+from transforms import resize
 
 from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
@@ -120,6 +121,19 @@ class Transfer(nn.Module):
 
         if self.model_type is None:
 
+            if src_task.kind == dest_task.kind and src_task.resize != dest_task.resize:
+
+                class Module(TrainableModel):
+
+                    def __init__(self):
+                        super().__init__()
+
+                    def forward(self, x):
+                        return resize(x, val=dest_task.resize)
+
+                self.model_type = lambda: Module()
+                self.path = None
+
             path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}.pth"
             if src_task.name == "keypoints2d" or dest_task.name == "keypoints2d":
                 path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}_new.pth"
@@ -137,7 +151,9 @@ class Transfer(nn.Module):
                 # if optimizer:
                 #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
-                self.model = DataParallelModel(self.model_type())
+                self.model = self.model_type()
+                if isinstance(self.model, nn.Module):
+                    self.model = DataParallelModel(self.model)
         return self.model
 
     def __call__(self, x):

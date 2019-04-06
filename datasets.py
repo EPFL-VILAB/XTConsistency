@@ -22,9 +22,10 @@ import IPython
 
 
 """ Default data loading configurations for training, validation, and testing. """
-def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildings=None, 
-        split_file="data/split.txt", dataset_cls=None, batch_size=64, batch_transforms=cycle,
-        resize=None, return_dataset=False, subset=None, subset_size=None,
+def load_train_val(train_tasks, val_tasks=None, fast=False, 
+        train_buildings=None, val_buildings=None, split_file="data/split.txt", 
+        dataset_cls=None, batch_size=64, batch_transforms=cycle,
+        subset=None, subset_size=None,
     ):
     
     dataset_cls = dataset_cls or TaskDataset
@@ -33,10 +34,10 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
     val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
 
     data = yaml.load(open(split_file))
-    train_buildings = train_buildings or data["train_buildings"]
-    val_buildings = val_buildings or data["val_buildings"]
-    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, resize=resize)
-    val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks, resize=resize)
+    train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
+    val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
+    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
+    val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
         train_loader = torch.utils.data.Subset(train_loader, 
@@ -46,22 +47,11 @@ def load_train_val(train_tasks, val_tasks=None, train_buildings=None, val_buildi
             random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
         )
 
-    if not return_dataset:
-        train_loader = torch.utils.data.DataLoader(
-            train_loader,
-            batch_size=batch_size,
-            num_workers=64, shuffle=True, pin_memory=True
-        )
-        val_loader = torch.utils.data.DataLoader(
-            val_loader,
-            batch_size=batch_size,
-            num_workers=64, shuffle=True, pin_memory=True
-        )
-
-    train_step = int(2248616 // (100 * batch_size))
-    val_step = int(245592 // (100 * batch_size))
+    train_step = int(2248616 // (400 * batch_size))
+    val_step = int(245592 // (400 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
+    if fast: train_step, val_step = 2, 2
 
     return train_loader, val_loader, train_step, val_step
 
@@ -116,16 +106,16 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(all_tasks, buildings=["almena", "albertville"], sample=4, resize=256):
+def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[0]], tasks=all_tasks, resize=resize),
+        TaskDataset(buildings=[buildings[0]], tasks=all_tasks),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
     test_loader2 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[1]], tasks=all_tasks, resize=resize),
+        TaskDataset(buildings=[buildings[1]], tasks=all_tasks),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
@@ -135,15 +125,14 @@ def load_test(all_tasks, buildings=["almena", "albertville"], sample=4, resize=2
     return test_set
 
 
-def load_ood(ood_path=OOD_DIR, resize=256, sample=21):
+def load_ood(tasks=[tasks.rgb], ood_path=OOD_DIR, sample=21):
     ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
-        batch_size=22,
-        num_workers=22, shuffle=False, pin_memory=True
+        ImageDataset(tasks=tasks, data_dir=ood_path),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True
     )
     ood_images = list(itertools.islice(ood_loader, 1))[0]
-    print (ood_images.shape)
-    return ood_images[0:sample]
+    return ood_images
 
 
 def load_video_games(ood_path=f"{BASE_DIR}/video_games", resize=256):
@@ -278,16 +267,12 @@ class ImageDataset(Dataset):
 
     def __init__(
         self,
+        tasks=[tasks.rgb],
         data_dir=f"data/ood_images",
         files=None,
-        resize=(256, 256),
-        return_tuple=False,
     ):
-        def crop(x):
-            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
-        
-        self.transforms = transforms.Compose([crop, transforms.Resize(resize), transforms.ToTensor()])
 
+        self.tasks = tasks
         if not USE_RAID and files is None:
             os.system(f"ls {data_dir}/*.png")
             os.system(f"sudo ls {data_dir}/*.png")
@@ -295,7 +280,6 @@ class ImageDataset(Dataset):
             os.system(f"sudo ls {data_dir}/*.png")
             os.system(f"ls {data_dir}/*.png")
 
-        self.return_tuple = return_tuple
         self.files = files \
             or sorted(
                 glob.glob(f"{data_dir}/*.png") 
@@ -311,15 +295,13 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
 
         file = self.files[idx]
-        try:
-            image = Image.open(file)
-            image = self.transforms(image).float()[0:3, :, :]
+        res = []
+        seed = random.randint(0, 1e10)
+        for task in self.tasks:
+            image = task.file_loader(file, seed=seed)
             if image.shape[0] == 1: image = image.expand(3, -1, -1)
-        except Exception as e:
-            return self.__getitem__(random.randrange(0, len(self.files)))
-        if self.return_tuple:
-            return (image,)
-        return image
+            res.append(image)
+        return tuple(res)
 
 
 class ImagePairDataset(Dataset):

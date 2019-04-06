@@ -29,52 +29,42 @@ def main(
 	
 	# CONFIG
 	batch_size = batch_size or (4 if fast else 64)
-	ood_batch_size = ood_batch_size or batch_size
 	energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
 	# DATA LOADING
 	train_dataset, val_dataset, train_step, val_step = load_train_val(
-		[tasks.rgb, tasks.normal, tasks.principal_curvature],
-		return_dataset=True,
-		batch_size=batch_size,
-		train_buildings=["almena"] if fast else None, 
-		val_buildings=["almena"] if fast else None,
-		resize=256,
-	)
-	ood_consistency_dataset, _, _, _ = load_train_val(
-		[tasks.rgb,],
-		return_dataset=True,
-		train_buildings=["almena"] if fast else None, 
-		val_buildings=["almena"] if fast else None,
-		resize=512,
+		energy_loss.get_tasks("train"),
+		batch_size=batch_size, fast=fast,
 	)
 	train_subset_dataset, _, _, _ = load_train_val(
-		[tasks.rgb, tasks.normal,],
-		return_dataset=True,
-		train_buildings=["almena"] if fast else None, 
-		val_buildings=["almena"] if fast else None,
-		resize=512,
+		energy_loss.get_tasks("train_subset"),
+		batch_size=batch_size, fast=fast,
 		subset_size=subset_size,
 	)
-
-	train_step, val_step = train_step//4, val_step//4
-	if fast: train_step, val_step = 20, 20
-	test_set = load_test([tasks.rgb, tasks.normal, tasks.principal_curvature])
-	ood_images = load_ood()
-	ood_consistency_test = load_test([tasks.rgb,], resize=512)
+	print ("train: ", energy_loss.get_tasks("train"))
+	print ("train_subset: ", energy_loss.get_tasks("train_subset"))
+	print ("test: ", energy_loss.get_tasks("test"))
+	print ("ood: ", energy_loss.get_tasks("ood"))
+	
+	test_set = load_test(energy_loss.get_tasks("test"))
+	ood_set = load_ood(energy_loss.get_tasks("ood"))
+	print ("loaded test and ood")
+	print (ood_set[0].shape)
 	
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
-	ood_consistency = RealityTask("ood_consistency", ood_consistency_dataset, batch_size=ood_batch_size, shuffle=True)
-	train_subset = RealityTask("train_subset", train_subset_dataset, tasks=[tasks.rgb, tasks.normal], batch_size=ood_batch_size, shuffle=True)
+	print ("train")
+	train_subset = RealityTask("train_subset", train_subset_dataset, batch_size=batch_size, shuffle=True)
+	print ("train_subs")
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
-	test = RealityTask.from_static("test", test_set, [tasks.rgb, tasks.normal, tasks.principal_curvature])
-	ood_test = RealityTask.from_static("ood_test", (ood_images,), [tasks.rgb,])
-	ood_consistency_test = RealityTask.from_static("ood_consistency_test", ood_consistency_test, [tasks.rgb,])
-
-	energy_loss.load_realities([train, val, train_subset, ood_consistency, test, ood_test, ood_consistency_test])
+	print ("val")
+	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
+	print ('test')
+	ood = RealityTask.from_static("ood", ood_set, energy_loss.get_tasks("ood"))
+	print ("ood")
 
 	# GRAPH
-	graph = TaskGraph(tasks=energy_loss.tasks + [train, val, train_subset, ood_consistency, test, ood_test, ood_consistency_test], finetuned=finetuned)
+	realities = [train, train_subset, val, test, ood]
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	graph.load_weights(f"{MODELS_DIR}/conservative/conservative.pth")
 	print (graph)
@@ -82,40 +72,33 @@ def main(
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
-	logger.add_hook(
-		lambda _, __: graph.save(f"{RESULTS_DIR}/graph_{loss_config}.pth"), feature="epoch", freq=1,
-	)
-	graph.save(f"{RESULTS_DIR}/graph_{loss_config}.pth")
+	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
 
 	# TRAINING
 	for epochs in range(0, 800):
 
 		logger.update("epoch", epochs)
-		energy_loss.plot_paths(graph, logger, prefix="start" if epochs == 0 else "")
+		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
 
 		graph.train()
 		for _ in range(0, train_step):
-			train.step()
-			train_loss = energy_loss(graph, reality=train)
+			train_loss = energy_loss(graph, realities=[train])
 			graph.step(train_loss)
 			logger.update("loss", train_loss)
+			train.step()
 
+			train_loss = energy_loss(graph, realities=[train_subset])
+			graph.step(train_loss)
 			train_subset.step()
-			train_subset_loss = energy_loss(graph, reality=train_subset)
-			graph.step(train_subset_loss)
-
-			ood_consistency.step()
-			ood_consistency_loss = energy_loss(graph, reality=ood_consistency)
-			if ood_consistency_loss is not None: graph.step(ood_consistency_loss)
 
 		graph.eval()
 		for _ in range(0, val_step):
-			val.step()
 			with torch.no_grad():
-				val_loss = energy_loss(graph, reality=val)
+				val_loss = energy_loss(graph, realities=[val])
 			logger.update("loss", val_loss)
+			val.step()
 
 		energy_loss.logger_update(logger)
 		logger.step()

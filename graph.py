@@ -32,6 +32,8 @@ class TaskGraph(TrainableModel):
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map, self.reality = {}, reality
         print('graph tasks', self.tasks)
+        self.params = {}
+
         # construct transfer graph
         for src_task, dest_task in itertools.product(self.tasks, self.tasks):
             key = (src_task, dest_task)
@@ -55,16 +57,21 @@ class TaskGraph(TrainableModel):
             self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
             self.edge_map[str((src_task.name, dest_task.name))] = transfer
+            if isinstance(transfer, nn.Module):
+                self.params[str((src_task.name, dest_task.name))] = transfer
             transfer.load_model()
 
-        self.edge_map = nn.ModuleDict(self.edge_map)
+        self.params = nn.ModuleDict(self.params)
 
     def edge(self, src_task, dest_task):
-        return self.edge_map[str((src_task.name, dest_task.name))]
+        key1 = str((src_task.name, dest_task.name))
+        key2 = str((src_task.kind, dest_task.kind))
+        if key1 in self.edge_map: return self.edge_map[key1]
+        return self.edge_map[key2]
 
     def sample_path(self, path, reality=None, use_cache=False, cache={}):
-        
         path = [reality or self.reality[0]] + path
+        print ("Sample: ", path)
         x = None
         for i in range(1, len(path)):
             try:
@@ -72,9 +79,10 @@ class TaskGraph(TrainableModel):
                     self.edge(path[i-1], path[i])(x)
                 )
             except KeyError:
+                print ("Failed")
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
-
+            print (i, x.shape)
         return x
 
     def save(self, weights_file=None, weights_dir=None):

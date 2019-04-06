@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, time, glob, math, itertools, json
+import random, sys, os, time, glob, math, itertools, json, copy
 from collections import defaultdict, namedtuple
 from functools import partial
 
@@ -81,10 +81,15 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.variance = Task.variances.get(name, 1.0)
+        self.kind = name
 
     def norm(self, pred, target):
         loss = ((pred - target)**2).mean()
         return loss, (loss.detach(),)
+
+    def __call__(self, size=256):
+        task = copy.deepcopy(self)
+        return task
 
     def plot_func(self, data, name, logger, **kwargs):
         ### Non-image tasks cannot be easily plotted, default to nothing
@@ -114,16 +119,18 @@ class RealityTask(Task):
     def __init__(self, name, dataset, tasks=None, use_dataset=True, shuffle=False, batch_size=64):
 
         super().__init__(name=name)
-        self.tasks = tasks or dataset.tasks
+        self.tasks = tasks or (dataset.dataset.tasks if hasattr(dataset, "dataset") else dataset.tasks)
         self.shape = (1,)
         if not use_dataset: return
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=64, shuffle=self.shuffle, pin_memory=True
+            num_workers=self.batch_size, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
+        print ("rbstep")
         self.step()
+        print ("rastep")
         self.static = False
 
     @classmethod
@@ -186,6 +193,13 @@ class ImageTask(Task):
         mask = ImageTask.build_mask(target, val=self.mask_val)
         return super().norm(pred*mask.float(), target*mask.float())
 
+    def __call__(self, size=256):
+        task = copy.deepcopy(self)
+        task.shape = (3, size, size)
+        task.resize = size
+        task.name += str(size)
+        return task
+
     def plot_func(self, data, name, logger, resize=None, nrow=2):
         logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
@@ -205,6 +219,7 @@ class ImageTask(Task):
         
         return transforms.Compose([
             transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
+            transforms.CenterCrop(size), 
             crop_transform, 
             transforms.ToTensor(),
             self.transform]
