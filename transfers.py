@@ -15,7 +15,6 @@ from models import TrainableModel, DataParallelModel
 from task_configs import get_task, task_map, get_model, Task, RealityTask
 from transforms import resize
 
-from modules.resnet import ResNet
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
