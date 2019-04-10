@@ -27,6 +27,7 @@ class TaskGraph(TrainableModel):
 
         super().__init__()
         self.tasks = list(set(tasks) - set(task_filter))
+        self.tasks += [task.base for task in self.tasks if hasattr(task, "base")]
         self.edge_list, self.edge_list_exclude = edges, edges_exclude
         self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
@@ -51,15 +52,19 @@ class TaskGraph(TrainableModel):
                     pretrained=pretrained, finetuned=finetuned
                 )
                 transfer.name = get_transfer_name(transfer)
-            if transfer.model_type is None: continue
-
+            if transfer.model_type is None: 
+                continue
+            print ("Added transfer", transfer)
             self.edges += [transfer]
             self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
             self.edge_map[str((src_task.name, dest_task.name))] = transfer
             if isinstance(transfer, nn.Module):
                 self.params[str((src_task.name, dest_task.name))] = transfer
-            transfer.load_model()
+                try:
+                    transfer.load_model()
+                except:
+                    IPython.embed()
 
         self.params = nn.ModuleDict(self.params)
 
@@ -71,7 +76,6 @@ class TaskGraph(TrainableModel):
 
     def sample_path(self, path, reality=None, use_cache=False, cache={}):
         path = [reality or self.reality[0]] + path
-        print ("Sample: ", path)
         x = None
         for i in range(1, len(path)):
             try:
@@ -80,9 +84,9 @@ class TaskGraph(TrainableModel):
                 )
             except KeyError:
                 print ("Failed")
+                IPython.embed()
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
-            print (i, x.shape)
         return x
 
     def save(self, weights_file=None, weights_dir=None):

@@ -61,7 +61,7 @@ pretrained_transfers = {
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d_new.pth"),
+        (lambda: UNet(downsample=3, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d_new.pth"),
     ('rgb', 'reshading'):
         (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
     ('rgb', 'depth_zbuffer'):

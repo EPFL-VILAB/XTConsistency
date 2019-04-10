@@ -35,7 +35,7 @@ model_types = {
     ('depth_zbuffer', 'principal_curvature'): lambda : UNet(downsample=4, in_channels=1, out_channels=3),
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
     ('rgb', 'normal'): lambda : UNet(downsample=6),
-    ('rgb', 'keypoints2d'): lambda : UNet(downsample=3),
+    ('rgb', 'keypoints2d'): lambda : UNet(downsample=3, out_channels=1),
 }
 
 def get_model(src_task, dest_task):
@@ -198,6 +198,7 @@ class ImageTask(Task):
         task.shape = (3, size, size)
         task.resize = size
         task.name += str(size)
+        task.base = self
         return task
 
     def plot_func(self, data, name, logger, resize=None, nrow=2):

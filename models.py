@@ -95,7 +95,10 @@ class AbstractModel(nn.Module):
     def load(cls, weights_file=None):
         model = cls()
         if weights_file is not None:
-            model.load_state_dict(torch.load(weights_file))
+            data = torch.load(weights_file)
+            # hack for models saved with optimizers
+            if "optimizer" in data: data = data["state_dict"]
+            model.load_state_dict(data)
         return model
 
     def save(self, weights_file):
@@ -196,7 +199,10 @@ class DataParallelModel(TrainableModel):
     def load(cls, model=TrainableModel(), weights_file=None):
         model = cls(model)
         if weights_file is not None:
-            model.load_state_dict(torch.load(weights_file))
+            data = torch.load(weights_file)
+            # hack for models saved with optimizers
+            if "optimizer" in data: data = data["state_dict"]
+            model.load_state_dict(data)
         return model
 
 class WrapperModel(TrainableModel):

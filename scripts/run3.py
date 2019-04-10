@@ -29,6 +29,7 @@ def run(cmd, instance="cloud1", zone="us-west1-b", config="job", shutdown=False,
     upload(exp_id)
 
     subprocess.run(f"gcloud compute instances start {instance} --zone {zone}".split())
+    subprocess.run(f"gcloud compute config-ssh".split())
 
     cmd = shlex.split(cmd)
     if cmd[0] == "python":

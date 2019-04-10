@@ -24,7 +24,8 @@ import IPython
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
-	pretrained=True, finetuned=False, fast=False, batch_size=None, **kwargs,
+	pretrained=True, finetuned=False, fast=False, batch_size=None, 
+	cont=f"{MODELS_DIR}/conservative/conservative.pth", **kwargs,
 ):
 	
 	# CONFIG
@@ -44,11 +45,13 @@ def main(
 	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
 	ood = RealityTask.from_static("ood", ood_set, energy_loss.get_tasks("ood"))
 
+	# IPython.embed()
+
 	# GRAPH
 	realities = [train, val, test, ood]
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	graph.load_weights(f"{MODELS_DIR}/conservative/conservative.pth")
+	if not USE_RAID: graph.load_weights(cont)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
