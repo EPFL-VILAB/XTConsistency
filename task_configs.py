@@ -23,6 +23,19 @@ from modules.depth_nets import UNetDepth
 
 import IPython
 
+from PIL import ImageFilter
+
+class GaussianBulr(object):
+    def __init__(self, radius):
+        self.radius = radius
+        self.filter = ImageFilter.GaussianBlur(radius)
+
+    def __call__(self, im):
+        return im.filter(self.filter)
+
+    def __repr__(self):
+        return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
+
 
 """ Model definitions for launching new transfer jobs between tasks. """
 model_types = {
@@ -172,6 +185,7 @@ class ImageTask(Task):
         self.mask_val = kwargs.pop("mask_val", -1.0)
         self.transform = kwargs.pop("transform", lambda x: x)
         self.resize = kwargs.pop("resize", self.shape[1])
+        self.blur_radius = None
         self.image_transform = self.load_image_transform()
         super().__init__(*args, **kwargs)
 
@@ -193,10 +207,11 @@ class ImageTask(Task):
         mask = ImageTask.build_mask(target, val=self.mask_val)
         return super().norm(pred*mask.float(), target*mask.float())
 
-    def __call__(self, size=256):
+    def __call__(self, size=256, blur_radius=None):
         task = copy.deepcopy(self)
         task.shape = (3, size, size)
         task.resize = size
+        task.blur_radius = blur_radius
         task.name += str(size)
         task.base = self
         return task
@@ -218,7 +233,8 @@ class ImageTask(Task):
             j = random.randint(0, size - crop)
             crop_transform = TF.crop(x, i, j, crop, crop)
         
-        return transforms.Compose([
+        blur = [GaussianBulr(self.blur_radius)] if self.blur_radius else []
+        return transforms.Compose(blur+[
             transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
             transforms.CenterCrop(size), 
             crop_transform, 

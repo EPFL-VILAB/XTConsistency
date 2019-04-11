@@ -14,8 +14,6 @@ from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
 from evaluation import run_eval_suite
 
-from modules.resnet import ResNet
-from modules.unet import UNet, UNetOld
 from functools import partial
 from fire import Fire
 

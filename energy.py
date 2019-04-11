@@ -52,11 +52,18 @@ energy_configs = {
             ],
         },
         "plots": {
-            ("test", "ood"): dict(size=256, paths=[
-                "x",
-                "y^",
-                "n(x)",16
-            ]),
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
         },
     },
     "two_path_consistency_ood": {
@@ -83,19 +90,27 @@ energy_configs = {
             ],
         },
         "plots": {
-            ("test", "ood"): dict(size=256, paths=[
-                "x",
-                "y^",
-                "n(x)",
-                "F(RC(x))",
-                "z^",
-                "RC(x)",
-            ]),
-            ("test", "ood"): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-                "F(RC(~x))",
-            ]),
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
         },
     },
     "subset_baseline": {
@@ -116,19 +131,36 @@ energy_configs = {
             ],
         },
         "plots": {
-            ("test", "ood"): dict(size=256, paths=[
-                "x",
-                "y^",
-                "n(x)",
-            ]),
-            ("test", "ood"): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-            ]),
-            ("train_subset",): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-            ]),
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "ID_subset": dict(
+                size=512, 
+                realities=("train_subset"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
         },
     },
     "subset_conservative_baseline": {
@@ -158,24 +190,36 @@ energy_configs = {
             ],
         },
         "plots": {
-            ("test", "ood"): dict(size=256, paths=[
-                "x",
-                "y^",
-                "n(x)",
-                "F(RC(x))",
-                "z^",
-                "RC(x)",
-            ]),
-            ("test", "ood"): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-                "F(RC(~x))",
-            ]),
-            ("train_subset",): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-                "F(RC(~x))",
-            ]),
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "ID_subset": dict(
+                size=512, 
+                realities=("train_subset"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
         },
     },
     "subset_conservative_two_path_ood": {
@@ -206,24 +250,36 @@ energy_configs = {
             ],
         },
         "plots": {
-            ("test", "ood"): dict(size=256, paths=[
-                "x",
-                "y^",
-                "n(x)",
-                "F(RC(x))",
-                "z^",
-                "RC(x)",
-            ]),
-            ("test", "ood"): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-                "F(RC(~x))",
-            ]),
-            ("train_subset",): dict(size=512, paths=[
-                "~x",
-                "n(~x)",
-                "F(RC(~x))",
-            ]),
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "ID_subset": dict(
+                size=512, 
+                realities=("train_subset"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
         },
     },
     "consistency_paired_resolution_gt": {
@@ -568,6 +624,55 @@ energy_configs = {
                     "edge_occlusion",
                     "keypoints3d",
                     "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "consistency_paired_gaussianblur": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=3)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
+            "~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
+            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                ("F(z^)", "y^"),
+                ("RC(x)", "z^"),
+                ("F(RC(x))", "y^"),
+                ("F(RC(x))", "n(x)"),
+                ("F(RC(~x))", "n(~x)"),
+                ("~n(~x)", "n(x)"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
                 ]
             ),
         },
