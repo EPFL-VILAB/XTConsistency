@@ -19,8 +19,6 @@ from fire import Fire
 
 import IPython
 
-import pdb
-
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
@@ -65,8 +63,7 @@ def main(
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
-		print('test_point1')
-		pdb.set_trace()
+
 		graph.train()
 		for _ in range(0, train_step):
 			train_loss = energy_loss(graph, realities=[train])
