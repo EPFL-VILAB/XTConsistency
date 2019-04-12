@@ -926,16 +926,16 @@ energy_configs = {
     "consistency_paired_gaussianblur": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=3)],
+            "~x": [tasks.rgb(blur_radius=30)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
-            "~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
-            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+            "n(~x)": [tasks.rgb(blur_radius=30), tasks.normal(blur_radius=30)],
+            #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
+            "F(RC(~x))": [tasks.rgb(blur_radius=30), tasks.principal_curvature(blur_radius=30), tasks.normal(blur_radius=30)],
         },
         "losses": {
             ("train", "val"): [
@@ -945,7 +945,7 @@ energy_configs = {
                 ("F(RC(x))", "y^"),
                 ("F(RC(x))", "n(x)"),
                 ("F(RC(~x))", "n(~x)"),
-                ("~n(~x)", "n(x)"),
+                #("~n(~x)", "n(x)"),
             ],
         },
         "plots": {
@@ -962,7 +962,7 @@ energy_configs = {
                 ]
             ),
             "OOD": dict(
-                size=512, 
+                size=256, 
                 realities=("test", "ood"),
                 paths=[
                     "~x",
@@ -1020,7 +1020,6 @@ class EnergyLoss(object):
         return list(set(tasks))
 
     def __call__(self, graph, realities=[]):
-
         loss = None
         for reality in realities:
             losses = None

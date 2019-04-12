@@ -212,7 +212,7 @@ class ImageTask(Task):
         task.shape = (3, size, size)
         task.resize = size
         task.blur_radius = blur_radius
-        task.name += str(size)
+        task.name +=  "blur" if blur_radius else str(size) 
         task.base = self
         return task
 
