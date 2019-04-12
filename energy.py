@@ -474,27 +474,27 @@ energy_configs = {
     "consistency_paired_resolution_cycle_baseline_lowweight": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(size=512)],
+            "~x": [tasks.rgb(blur_radius=30)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(size=512), tasks.normal(size=512)],
-            "~n(~x)": [tasks.rgb(size=512), tasks.normal(size=512), tasks.normal],
-            "F(RC(~x))": [tasks.rgb(size=512), tasks.principal_curvature(size=512), tasks.normal(size=512)],
+            "n(~x)": [tasks.rgb(blur_radius=30), tasks.normal(blur_radius=30)],
+            #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
+            "F(RC(~x))": [tasks.rgb(blur_radius=30), tasks.principal_curvature(blur_radius=30), tasks.normal(blur_radius=30)],
         },
         "losses": {
-            ("train", "val"): {
-                ("n(x)", "y^"): 1.0,
-                ("F(z^)", "y^"): 1.0,
-                ("RC(x)", "z^"): 1.0,
-                ("F(RC(x))", "y^"): 1.0,
-                ("F(RC(x))", "n(x)"): 1.0,
-                # ("F(RC(~x))", "n(~x)"): 1.0,
-                ("~n(~x)", "n(x)"): 0.05
-            },
+            ("train", "val"): [
+                ("n(x)", "y^"),
+                ("F(z^)", "y^"),
+                ("RC(x)", "z^"),
+                ("F(RC(x))", "y^"),
+                ("F(RC(x))", "n(x)"),
+                ("F(RC(~x))", "n(~x)"),
+                #("~n(~x)", "n(x)"),
+            ],
         },
         "plots": {
             "ID": dict(
@@ -510,7 +510,7 @@ energy_configs = {
                 ]
             ),
             "OOD": dict(
-                size=512, 
+                size=256, 
                 realities=("test", "ood"),
                 paths=[
                     "~x",
@@ -1117,7 +1117,6 @@ class EnergyLoss(object):
         return list(set(tasks))
 
     def __call__(self, graph, realities=[]):
-
         loss = None
         for reality in realities:
             losses = None

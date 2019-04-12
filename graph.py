@@ -14,7 +14,6 @@ from task_configs import get_task, task_map, tasks, get_model, RealityTask
 from transfers import Transfer, RealityTransfer, get_transfer_name
 import transforms
 
-
 class TaskGraph(TrainableModel):
     """Basic graph that encapsulates set of edge constraints. Can be saved and loaded
     from directories."""
@@ -75,15 +74,21 @@ class TaskGraph(TrainableModel):
         return self.edge_map[key2]
 
     def sample_path(self, path, reality=None, use_cache=False, cache={}):
+        print('cache')
+        print(cache.keys())
+        print(path)
+        #print(self.edge)
         path = [reality or self.reality[0]] + path
         x = None
         for i in range(1, len(path)):
+            print(i)
             try:
                 x = cache.get(tuple(path[0:(i+1)]), 
                     self.edge(path[i-1], path[i])(x)
                 )
             except KeyError:
                 print ("Failed")
+                pdb.set_trace()
                 IPython.embed()
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
