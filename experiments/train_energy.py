@@ -19,6 +19,7 @@ from fire import Fire
 
 import IPython
 
+import pdb
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
@@ -37,6 +38,7 @@ def main(
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
+
 
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
@@ -63,7 +65,8 @@ def main(
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
-
+		print('test_point1')
+		pdb.set_trace()
 		graph.train()
 		for _ in range(0, train_step):
 			train_loss = energy_loss(graph, realities=[train])
