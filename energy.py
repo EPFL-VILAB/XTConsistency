@@ -926,16 +926,16 @@ energy_configs = {
     "consistency_paired_gaussianblur": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=30)],
+            "~x": [tasks.rgb(blur_radius=3)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=30), tasks.normal(blur_radius=30)],
+            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
             #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
-            "F(RC(~x))": [tasks.rgb(blur_radius=30), tasks.principal_curvature(blur_radius=30), tasks.normal(blur_radius=30)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
         },
         "losses": {
             ("train", "val"): [

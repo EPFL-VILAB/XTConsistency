@@ -74,14 +74,9 @@ class TaskGraph(TrainableModel):
         return self.edge_map[key2]
 
     def sample_path(self, path, reality=None, use_cache=False, cache={}):
-        print('cache')
-        print(cache.keys())
-        print(path)
-        #print(self.edge)
         path = [reality or self.reality[0]] + path
         x = None
         for i in range(1, len(path)):
-            print(i)
             try:
                 x = cache.get(tuple(path[0:(i+1)]), 
                     self.edge(path[i-1], path[i])(x)

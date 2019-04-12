@@ -79,8 +79,6 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 
 class Task(object):
     """ General task output space"""
-    variances = {} if USE_RAID else yaml.load(open(f"{MODELS_DIR}/variances.txt"))
-
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
             plot_func=None
@@ -141,9 +139,7 @@ class RealityTask(Task):
             num_workers=self.batch_size, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
-        print ("rbstep")
         self.step()
-        print ("rastep")
         self.static = False
 
     @classmethod
