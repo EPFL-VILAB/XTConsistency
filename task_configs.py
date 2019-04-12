@@ -90,7 +90,6 @@ class Task(object):
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
-        self.variance = Task.variances.get(name, 1.0)
         self.kind = name
 
     def norm(self, pred, target):
