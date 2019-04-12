@@ -37,7 +37,6 @@ def main(
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 
-
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
 	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))

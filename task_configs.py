@@ -83,12 +83,11 @@ class Task(object):
 
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
-            plot_func=None, transform=None,
+            plot_func=None
         ):
 
         super().__init__()
         self.name = name
-        self.transform = transform or (lambda x: x)
         self.file_name, self.file_ext = file_name or name, file_ext
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
@@ -132,7 +131,8 @@ class RealityTask(Task):
     def __init__(self, name, dataset, tasks=None, use_dataset=True, shuffle=False, batch_size=64):
 
         super().__init__(name=name)
-        self.tasks = tasks or (dataset.dataset.tasks if hasattr(dataset, "dataset") else dataset.tasks)
+        self.tasks = tasks if tasks is not None else \
+            (dataset.dataset.tasks if hasattr(dataset, "dataset") else dataset.tasks)
         self.shape = (1,)
         if not use_dataset: return
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
@@ -383,22 +383,6 @@ def ds_us_file_loader(path, resize=None, crop=None, seed=0, T=0):
     
 
 tasks = [
-    # RealityTask('almena', 
-    #     dataset=TaskDataset(
-    #         buildings=['almena'], 
-    #         tasks=["rgb", "normal"],
-    #     ),
-    #     tasks=["rgb", "normal"],
-    #     batch_size=64
-    # ),
-    # RealityTask('sintel', 
-    #     dataset=TaskDataset(
-    #         buildings=['almena'], 
-    #         tasks=[tasks.rgb, tasks.normal],
-    #     ),
-    #     tasks=[tasks.rgb, tasks.normal],
-    #     batch_size=64
-    # )
     ImageTask('rgb'),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
@@ -438,6 +422,7 @@ tasks = [
     # ),
     # PointInfoTask('point_info'),
 ]
+
 
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)

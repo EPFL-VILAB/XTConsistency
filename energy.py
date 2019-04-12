@@ -52,18 +52,11 @@ energy_configs = {
             ],
         },
         "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                    "z^",
-                    "RC(x)",
-                ]
-            ),
+            ("test", "ood"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",16
+            ]),
         },
     },
     "two_path_consistency_ood": {
@@ -90,27 +83,19 @@ energy_configs = {
             ],
         },
         "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                    "z^",
-                    "RC(x)",
-                ]
-            ),
-            "OOD": dict(
-                size=512, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
+            ("test", "ood"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("test", "ood"): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+                "F(RC(~x))",
+            ]),
         },
     },
     "subset_baseline": {
@@ -131,36 +116,19 @@ energy_configs = {
             ],
         },
         "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                    "z^",
-                    "RC(x)",
-                ]
-            ),
-            "ID_subset": dict(
-                size=512, 
-                realities=("train_subset"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
-            "OOD": dict(
-                size=512, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
+            ("test", "ood"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+            ]),
+            ("test", "ood"): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+            ]),
+            ("train_subset",): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+            ]),
         },
     },
     "subset_conservative_baseline": {
@@ -190,36 +158,24 @@ energy_configs = {
             ],
         },
         "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                    "z^",
-                    "RC(x)",
-                ]
-            ),
-            "ID_subset": dict(
-                size=512, 
-                realities=("train_subset"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
-            "OOD": dict(
-                size=512, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
+            ("test", "ood"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("test", "ood"): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+                "F(RC(~x))",
+            ]),
+            ("train_subset",): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+                "F(RC(~x))",
+            ]),
         },
     },
     "subset_conservative_two_path_ood": {
@@ -250,36 +206,24 @@ energy_configs = {
             ],
         },
         "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                    "z^",
-                    "RC(x)",
-                ]
-            ),
-            "ID_subset": dict(
-                size=512, 
-                realities=("train_subset"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
-            "OOD": dict(
-                size=512, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
+            ("test", "ood"): dict(size=256, paths=[
+                "x",
+                "y^",
+                "n(x)",
+                "F(RC(x))",
+                "z^",
+                "RC(x)",
+            ]),
+            ("test", "ood"): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+                "F(RC(~x))",
+            ]),
+            ("train_subset",): dict(size=512, paths=[
+                "~x",
+                "n(~x)",
+                "F(RC(~x))",
+            ]),
         },
     },
     "consistency_paired_resolution_gt": {
@@ -478,6 +422,7 @@ energy_configs = {
             ),
         },
     },
+
     "rgb2x2normals_plots_size320": {
         "paths": {
             "x": [tasks.rgb(size=320)],
@@ -617,6 +562,356 @@ energy_configs = {
                     "x",
                     "y^",
                     "n(x)",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "y2normals_plots": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "principal_curvature": [tasks.principal_curvature, tasks.normal],
+            "sobel_edges": [tasks.sobel_edges, tasks.normal],
+            "depth_zbuffer": [tasks.depth_zbuffer, tasks.normal],
+            "reshading": [tasks.reshading, tasks.normal],
+            "edge_occlusion": [tasks.edge_occlusion, tasks.normal],
+            "keypoints3d": [tasks.keypoints3d, tasks.normal],
+            "keypoints2d": [tasks.keypoints2d, tasks.normal],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "y^"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test",), 
+                paths=[
+                    "x",
+                    "y^",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "y2normals_plots_size320": {
+        "paths": {
+            "x": [tasks.rgb(size=320)],
+            "y^": [tasks.normal(size=320)],
+            "principal_curvature": [tasks.principal_curvature(size=320), tasks.normal(size=320)],
+            "sobel_edges": [tasks.sobel_edges(size=320), tasks.normal(size=320)],
+            "depth_zbuffer": [tasks.depth_zbuffer(size=320), tasks.normal(size=320)],
+            "reshading": [tasks.reshading(size=320), tasks.normal(size=320)],
+            "edge_occlusion": [tasks.edge_occlusion(size=320), tasks.normal(size=320)],
+            "keypoints3d": [tasks.keypoints3d(size=320), tasks.normal(size=320)],
+            "keypoints2d": [tasks.keypoints2d(size=320), tasks.normal(size=320)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "y^"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=320, 
+                realities=("test",), 
+                paths=[
+                    "x",
+                    "y^",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "y2normals_plots_size384": {
+        "paths": {
+            "x": [tasks.rgb(size=384)],
+            "y^": [tasks.normal(size=384)],
+            "principal_curvature": [tasks.principal_curvature(size=384), tasks.normal(size=384)],
+            "sobel_edges": [tasks.sobel_edges(size=384), tasks.normal(size=384)],
+            "depth_zbuffer": [tasks.depth_zbuffer(size=384), tasks.normal(size=384)],
+            "reshading": [tasks.reshading(size=384), tasks.normal(size=384)],
+            "edge_occlusion": [tasks.edge_occlusion(size=384), tasks.normal(size=384)],
+            "keypoints3d": [tasks.keypoints3d(size=384), tasks.normal(size=384)],
+            "keypoints2d": [tasks.keypoints2d(size=384), tasks.normal(size=384)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "y^"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=384, 
+                realities=("test",), 
+                paths=[
+                    "x",
+                    "y^",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "y2normals_plots_size448": {
+        "paths": {
+            "x": [tasks.rgb(size=448)],
+            "y^": [tasks.normal(size=448)],
+            "principal_curvature": [tasks.principal_curvature(size=448), tasks.normal(size=448)],
+            "sobel_edges": [tasks.sobel_edges(size=448), tasks.normal(size=448)],
+            "depth_zbuffer": [tasks.depth_zbuffer(size=448), tasks.normal(size=448)],
+            "reshading": [tasks.reshading(size=448), tasks.normal(size=448)],
+            "edge_occlusion": [tasks.edge_occlusion(size=448), tasks.normal(size=448)],
+            "keypoints3d": [tasks.keypoints3d(size=448), tasks.normal(size=448)],
+            "keypoints2d": [tasks.keypoints2d(size=448), tasks.normal(size=448)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "y^"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=448, 
+                realities=("test",), 
+                paths=[
+                    "x",
+                    "y^",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "y2normals_plots_size512": {
+        "paths": {
+            "x": [tasks.rgb(size=512)],
+            "y^": [tasks.normal(size=512)],
+            "principal_curvature": [tasks.principal_curvature(size=512), tasks.normal(size=512)],
+            "sobel_edges": [tasks.sobel_edges(size=512), tasks.normal(size=512)],
+            "depth_zbuffer": [tasks.depth_zbuffer(size=512), tasks.normal(size=512)],
+            "reshading": [tasks.reshading(size=512), tasks.normal(size=512)],
+            "edge_occlusion": [tasks.edge_occlusion(size=512), tasks.normal(size=512)],
+            "keypoints3d": [tasks.keypoints3d(size=512), tasks.normal(size=512)],
+            "keypoints2d": [tasks.keypoints2d(size=512), tasks.normal(size=512)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "y^"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=512, 
+                realities=("test",), 
+                paths=[
+                    "x",
+                    "y^",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "rgb2x_plots": {
+        "paths": {
+            "x": [tasks.rgb],
+            "normal": [tasks.rgb, tasks.normal],
+            "principal_curvature": [tasks.rgb, tasks.principal_curvature],
+            "sobel_edges": [tasks.rgb, tasks.sobel_edges],
+            "depth_zbuffer": [tasks.rgb, tasks.depth_zbuffer],
+            "reshading": [tasks.rgb, tasks.reshading],
+            "edge_occlusion": [tasks.rgb, tasks.edge_occlusion],
+            "keypoints3d": [tasks.rgb, tasks.keypoints3d],
+            "keypoints2d": [tasks.rgb, tasks.keypoints2d],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "normal"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "normal",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "rgb2x_plots_size320": {
+        "paths": {
+            "x": [tasks.rgb(size=320)],
+            "normal": [tasks.rgb(size=320), tasks.normal(size=320)],
+            "principal_curvature": [tasks.rgb(size=320), tasks.principal_curvature(size=320)],
+            "sobel_edges": [tasks.rgb(size=320), tasks.sobel_edges(size=320)],
+            "depth_zbuffer": [tasks.rgb(size=320), tasks.depth_zbuffer(size=320)],
+            "reshading": [tasks.rgb(size=320), tasks.reshading(size=320)],
+            "edge_occlusion": [tasks.rgb(size=320), tasks.edge_occlusion(size=320)],
+            "keypoints3d": [tasks.rgb(size=320), tasks.keypoints3d(size=320)],
+            "keypoints2d": [tasks.rgb(size=320), tasks.keypoints2d(size=320)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "normal"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=320, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "normal",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "rgb2x_plots_size384": {
+        "paths": {
+            "x": [tasks.rgb(size=384)],
+            "normal": [tasks.rgb(size=384), tasks.normal(size=384)],
+            "principal_curvature": [tasks.rgb(size=384), tasks.principal_curvature(size=384)],
+            "sobel_edges": [tasks.rgb(size=384), tasks.sobel_edges(size=384)],
+            "depth_zbuffer": [tasks.rgb(size=384), tasks.depth_zbuffer(size=384)],
+            "reshading": [tasks.rgb(size=384), tasks.reshading(size=384)],
+            "edge_occlusion": [tasks.rgb(size=384), tasks.edge_occlusion(size=384)],
+            "keypoints3d": [tasks.rgb(size=384), tasks.keypoints3d(size=384)],
+            "keypoints2d": [tasks.rgb(size=384), tasks.keypoints2d(size=384)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "normal"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=384, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "normal",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "rgb2x_plots_size448": {
+        "paths": {
+            "x": [tasks.rgb(size=448)],
+            "normal": [tasks.rgb(size=448), tasks.normal(size=448)],
+            "principal_curvature": [tasks.rgb(size=448), tasks.principal_curvature(size=448)],
+            "sobel_edges": [tasks.rgb(size=448), tasks.sobel_edges(size=448)],
+            "depth_zbuffer": [tasks.rgb(size=448), tasks.depth_zbuffer(size=448)],
+            "reshading": [tasks.rgb(size=448), tasks.reshading(size=448)],
+            "edge_occlusion": [tasks.rgb(size=448), tasks.edge_occlusion(size=448)],
+            "keypoints3d": [tasks.rgb(size=448), tasks.keypoints3d(size=448)],
+            "keypoints2d": [tasks.rgb(size=448), tasks.keypoints2d(size=448)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "normal"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=448, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "normal",
+                    "principal_curvature",
+                    "sobel_edges",
+                    "depth_zbuffer",
+                    "reshading",
+                    "edge_occlusion",
+                    "keypoints3d",
+                    "keypoints2d",
+                ]
+            ),
+        },
+    },
+    "rgb2x_plots_size512": {
+        "paths": {
+            "x": [tasks.rgb(size=512)],
+            "normal": [tasks.rgb(size=512), tasks.normal(size=512)],
+            "principal_curvature": [tasks.rgb(size=512), tasks.principal_curvature(size=512)],
+            "sobel_edges": [tasks.rgb(size=512), tasks.sobel_edges(size=512)],
+            "depth_zbuffer": [tasks.rgb(size=512), tasks.depth_zbuffer(size=512)],
+            "reshading": [tasks.rgb(size=512), tasks.reshading(size=512)],
+            "edge_occlusion": [tasks.rgb(size=512), tasks.edge_occlusion(size=512)],
+            "keypoints3d": [tasks.rgb(size=512), tasks.keypoints3d(size=512)],
+            "keypoints2d": [tasks.rgb(size=512), tasks.keypoints2d(size=512)],
+        },
+        "losses": {
+            ("train", "val"): [
+                ("x", "normal"),
+            ],
+        },
+        "plots": {
+            "ID": dict(
+                size=512, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "normal",
                     "principal_curvature",
                     "sobel_edges",
                     "depth_zbuffer",
@@ -797,10 +1092,11 @@ class EnergyLoss(object):
             for reality in realities:
                 with torch.no_grad():
                     path_values = self.compute_paths(graph, paths={path: self.paths[path] for path in paths}, reality=realities_map[reality])
-                shape = path_values[list(path_values.keys())[0]].shape
+                shape = list(path_values[list(path_values.keys())[0]].shape)
+                shape[1] = 3
                 for i, path in enumerate(paths):
                     X = path_values.get(path, torch.zeros(shape, device=DEVICE))
-                    images[i].append(X.clamp(min=0, max=1))
+                    images[i].append(X.clamp(min=0, max=1).expand(*shape))
 
             for i in range(0, len(paths)):
                 images[i] = torch.cat(images[i], dim=0)
