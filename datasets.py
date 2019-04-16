@@ -36,7 +36,7 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
     val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
-    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
+    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, unpaired=True)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
@@ -161,7 +161,7 @@ def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
 class TaskDataset(Dataset):
 
     def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
-            building_files=None, convert_path=None, use_raid=USE_RAID, resize=None):
+            building_files=None, convert_path=None, use_raid=USE_RAID, resize=None, unpaired=False):
 
         super().__init__()
         self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
@@ -187,7 +187,16 @@ class TaskDataset(Dataset):
             task_set = {self.convert_path(x, tasks[0]) for x in task_files}
             filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
         self.idx_files = sorted(list(filtered_files))
+
+        self.unpaired = unpaired
+        if unpaired:
+            self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in tasks}
+
         print ("Intersection files len: ", len(self.idx_files))
+
+    def reset_unpaired(self):
+        if self.unpaired:
+            self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in self.task_indices}
 
     def building_files(self, task, building):
         """ Gets all the tasks in a given building (grouping of data) """
@@ -226,7 +235,11 @@ class TaskDataset(Dataset):
                 res = []
                 seed = random.randint(0, 1e10)
                 for task in self.tasks:
-                    file_name = self.convert_path(self.idx_files[idx], task)
+                    if self.unpaired
+                        task_idx = self.task_indices[task][idx]
+                        file_name = self.convert_path(self.idx_files[task_idx], task)
+                    else:
+                        file_name = self.convert_path(self.idx_files[idx], task)
                     if len(file_name) == 0: raise Exception("unable to convert file")
                     image = task.file_loader(file_name, resize=self.resize, seed=seed)
                     res.append(image)

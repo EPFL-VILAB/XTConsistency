@@ -474,6 +474,113 @@ energy_configs = {
     "consistency_paired_resolution_cycle_baseline_lowweight": {
         "paths": {
             "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=1)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=1), tasks.normal(blur_radius=1)],
+            #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
+            "F(RC(~x))": [tasks.rgb(blur_radius=1), tasks.principal_curvature(blur_radius=1), tasks.normal(blur_radius=1)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                    #("~n(~x)", "n(x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+        },
+    },
+    "consistency_paired_gaussianblur_cont": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=1)],
+            "~~x": [tasks.rgb(blur_radius=3)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=1), tasks.normal(blur_radius=1)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=1), tasks.principal_curvature(blur_radius=1), tasks.normal(blur_radius=1)],
+            "n(~~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
+            "F(RC(~~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                    #("~n(~x)", "n(x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                    "~~x",
+                    "n(~~x)",
+                    "F(RC(~~x))",
+                ]
+            ),
+        },
+    },
+    "consistency_paired_gaussianblur_gan": {
+        "paths": {
+            "x": [tasks.rgb],
             "~x": [tasks.rgb(blur_radius=3)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
@@ -486,15 +593,25 @@ energy_configs = {
             "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
         },
         "losses": {
-            ("train", "val"): [
-                ("n(x)", "y^"),
-                ("F(z^)", "y^"),
-                ("RC(x)", "z^"),
-                ("F(RC(x))", "y^"),
-                ("F(RC(x))", "n(x)"),
-                ("F(RC(~x))", "n(~x)"),
-                #("~n(~x)", "n(x)"),
-            ],
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                    #("~n(~x)", "n(x)"),
+                ],
+            },
+            "gan": {
+                ("train", "val"): [
+                    ("n(x)", "n(~x)"),
+                    ("F(RC(x))", "F(RC(~x))"),
+                    ("y^", "n(~x)"),
+                    ("y^", "F(RC(~x))"),
+                ],
+            },
         },
         "plots": {
             "ID": dict(
@@ -1074,7 +1191,7 @@ energy_configs = {
 
 class EnergyLoss(object):
 
-    def __init__(self, paths, losses, plots, 
+    def __init__(self, paths, losses, plots,
         pretrained=True, finetuned=False,
     ):
 
@@ -1082,9 +1199,10 @@ class EnergyLoss(object):
         self.metrics = {}
 
         self.tasks = []
-        for realities, losses in self.losses.items():
-            for path1, path2 in losses:
-                self.tasks += self.paths[path1] + self.paths[path2]
+        for _, loss_item in self.losses.items():
+            for realities, losses in loss_item.items():
+                for path1, path2 in losses:
+                    self.tasks += self.paths[path1] + self.paths[path2]
 
         for name, config in self.plots.items():
             for path in config["paths"]:
@@ -1104,10 +1222,11 @@ class EnergyLoss(object):
 
     def get_tasks(self, reality):
         tasks = []
-        for realities, losses in self.losses.items():
-            if reality in realities:
-                for path1, path2 in losses:
-                    tasks += [self.paths[path1][0], self.paths[path2][0]]
+        for _, loss_item in self.losses.items():
+            for realities, losses in loss_item.items():
+                if reality in realities:
+                    for path1, path2 in losses:
+                        tasks += [self.paths[path1][0], self.paths[path2][0]]
 
         for name, config in self.plots.items():
             if reality in config["realities"]:
@@ -1116,43 +1235,62 @@ class EnergyLoss(object):
 
         return list(set(tasks))
 
-    def __call__(self, graph, realities=[]):
-        loss = None
+    def __call__(self, graph, discriminator_dict=None, realities=[]):
+        loss = {}
         for reality in realities:
-            losses = None
-            for realities_l, data in self.losses.items():
-                if reality.name in realities_l:
-                    losses = data
+            loss_dict = {}
+            losses = []
+            for loss_type, loss_item in self.losses.items():
+                loss_dict[loss_type] = []
+                for realities_l, data in loss_item.items():
+                    if reality.name in realities_l:
+                        loss_dict[loss_type] += data
+                        losses += data
 
             path_values = self.compute_paths(graph, 
                 paths={
                     path: self.paths[path] for path in \
-                        set(path for paths in losses for path in paths)
+                    set(path for paths in losses for path in paths)
                     },
                 reality=reality)
 
             self.metrics[reality.name] = defaultdict(list)
-            if isinstance(losses, list):
-                losses = dict(zip(losses, [1.0]*len(losses)))
-            
-            for (path1, path2), weight in losses.items():
-                if self.paths[path1][-1] != self.paths[path2][-1]:
-                    raise Exception("Paths have different endpoints.")
 
-                output_task = self.paths[path1][-1]
-                path_loss, _ = output_task.norm(path_values[path1], path_values[path2])
-                loss = weight*path_loss if loss is None else (weight*path_loss + loss)
-                self.metrics[reality.name][path1 + " -> " + path2] += [path_loss.detach().cpu()]
+            for loss_type, losses in loss_dict.items():
+                if loss_type == 'mse':
+                    if 'mse' not in loss:
+                        loss['mse'] = 0
+                    for path1, path2 in losses:
+                        if self.paths[path1][-1] != self.paths[path2][-1]:
+                            raise Exception("Paths have different endpoints.")
+
+                        output_task = self.paths[path1][-1]
+                        path_loss, _ = output_task.norm(path_values[path1], path_values[path2])
+                        loss['mse'] += path_loss
+                        self.metrics[reality.name]['mse : '+path1 + " -> " + path2] += [path_loss.detach().cpu()]
+                elif loss_type == 'gan':
+                    for path1, path2 in losses:
+                        if 'gan'+path1+path2 not in loss:
+                            loss['gan'+path1+path2] = 0
+                        logit_path1 = discriminator_dict[path1+path2](path_values[path1])
+                        logit_path2 = discriminator_dict[path1+path2](path_values[path2])
+                        binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
+                        gan_loss = nn.BCEWithLogitsLoss()(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
+                        self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
+                        loss['gan'+path1+path2] -= gan_loss 
+                else:
+                    raise Exception('Loss {} not implemented.'.format(loss_type)) 
 
         return loss
 
     def logger_hooks(self, logger):
         
         name_to_realities = defaultdict(list)
-        for realities, losses in self.losses.items():
-            for path1, path2 in losses:
-                name = path1 + " -> " + path2
-                name_to_realities[name] += list(realities)
+        for loss_type, loss_item in self.losses.items():
+            for realities, losses in loss_item.items():
+                for path1, path2 in losses:
+                    name = loss_type+" : "+path1 + " -> " + path2
+                    name_to_realities[name] += list(realities)
 
         for name, realities in name_to_realities.items():
             def jointplot(logger, data, name=name, realities=realities):
@@ -1166,10 +1304,11 @@ class EnergyLoss(object):
     def logger_update(self, logger):
 
         name_to_realities = defaultdict(list)
-        for realities, losses in self.losses.items():
-            for path1, path2 in losses:
-                name = path1 + " -> " + path2
-                name_to_realities[name] += list(realities)
+        for loss_type, loss_item in self.losses.items():
+            for realities, losses in loss_item.items():
+                for path1, path2 in losses:
+                    name = loss_type+" : "+path1 + " -> " + path2
+                    name_to_realities[name] += list(realities)
 
         for name, realities in name_to_realities.items():
             for reality in realities:
