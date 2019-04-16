@@ -24,6 +24,8 @@ from modules.depth_nets import UNetDepth
 import IPython
 
 from PIL import ImageFilter
+from skimage.filters import gaussian
+
 
 class GaussianBulr(object):
     def __init__(self, radius):
@@ -35,7 +37,18 @@ class GaussianBulr(object):
 
     def __repr__(self):
         return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
+'''
+class GaussianBulr(object):
+    def __init__(self, radius):
+        self.radius = radius
+        self.truncate = 1
 
+    def __call__(self, im):
+        return Image.fromarray((255.0*gaussian(np.array(im), sigma=self.radius, multichannel=True, truncate=self.truncate)).astype(np.uint8))
+
+    def __repr__(self):
+        return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
+'''
 
 """ Model definitions for launching new transfer jobs between tasks. """
 model_types = {
