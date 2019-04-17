@@ -65,7 +65,7 @@ def main(
 	
 	# PRE-TRAIN GAN
 	if 'gan' in loss_config:
-		for epochs in range(0, 5):
+		for epochs in range(0, 1):
 			logger.update("epoch", epochs)
 			energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 			if visualize: return
@@ -105,7 +105,7 @@ def main(
 
 		for _ in range(0, train_step):
 			train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-			train_loss = sum([train_loss[loss_name] for loss_name in train_loss if ('mse' in loss_name or 'oodgan' in loss_name)])
+			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])# if ('mse' in loss_name or 'oodgan' in loss_name)])
 			graph.step(train_loss)
 			train.step()
 			if 'gan' in loss_config:
