@@ -191,7 +191,6 @@ class TaskDataset(Dataset):
         self.unpaired = unpaired
         if unpaired:
             self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in tasks}
-
         print ("Intersection files len: ", len(self.idx_files))
 
     def reset_unpaired(self):

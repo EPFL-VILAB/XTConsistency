@@ -581,16 +581,15 @@ energy_configs = {
     "consistency_paired_gaussianblur_gan": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=3)],
+            "~x": [tasks.rgb(blur_radius=0)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
-            #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
-            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+            "n(~x)": [tasks.rgb(blur_radius=0), tasks.normal(blur_radius=0)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=0), tasks.principal_curvature(blur_radius=0), tasks.normal(blur_radius=0)],
         },
         "losses": {
             "mse": {
@@ -601,13 +600,12 @@ energy_configs = {
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
                     ("F(RC(~x))", "n(~x)"),
-                    #("~n(~x)", "n(x)"),
                 ],
             },
             "gan": {
                 ("train", "val"): [
-                    ("n(x)", "n(~x)"),
-                    ("F(RC(x))", "F(RC(~x))"),
+                    #("n(x)", "n(~x)"),
+                    #("F(RC(x))", "F(RC(~x))"),
                     ("y^", "n(~x)"),
                     ("y^", "F(RC(~x))"),
                 ],
@@ -1279,9 +1277,9 @@ class EnergyLoss(object):
                         gan_loss = nn.BCEWithLogitsLoss()(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
                         loss['gan'+path1+path2] -= gan_loss 
-                        binary_label_ood = torch.Tensor([0]*logit_path2.size(0)).float().cuda()
-                        gan_loss_ood = nn.BCEWithLogitsLoss()(logit_path2.view(-1), binary_label_ood)
-                        loss['oodgan'+path1+path2] -= gan_loss_ood
+                        #binary_label_ood = torch.Tensor([0]*logit_path2.size(0)).float().cuda()
+                        #gan_loss_ood = nn.BCEWithLogitsLoss()(logit_path2.view(-1), binary_label_ood)
+                        #loss['oodgan'+path1+path2] -= gan_loss_ood
                 else:
                     raise Exception('Loss {} not implemented.'.format(loss_type)) 
 
@@ -1313,7 +1311,6 @@ class EnergyLoss(object):
                 for path1, path2 in losses:
                     name = loss_type+" : "+path1 + " -> " + path2
                     name_to_realities[name] += list(realities)
-
         for name, realities in name_to_realities.items():
             for reality in realities:
                 # IPython.embed()
