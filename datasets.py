@@ -235,7 +235,7 @@ class TaskDataset(Dataset):
                 res = []
                 seed = random.randint(0, 1e10)
                 for task in self.tasks:
-                    if self.unpaired
+                    if self.unpaired:
                         task_idx = self.task_indices[task][idx]
                         file_name = self.convert_path(self.idx_files[task_idx], task)
                     else:

@@ -52,13 +52,9 @@ def main(
 
 	# GAN
 	if 'gan' in loss_config:
-		discriminator_dict = {}
-		for reality_gan in energy_loss.losses['gan']:
-			for gan_term in energy_loss.losses['gan'][reality_gan]:
-				discriminator_dict[gan_term[0]+gan_term[1]] = Discriminator()
-				discriminator_dict[gan_term[0]+gan_term[1]].compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+		discriminator = Discriminator(energy_loss.losses['gan'])
 	else:
-		discriminator_dict = None
+		discriminator = None
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
@@ -75,13 +71,11 @@ def main(
 			if visualize: return
 
 			graph.train()
-			for _, discriminator in discriminator_dict.items():
-				discriminator.train()
+			discriminator.train()
 
 			for _ in range(0, train_step):
-				train_loss2 = energy_loss(graph, discriminator_dict=discriminator_dict, realities=[train])
-				for dis_key, discriminator in discriminator_dict.items():
-					discriminator.step(-train_loss2['gan'+dis_key])
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				discriminator.step(train_loss2)
 				train.step()
 			logger.update("loss", sum([train_loss2[loss_name] for loss_name in train_loss2 if 'gan' in loss_name]))
 			
@@ -90,7 +84,7 @@ def main(
 			discriminator.eval()
 			for _ in range(0, val_step):
 				with torch.no_grad():
-					val_loss = energy_loss(graph, discriminator_dict=discriminator_dict, realities=[val])
+					val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
 					val_loss = sum([val_loss[loss_name] for loss_name in val_loss if 'gan' in loss_name])
 				logger.update("loss", val_loss)
 				val.step()
@@ -107,26 +101,25 @@ def main(
 		if visualize: return
 
 		graph.train()
-		for _, discriminator in discriminator_dict.items():
-			discriminator.train()
+		discriminator.train()
 
 		for _ in range(0, train_step):
-			train_loss = energy_loss(graph, discriminator_dict=discriminator_dict, realities=[train])
-			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+			train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
+			train_loss = sum([train_loss[loss_name] for loss_name in train_loss if ('mse' in loss_name or 'oodgan' in loss_name)])
 			graph.step(train_loss)
 			train.step()
 			if 'gan' in loss_config:
-				train_loss2 = energy_loss(graph, discriminator_dict=discriminator_dict, realities=[train])
-				for dis_key, discriminator in discriminator_dict.items():
-					discriminator.step(-train_loss2['gan'+dis_key])
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				discriminator.step(train_loss2)
 				train.step()
 			logger.update("loss", train_loss)
 			
 
 		graph.eval()
+		discriminator.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
-				val_loss = energy_loss(graph, discriminator_dict=discriminator_dict, realities=[val])
+				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			logger.update("loss", val_loss)
 			val.step()

@@ -1138,7 +1138,7 @@ class EnergyLoss(object):
 
         return list(set(tasks))
 
-    def __call__(self, graph, discriminator_dict=None, realities=[]):
+    def __call__(self, graph, discriminator=None, realities=[]):
         loss = {}
         for reality in realities:
             loss_dict = {}
@@ -1175,12 +1175,16 @@ class EnergyLoss(object):
                     for path1, path2 in losses:
                         if 'gan'+path1+path2 not in loss:
                             loss['gan'+path1+path2] = 0
-                        logit_path1 = discriminator_dict[path1+path2](path_values[path1])
-                        logit_path2 = discriminator_dict[path1+path2](path_values[path2])
+                            loss['oodgan'+path1+path2] = 0
+                        logit_path1 = discriminator[path1+path2](path_values[path1])
+                        logit_path2 = discriminator[path1+path2](path_values[path2])
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
                         gan_loss = nn.BCEWithLogitsLoss()(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
                         loss['gan'+path1+path2] -= gan_loss 
+                        binary_label_ood = torch.Tensor([0]*logit_path2.size(0)).float().cuda()
+                        gan_loss_ood = nn.BCEWithLogitsLoss()(logit_path2.view(-1), binary_label_ood)
+                        loss['oodgan'+path1+path2] -= gan_loss_ood
                 else:
                     raise Exception('Loss {} not implemented.'.format(loss_type)) 
 
