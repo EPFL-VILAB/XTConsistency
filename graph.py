@@ -14,7 +14,7 @@ from task_configs import get_task, task_map, tasks, get_model, RealityTask
 from transfers import Transfer, RealityTransfer, get_transfer_name
 import transforms
 
-import torchvision.models as vision_model
+from modules.gan_dis import GanDisNet
 
 class TaskGraph(TrainableModel):
     """Basic graph that encapsulates set of edge constraints. Can be saved and loaded
@@ -110,32 +110,34 @@ class TaskGraph(TrainableModel):
             if key in self.edge_map:
                 self.edge_map[key].load_state_dict(state_dict)
 
-def weight_init(m):
-        classname = m.__class__.__name__
-        if classname.find('Conv2d') != -1 or classname.find('ConvTranspose2d') != -1:
-            nn.init.kaiming_uniform_(m.weight)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        elif classname.find('BatchNorm') != -1:
-            nn.init.normal_(m.weight, 1.0, 0.02)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        elif classname.find('Linear') != -1:
-            nn.init.xavier_normal_(m.weight)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
 
-class Discriminator(TrainableModel):
-
-    def __init__(self):
+class Discriminator(object):
+    def __init__(self, loss_config):
         super(Discriminator, self).__init__()
-        self.size = 224
-        self.backbone = vision_model.resnet18(pretrained=False)
-        self.backbone.fc = nn.Linear(self.backbone.fc.in_features,1)
-        self.apply(weight_init)
+        self.discriminator_dict = {}
+        for reality_gan in loss_config:
+            for gan_term in loss_config[reality_gan]:
+                self.discriminator_dict[gan_term[0]+gan_term[1]] = GanDisNet()
+                self.discriminator_dict[gan_term[0]+gan_term[1]].compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
-    def forward(self, x):
-        x = nn.functional.interpolate(x,size=self.size, mode='bilinear',align_corners=True)
-        x = self.backbone(x)
-        return x
+    def train(self):
+        for _, discriminator in self.discriminator_dict.items():
+            discriminator.train()
+
+    def eval(self):
+        for _, discriminator in self.discriminator_dict.items():
+            discriminator.eval()
+
+    def step(self, loss):
+        len1 = len(self.discriminator_dict)
+        k = 0
+        for dis_key, discriminator in self.discriminator_dict.items():
+            if k == len1-1:
+                discriminator.step(-loss['gan'+dis_key])
+            else:
+                discriminator.step(-loss['gan'+dis_key], retain_graph=True)
+            k+=1
+
+    def __getitem__(self, idx):
+        return self.discriminator_dict[idx]
 
