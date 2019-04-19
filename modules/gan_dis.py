@@ -22,7 +22,7 @@ class GanDisNet(TrainableModel):
     def __init__(self):
         super(GanDisNet, self).__init__()
         self.size = 224
-        self.backbone = vision_model.resnet18(pretrained=True)
+        self.backbone = vision_model.resnet18(pretrained=False)
         self.backbone.fc = nn.Linear(self.backbone.fc.in_features,1)
         self.apply(weight_init)
 

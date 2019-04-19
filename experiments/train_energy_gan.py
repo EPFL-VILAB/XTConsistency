@@ -43,88 +43,47 @@ def main(
 	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
 	ood = RealityTask.from_static("ood", ood_set, energy_loss.get_tasks("ood"))
 
-	# IPython.embed()
-
 	# GRAPH
 	realities = [train, val, test, ood]
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not USE_RAID: graph.load_weights(cont)
-
-	# GAN
-	if 'gan' in loss_config:
-		pre_gan = pre_gan or 1
-		discriminator = Discriminator(energy_loss.losses['gan'])
-		if cont_gan is not None: discriminator.load_weights(cont_gan)
-	else:
-		discriminator = None
-		pre_gan = pre_gan or 0
+	pre_gan = pre_gan or 1
+	discriminator = Discriminator(energy_loss.losses['gan'])
+	if cont_gan is not None: discriminator.load_weights(cont_gan)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
 	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
-	if 'gan' in loss_config:
-		logger.add_hook(lambda _, __: discriminator.save(f"{RESULTS_DIR}/discriminator.pth"), feature="epoch", freq=1)
+	logger.add_hook(lambda _, __: discriminator.save(f"{RESULTS_DIR}/discriminator.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
 
-	
-	# PRE-TRAIN GAN
-	if 'gan' in loss_config:
-		for epochs in range(0, pre_gan):
-			logger.update("epoch", epochs)
-			energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
-			if visualize: return
-
-			graph.train()
-			discriminator.train()
-
-			for _ in range(0, train_step):
-				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
-				discriminator.step(train_loss2)
-				train.step()
-			logger.update("loss", sum([train_loss2[loss_name] for loss_name in train_loss2 if 'gan' in loss_name]))
-			
-
-			graph.eval()
-			discriminator.eval()
-			for _ in range(0, val_step):
-				with torch.no_grad():
-					val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
-					val_loss = sum([val_loss[loss_name] for loss_name in val_loss if 'gan' in loss_name])
-				logger.update("loss", val_loss)
-				val.step()
-
-			energy_loss.logger_update(logger)
-			logger.step()
-	
-
 	# TRAINING
-	for epochs in range(pre_gan, 800+pre_gan):
+	for epochs in range(0, 800):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
 
 		graph.train()
-		if 'gan' in loss_config:
-			discriminator.train()
+		discriminator.train()
 
 		for _ in range(0, train_step):
-			train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-			graph.step(train_loss)
-			train.step()
-			if 'gan' in loss_config:
-				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
-				discriminator.step(train_loss2)
+			if epochs > pre_gan:
+				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+				graph.step(train_loss)
 				train.step()
-			logger.update("loss", train_loss)
+				logger.update("loss", train_loss)
+
+			train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
+			discriminator.step(train_loss2)
+			train.step()
 			
 
 		graph.eval()
-		if 'gan' in loss_config:
-			discriminator.eval()
+		discriminator.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
 				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
