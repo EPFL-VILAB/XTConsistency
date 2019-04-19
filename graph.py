@@ -133,11 +133,30 @@ class Discriminator(object):
         k = 0
         for dis_key, discriminator in self.discriminator_dict.items():
             if k == len1-1:
-                discriminator.step(-loss['gan'+dis_key])
+                discriminator.step(-loss['disgan'+dis_key])
             else:
-                discriminator.step(-loss['gan'+dis_key], retain_graph=True)
+                discriminator.step(-loss['disgan'+dis_key], retain_graph=True)
             k+=1
 
     def __getitem__(self, idx):
         return self.discriminator_dict[idx]
+
+    def save(self, weights_file=None):
+        weights = {
+            key: model.state_dict() for key, model in self.discriminator_dict.items()
+        }
+        optimizer = {
+            key: model.optimizer.state_dict() for key, model in self.discriminator_dict.items()
+        }
+        torch.save({'weights':weights, 'optimizer':optimizer}, weights_file)
+
+
+    def load_weights(self, weights_file=None):
+        file_ = torch.load(weights_file)
+        for key, state_dict in flie_['weights'].items():
+            if key in self.discriminator_dict:
+                self.discriminator_dict[key].load_state_dict(state_dict)
+        for key, state_dict in flie_['optimizer'].items():
+            if key in self.discriminator_dict:
+                self.discriminator_dict[key].optimizer.load_state_dict(state_dict)
 
