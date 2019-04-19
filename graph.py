@@ -92,6 +92,8 @@ class TaskGraph(TrainableModel):
         return x
 
     def save(self, weights_file=None, weights_dir=None):
+
+        ### TODO: save optimizers here too
         if weights_file:
             torch.save({
                 key: model.state_dict() for key, model in self.edge_map.items() \
