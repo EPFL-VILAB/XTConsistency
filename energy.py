@@ -474,16 +474,15 @@ energy_configs = {
     "consistency_paired_resolution_cycle_baseline_lowweight": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=1)],
+            "~x": [tasks.rgb(blur_radius=0)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=1), tasks.normal(blur_radius=1)],
-            #"~n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3), tasks.normal],
-            "F(RC(~x))": [tasks.rgb(blur_radius=1), tasks.principal_curvature(blur_radius=1), tasks.normal(blur_radius=1)],
+            "n(~x)": [tasks.rgb(blur_radius=0), tasks.normal(blur_radius=0)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=0), tasks.principal_curvature(blur_radius=0), tasks.normal(blur_radius=0)],
         },
         "losses": {
             "mse": {
@@ -494,7 +493,6 @@ energy_configs = {
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
                     ("F(RC(~x))", "n(~x)"),
-                    #("~n(~x)", "n(x)"),
                 ],
             },
         },
@@ -581,15 +579,15 @@ energy_configs = {
     "consistency_paired_gaussianblur_gan": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=0)],
+            "~x": [tasks.rgb(blur_radius=3)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=0), tasks.normal(blur_radius=0)],
-            "F(RC(~x))": [tasks.rgb(blur_radius=0), tasks.principal_curvature(blur_radius=0), tasks.normal(blur_radius=0)],
+            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
         },
         "losses": {
             "mse": {
@@ -604,10 +602,10 @@ energy_configs = {
             },
             "gan": {
                 ("train", "val"): [
-                    #("n(x)", "n(~x)"),
-                    #("F(RC(x))", "F(RC(~x))"),
-                    ("y^", "n(~x)"),
-                    ("y^", "F(RC(~x))"),
+                    ("n(x)", "n(~x)"),
+                    ("F(RC(x))", "F(RC(~x))"),
+                    #("y^", "n(~x)"),
+                    #("y^", "F(RC(~x))"),
                 ],
             },
         },
@@ -1269,17 +1267,17 @@ class EnergyLoss(object):
                 elif loss_type == 'gan':
                     for path1, path2 in losses:
                         if 'gan'+path1+path2 not in loss:
-                            loss['gan'+path1+path2] = 0
-                            loss['oodgan'+path1+path2] = 0
+                            loss['disgan'+path1+path2] = 0
+                            loss['graphgan'+path1+path2] = 0
                         logit_path1 = discriminator[path1+path2](path_values[path1])
                         logit_path2 = discriminator[path1+path2](path_values[path2])
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
-                        gan_loss = nn.BCEWithLogitsLoss()(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
+                        gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
-                        loss['gan'+path1+path2] -= gan_loss 
-                        #binary_label_ood = torch.Tensor([0]*logit_path2.size(0)).float().cuda()
-                        #gan_loss_ood = nn.BCEWithLogitsLoss()(logit_path2.view(-1), binary_label_ood)
-                        #loss['oodgan'+path1+path2] -= gan_loss_ood
+                        loss['disgan'+path1+path2] -= gan_loss 
+                        binary_label_ood = torch.Tensor([0.5]*(logit_path1.size(0)+logit_path2.size(0))).float().cuda()
+                        gan_loss_ood = nn.BCELoss(size_average=True)(nn.Sigmoid()(torch.cat((logit_path1,logit_path2), dim=0).view(-1)), binary_label_ood)
+                        loss['graphgan'+path1+path2] += gan_loss_ood
                 else:
                     raise Exception('Loss {} not implemented.'.format(loss_type)) 
 

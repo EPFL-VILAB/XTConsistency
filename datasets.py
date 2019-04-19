@@ -20,6 +20,7 @@ from io import BytesIO
 from sklearn.model_selection import train_test_split
 import IPython
 
+import pdb
 
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, fast=False, 
@@ -190,7 +191,14 @@ class TaskDataset(Dataset):
 
         self.unpaired = unpaired
         if unpaired:
-            self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in tasks}
+            rgb_tasks = []
+            for task in tasks:
+                if 'rgb' in task.name:
+                    if task.name[3:]:
+                        rgb_tasks.append(task.name[3:])
+                    else:
+                        rgb_tasks.append('none')
+            self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in rgb_tasks}
         print ("Intersection files len: ", len(self.idx_files))
 
     def reset_unpaired(self):
@@ -235,7 +243,11 @@ class TaskDataset(Dataset):
                 seed = random.randint(0, 1e10)
                 for task in self.tasks:
                     if self.unpaired:
-                        task_idx = self.task_indices[task][idx]
+                        task_idx = 'none'
+                        for task_index in self.task_indices:
+                            if task_index in task.name:
+                                task_idx = task_index
+                        task_idx = self.task_indices[task_idx][idx]
                         file_name = self.convert_path(self.idx_files[task_idx], task)
                     else:
                         file_name = self.convert_path(self.idx_files[idx], task)

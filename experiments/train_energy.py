@@ -22,7 +22,8 @@ import IPython
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
-	cont=f"{MODELS_DIR}/conservative/conservative.pth", **kwargs,
+	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
+	cont_gan=None, **kwargs,
 ):
 	
 	# CONFIG
@@ -52,20 +53,25 @@ def main(
 
 	# GAN
 	if 'gan' in loss_config:
+		pre_gan = 1
 		discriminator = Discriminator(energy_loss.losses['gan'])
+		if cont_gan is not None: discriminator.load_weights(cont_gan)
 	else:
 		discriminator = None
+		pre_gan = 0
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
 	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
+	if 'gan' in loss_config:
+		logger.add_hook(lambda _, __: discriminator.save(f"{RESULTS_DIR}/discriminator.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
 
 	
 	# PRE-TRAIN GAN
 	if 'gan' in loss_config:
-		for epochs in range(0, 1):
+		for epochs in range(0, pre_gan):
 			logger.update("epoch", epochs)
 			energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 			if visualize: return
@@ -94,18 +100,19 @@ def main(
 	
 
 	# TRAINING
-	for epochs in range(0, 800):
+	for epochs in range(pre_gan, 800+pre_gan):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
 
 		graph.train()
-		discriminator.train()
+		if 'gan' in loss_config:
+			discriminator.train()
 
 		for _ in range(0, train_step):
 			train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])# if ('mse' in loss_name or 'oodgan' in loss_name)])
+			train_loss = sum([train_loss[loss_name] for loss_name in train_loss if 'disgan' not in loss_name])
 			graph.step(train_loss)
 			train.step()
 			if 'gan' in loss_config:
@@ -116,7 +123,8 @@ def main(
 			
 
 		graph.eval()
-		discriminator.eval()
+		if 'gan' in loss_config:
+			discriminator.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
 				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
