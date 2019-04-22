@@ -60,7 +60,7 @@ def main(
 	energy_loss.logger_hooks(logger)
 
 	# TRAINING
-	for epochs in range(0, 800):
+	for epochs in range(0, 80):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
@@ -71,11 +71,11 @@ def main(
 
 		for _ in range(0, train_step):
 			if epochs > pre_gan:
+				energy_loss.train_iter += 1
 				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss if 'disgan' not in loss_name])
 				graph.step(train_loss)
 				train.step()
-				logger.update("loss", train_loss)
 
 			train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
 			discriminator.step(train_loss2)
@@ -88,7 +88,6 @@ def main(
 			with torch.no_grad():
 				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
-			logger.update("loss", val_loss)
 			val.step()
 
 		energy_loss.logger_update(logger)

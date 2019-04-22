@@ -18,6 +18,7 @@ from datasets import TaskDataset, load_train_val
 
 import IPython
 
+import pdb
 
 def get_energy_loss(
     config="", mode="standard",
@@ -548,13 +549,13 @@ energy_configs = {
                     ("RC(x)", "z^"),
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
-                    # ("F(RC(~x))", "n(~x)"),
+                    ("F(RC(~x))", "n(~x)"),
                 ],
             },
             "gan": {
                 ("train", "val"): [
                     ("n(x)", "n(~x)"),
-                    # ("F(RC(x))", "F(RC(~x))"),
+                    ("F(RC(x))", "F(RC(~x))"),
                     #("y^", "n(~x)"),
                     #("y^", "F(RC(~x))"),
                 ],
@@ -605,7 +606,7 @@ energy_configs = {
                     ("RC(x)", "z^"),
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
-                    # ("F(RC(~x))", "n(~x)"),
+                    ("F(RC(~x))", "n(~x)"),
                 ],
             },
             "gan": {
@@ -643,6 +644,10 @@ energy_configs = {
     },
 }
 
+def coeff_hook(coeff):
+    def fun1(grad):
+        return coeff*grad.clone()
+    return fun1
 
 class EnergyLoss(object):
 
@@ -663,6 +668,8 @@ class EnergyLoss(object):
             for path in config["paths"]:
                 self.tasks += self.paths[path]
         self.tasks = list(set(self.tasks))
+
+        self.train_iter = 0
 
     def compute_paths(self, graph, reality=None, paths=None):
         path_cache = {}
@@ -731,14 +738,19 @@ class EnergyLoss(object):
 
                         ## Hack: detach() first pass so only OOD is updated
                         logit_path1 = discriminator[path1+path2](path_values[path1].detach())
-                        logit_path2 = discriminator[path1+path2](path_values[path2])
+
+                        coeff = np.float(2.0 / (1.0 + np.exp(-10.0*self.train_iter / 10000.0)) - 1.0)
+                        path_value2 = path_values[path2] * 1.0
+                        if reality.name == 'train':
+                            path_value2.register_hook(coeff_hook(coeff))
+                        logit_path2 = discriminator[path1+path2](path_value2)
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
                         gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
                         loss['disgan'+path1+path2] -= gan_loss
-                        #binary_label_ood = torch.Tensor([0.5]*(logit_path1.size(0)+logit_path2.size(0))).float().cuda()
-                        #gan_loss_ood = nn.BCELoss(size_average=True)(nn.Sigmoid()(torch.cat((logit_path1,logit_path2), dim=0).view(-1)), binary_label_ood)
-                        #loss['graphgan'+path1+path2] += gan_loss_ood
+                        binary_label_ood = torch.Tensor([0.5]*(logit_path1.size(0)+logit_path2.size(0))).float().cuda()
+                        gan_loss_ood = nn.BCELoss(size_average=True)(nn.Sigmoid()(torch.cat((logit_path1,logit_path2), dim=0).view(-1)), binary_label_ood)
+                        loss['graphgan'+path1+path2] += gan_loss_ood
                 else:
                     raise Exception('Loss {} not implemented.'.format(loss_type)) 
 
