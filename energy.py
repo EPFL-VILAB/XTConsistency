@@ -740,7 +740,8 @@ class EnergyLoss(object):
                         logit_path1 = discriminator[path1+path2](path_values[path1].detach())
 
                         ## Progressively increase GAN trade-off
-                        coeff = np.float(2.0 / (1.0 + np.exp(-10.0*self.train_iter / 10000.0)) - 1.0)
+                        #coeff = np.float(2.0 / (1.0 + np.exp(-10.0*self.train_iter / 10000.0)) - 1.0)
+                        coeff = 0.01
                         path_value2 = path_values[path2] * 1.0
                         if reality.name == 'train':
                             path_value2.register_hook(coeff_hook(coeff))

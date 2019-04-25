@@ -117,10 +117,14 @@ class Discriminator(object):
     def __init__(self, loss_config):
         super(Discriminator, self).__init__()
         self.discriminator_dict = {}
+
+        dis_net = GanDisNet()
+        dis_net.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
         for reality_gan in loss_config:
             for gan_term in loss_config[reality_gan]:
-                self.discriminator_dict[gan_term[0]+gan_term[1]] = GanDisNet()
-                self.discriminator_dict[gan_term[0]+gan_term[1]].compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+                #self.discriminator_dict[gan_term[0]+gan_term[1]] = GanDisNet()
+                #self.discriminator_dict[gan_term[0]+gan_term[1]].compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+                self.discriminator_dict[gan_term[0]+gan_term[1]] = dis_net
 
     def train(self):
         for _, discriminator in self.discriminator_dict.items():
