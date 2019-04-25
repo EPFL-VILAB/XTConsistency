@@ -37,7 +37,7 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
     val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
-    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, unpaired=True)
+    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, unpaired=False)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:

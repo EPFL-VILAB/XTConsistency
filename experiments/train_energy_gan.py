@@ -18,6 +18,7 @@ from functools import partial
 from fire import Fire
 
 import IPython
+import pdb
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
@@ -73,9 +74,10 @@ def main(
 			if epochs > pre_gan:
 				energy_loss.train_iter += 1
 				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss if 'disgan' not in loss_name])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
 				graph.step(train_loss)
 				train.step()
+				logger.update("loss", train_loss)
 
 			train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
 			discriminator.step(train_loss2)
@@ -89,6 +91,7 @@ def main(
 				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
+			logger.update("loss", val_loss)
 
 		energy_loss.logger_update(logger)
 		logger.step()
