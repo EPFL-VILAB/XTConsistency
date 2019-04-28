@@ -116,53 +116,28 @@ class TaskGraph(TrainableModel):
 class Discriminator(object):
     def __init__(self, loss_config):
         super(Discriminator, self).__init__()
-        self.discriminator_dict = {}
-
-        dis_net = GanDisNet()
-        dis_net.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-        for reality_gan in loss_config:
-            for gan_term in loss_config[reality_gan]:
-                #self.discriminator_dict[gan_term[0]+gan_term[1]] = GanDisNet()
-                #self.discriminator_dict[gan_term[0]+gan_term[1]].compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-                self.discriminator_dict[gan_term[0]+gan_term[1]] = dis_net
+        self.discriminator = GanDisNet()
+        self.discriminator.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
     def train(self):
-        for _, discriminator in self.discriminator_dict.items():
-            discriminator.train()
+        self.discriminator.train()
 
     def eval(self):
-        for _, discriminator in self.discriminator_dict.items():
-            discriminator.eval()
+        self.discriminator.eval()
 
     def step(self, loss):
-        len1 = len(self.discriminator_dict)
-        k = 0
-        for dis_key, discriminator in self.discriminator_dict.items():
-            if k == len1-1:
-                discriminator.step(-loss['disgan'+dis_key])
-            else:
-                discriminator.step(-loss['disgan'+dis_key], retain_graph=True)
-            k+=1
+        self.discriminator.step(-sum(loss[dis_key] for dis_key in loss if 'disgan' in dis_key))
 
-    def __getitem__(self, idx):
-        return self.discriminator_dict[idx]
+    def __call__(self, x):
+        return self.discriminator(x)
 
     def save(self, weights_file=None):
-        weights = {
-            key: model.state_dict() for key, model in self.discriminator_dict.items()
-        }
-        optimizer = {
-            key: model.optimizer.state_dict() for key, model in self.discriminator_dict.items()
-        }
+        weights = self.discriminator.state_dict()
+        optimizer = self.discriminator.optimizer.state_dict()
         torch.save({'weights':weights, 'optimizer':optimizer}, weights_file)
 
 
     def load_weights(self, weights_file=None):
         file_ = torch.load(weights_file)
-        for key, state_dict in flie_['weights'].items():
-            if key in self.discriminator_dict:
-                self.discriminator_dict[key].load_state_dict(state_dict)
-        for key, state_dict in flie_['optimizer'].items():
-            if key in self.discriminator_dict:
-                self.discriminator_dict[key].optimizer.load_state_dict(state_dict)
-
+        self.discriminator.load_state_dict(flie_['weights'])
+        self.discriminator.optimizer.load_state_dict(flie_['optimizer'])

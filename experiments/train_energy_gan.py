@@ -79,9 +79,10 @@ def main(
 				train.step()
 				logger.update("loss", train_loss)
 
-			train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
-			discriminator.step(train_loss2)
-			train.step()
+			for i in range(1):
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				discriminator.step(train_loss2)
+				train.step()
 			
 
 		graph.eval()
