@@ -555,9 +555,11 @@ energy_configs = {
             "gan": {
                 ("train", "val"): [
                     ("n(x)", "n(~x)"),
-                    ("F(RC(x))", "F(RC(~x))"),
+                    #("F(RC(x))", "F(RC(~x))"),
                     #("y^", "n(~x)"),
                     #("y^", "F(RC(~x))"),
+                    #("y^", "n(x)"),
+                    #("y^", "F(RC(x))"),
                 ],
             },
         },
@@ -737,15 +739,15 @@ class EnergyLoss(object):
                             loss['graphgan'+path1+path2] = 0
 
                         ## Hack: detach() first pass so only OOD is updated
-                        logit_path1 = discriminator[path1+path2](path_values[path1].detach())
+                        logit_path1 = discriminator(path_values[path1].detach())
 
                         ## Progressively increase GAN trade-off
                         #coeff = np.float(2.0 / (1.0 + np.exp(-10.0*self.train_iter / 10000.0)) - 1.0)
-                        coeff = 0.01
+                        coeff = 0.1
                         path_value2 = path_values[path2] * 1.0
                         if reality.name == 'train':
                             path_value2.register_hook(coeff_hook(coeff))
-                        logit_path2 = discriminator[path1+path2](path_value2)
+                        logit_path2 = discriminator(path_value2)
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
                         gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
