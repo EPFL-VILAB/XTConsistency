@@ -8,6 +8,8 @@ job run --instance cloud4 --config "2FF_train_consistency_paired_resolution_cycl
 job run --instance cloud3 --config "2FF_train_consistency_paired_resolution_cycle_lowweight" "python -m experiments.train_energy consistency_paired_resolution_cycle_lowweight --batch-size 16"
 job run --instance cloud4 --config "2FF_train_consistency_paired_resolution_cycle_baseline_lowweight" "python -m experiments.train_energy consistency_paired_resolution_cycle_baseline_lowweight --batch-size 16"
 
+job run --instance cloud6 --config "RES_consistency_multiresolution_gan" "python -m experiments.train_energy_subset consistency_multiresolution_gan --batch-size 24 --fast"
+
 # job run --config "2FF_rgb2x2normals_size512_baseline" "python -m experiments.train_energy rgb2x2normals_plots_size512 --fast --visualize" --gpus 2
 # job run --config "2FF_rgb2x2normals_size448_baseline" "python -m experiments.train_energy rgb2x2normals_plots_size448 --fast --visualize" --gpus 2
 # job run --config "2FF_rgb2x2normals_size384_baseline" "python -m experiments.train_energy rgb2x2normals_plots_size384 --fast --visualize" --gpus 2
