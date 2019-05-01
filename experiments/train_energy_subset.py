@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from utils import *
 from plotting import *
 from energy import get_energy_loss
-from graph import TaskGraph
+from graph import TaskGraph, Discriminator
 from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
@@ -24,7 +24,10 @@ import IPython
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
-	pretrained=True, finetuned=False, fast=False, batch_size=None, ood_batch_size=None, subset_size=64, **kwargs,
+	pretrained=True, finetuned=False, fast=False, batch_size=None, 
+	ood_batch_size=None, subset_size=64,
+	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
+	cont_gan=None, pre_gan=None, **kwargs,
 ):
 	
 	# CONFIG
@@ -39,69 +42,76 @@ def main(
 	train_subset_dataset, _, _, _ = load_train_val(
 		energy_loss.get_tasks("train_subset"),
 		batch_size=batch_size, fast=fast,
-		subset_size=subset_size,
 	)
-	print ("train: ", energy_loss.get_tasks("train"))
-	print ("train_subset: ", energy_loss.get_tasks("train_subset"))
-	print ("test: ", energy_loss.get_tasks("test"))
-	print ("ood: ", energy_loss.get_tasks("ood"))
-	
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
-	print ("loaded test and ood")
-	print (ood_set[0].shape)
 	
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
-	print ("train")
 	train_subset = RealityTask("train_subset", train_subset_dataset, batch_size=batch_size, shuffle=True)
-	print ("train_subs")
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
-	print ("val")
 	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
-	print ('test')
 	ood = RealityTask.from_static("ood", ood_set, energy_loss.get_tasks("ood"))
-	print ("ood")
 
 	# GRAPH
 	realities = [train, train_subset, val, test, ood]
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	graph.load_weights(f"{MODELS_DIR}/conservative/conservative.pth")
-	print (graph)
+	if not USE_RAID: graph.load_weights(cont)
+	pre_gan = pre_gan or 1
+	discriminator = Discriminator(energy_loss.losses['gan'])
+	if cont_gan is not None: discriminator.load_weights(cont_gan)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
 	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
+	logger.add_hook(lambda _, __: discriminator.save(f"{RESULTS_DIR}/discriminator.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
 
 	# TRAINING
-	for epochs in range(0, 800):
+	for epochs in range(0, 80):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
 
 		graph.train()
-		for _ in range(0, train_step):
-			train_loss = energy_loss(graph, realities=[train])
-			graph.step(train_loss)
-			logger.update("loss", train_loss)
-			train.step()
+		discriminator.train()
 
-			train_loss = energy_loss(graph, realities=[train_subset])
-			graph.step(train_loss)
-			train_subset.step()
+		for _ in range(0, train_step):
+			if epochs > pre_gan:
+				energy_loss.train_iter += 1
+				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+				graph.step(train_loss)
+				train.step()
+
+				logger.update("loss", train_loss)
+				del train_loss
+
+				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+				graph.step(train_loss)
+				train_subset.step()
+
+			for i in range(1):
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
+				discriminator.step(train_loss2)
+				train.step()
+			
 
 		graph.eval()
+		discriminator.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
-				val_loss = energy_loss(graph, realities=[val])
-			logger.update("loss", val_loss)
+				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
+				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
+			logger.update("loss", val_loss)
 
-		energy_loss.logger_update(logger)
-		logger.step()
+		if epochs > pre_gan:
+			energy_loss.logger_update(logger)
+			logger.step()
 
 if __name__ == "__main__":
 	Fire(main)
