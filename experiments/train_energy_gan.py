@@ -24,7 +24,7 @@ def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
-	cont_gan=None, pre_gan=None, **kwargs,
+	cont_gan=None, pre_gan=None, use_patches=False, patch_size=64, **kwargs,
 ):
 	
 	# CONFIG
@@ -50,8 +50,8 @@ def main(
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not USE_RAID: graph.load_weights(cont)
 	pre_gan = pre_gan or 1
-	discriminator = Discriminator(energy_loss.losses['gan'])
-	if cont_gan is not None: discriminator.load_weights(cont_gan)
+	discriminator = Discriminator(energy_loss.losses['gan'], size=(patch_size if use_patches else 224), use_patches=use_patches)
+	# if cont_gan is not None: discriminator.load_weights(cont_gan)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)

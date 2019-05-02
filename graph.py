@@ -2,6 +2,7 @@ import os, sys, math, random, itertools, heapq
 from collections import namedtuple, defaultdict
 from functools import partial, reduce
 import numpy as np
+import IPython
 
 import torch
 import torch.nn as nn
@@ -114,9 +115,11 @@ class TaskGraph(TrainableModel):
 
 
 class Discriminator(object):
-    def __init__(self, loss_config):
+    def __init__(self, loss_config, size=224, use_patches=False):
         super(Discriminator, self).__init__()
-        self.discriminator = GanDisNet()
+        self.size = size
+        self.use_patches = use_patches
+        self.discriminator = GanDisNet(size=size)
         self.discriminator.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
     def train(self):
@@ -128,7 +131,21 @@ class Discriminator(object):
     def step(self, loss):
         self.discriminator.step(-sum(loss[dis_key] for dis_key in loss if 'disgan' in dis_key))
 
+    def sample_patches(self, X, sigma=12, mean=64):
+        N, C, H, W = X.shape
+        def crop(x, size):
+            a, b = random.randint(0, H-size), random.randint(0, W-size)
+            x = x[:,a:a+size,b:b+size]
+            x = nn.functional.interpolate(x.unsqueeze(0), size=(mean, mean))
+            return x[0]
+
+        sizes = np.clip(np.random.randn(N) * sigma, sigma*2, sigma*-2).astype(int) + mean
+        patches = torch.stack([ crop(x, size) for x, size in zip(X, sizes) ])
+
+        return patches
+
     def __call__(self, x):
+        x = self.sample_patches(x, mean=self.size) if self.use_patches else x
         return self.discriminator(x)
 
     def save(self, weights_file=None):

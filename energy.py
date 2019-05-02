@@ -758,6 +758,149 @@ energy_configs = {
             ),
         },
     },
+    "consistency_paired_gaussianblur_gan_patch": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=3)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                ],
+            },
+            "gan": {
+                ("train", "val"): [
+                    ("n(x)", "n(~x)"),
+                    ("F(RC(x))", "F(RC(~x))"),
+                ],
+            },
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                    "z^",
+                    "RC(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+        },
+    },
+   "conservative_full_curvature": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "f(y^)": [tasks.normal, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("f(y^)", "z^"),
+                    ("RC(x)", "z^"),
+                    ("f(n(x))", "z^"),
+                    ("f(n(x))", "RC(x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "z^",
+                    "RC(x)",
+                    "f(n(x))"
+                ]
+            ),
+        },
+    },
+   "conservative_full_triangle": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "f(y^)": [tasks.normal, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("RC(x)", "z^"),
+                    
+                    ("f(y^)", "z^"),
+                    ("F(z^)", "y^"),
+                    
+                    ("f(n(x))", "z^"),
+                    ("f(n(x))", "RC(x)"),
+
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "ID_curv": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "z^",
+                    "RC(x)",
+                    "f(n(x))",
+                ]
+            ),
+        },
+    },
 }
 
 def coeff_hook(coeff):

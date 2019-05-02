@@ -27,7 +27,7 @@ def main(
 ):
 	
 	# CONFIG
-	batch_size = batch_size or (4 if fast else 64)
+	# batch_size = batch_size or (4 if fast else 64)
 	energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
 	# DATA LOADING
