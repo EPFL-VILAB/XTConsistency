@@ -2,6 +2,7 @@ import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
 import torch
 from models import TrainableModel
+import IPython
 
 __all__ = ['GanDisNet', 'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'resnext50_32x4d', 'resnext101_32x8d']
@@ -22,16 +23,19 @@ def weight_init(m):
             nn.init.zeros_(m.bias)
 
 class GanDisNet(TrainableModel):
-    def __init__(self):
+    def __init__(self, size=224):
         super(GanDisNet, self).__init__()
-        self.size = 224
+        self.size = size
         #self.backbone = vision_model.resnet18(pretrained=False, norm_layer=lambda a: nn.GroupNorm(8, a))
-        self.backbone = resnet18(pretrained=False, norm_layer=lambda a: nn.GroupNorm(8, a))
-        self.backbone.fc = nn.Linear(self.backbone.fc.in_features,1)
+        self.backbone = resnet18(pretrained=False, 
+                                 norm_layer=lambda a: nn.GroupNorm(8, a),
+                                 num_classes=1,
+                                 )
+        # self.backbone.fc = nn.Linear(self.backbone.fc.in_features,1)
         self.apply(weight_init)
 
     def forward(self, x):
-        x = nn.functional.interpolate(x,size=self.size, mode='bilinear',align_corners=True)
+        x = nn.functional.interpolate(x,size=(self.size, self.size), mode='bilinear',align_corners=True)
         x = self.backbone(x)
         return x
 

@@ -16,3 +16,4 @@ checkpoints
 data/results
 .DS_Store
 local
+command.txt
