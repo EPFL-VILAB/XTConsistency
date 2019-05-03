@@ -531,15 +531,15 @@ energy_configs = {
     "consistency_paired_gaussianblur_gan": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=3)],
+            "~x": [tasks.rgb(blur_radius=6)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
-            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
         },
         "losses": {
             "mse": {
@@ -549,7 +549,7 @@ energy_configs = {
                     ("RC(x)", "z^"),
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
-                    #("F(RC(~x))", "n(~x)"),
+                    ("F(RC(~x))", "n(~x)"),
                 ],
             },
             "gan": {
