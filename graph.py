@@ -115,9 +115,11 @@ class TaskGraph(TrainableModel):
 
 
 class Discriminator(object):
-    def __init__(self, loss_config, size=224, use_patches=False):
+    def __init__(self, loss_config, frac=None, size=224, sigma=12, use_patches=False):
         super(Discriminator, self).__init__()
         self.size = size
+        self.frac = frac
+        self.sigma = sigma
         self.use_patches = use_patches
         self.discriminator = GanDisNet(size=size)
         self.discriminator.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
@@ -131,7 +133,8 @@ class Discriminator(object):
     def step(self, loss):
         self.discriminator.step(-sum(loss[dis_key] for dis_key in loss if 'disgan' in dis_key))
 
-    def sample_patches(self, X, sigma=12, mean=64):
+    def sample_patches(self, X, mean=1, sigma=None):
+        sigma = sigma or self.sigma
         N, C, H, W = X.shape
         def crop(x, size):
             a, b = random.randint(0, H-size), random.randint(0, W-size)
@@ -140,12 +143,14 @@ class Discriminator(object):
             return x[0]
 
         sizes = np.clip(np.random.randn(N) * sigma, sigma*2, sigma*-2).astype(int) + mean
+        sizes = np.clip(sizes, a_min=1, a_max=(min(H, W)))
         patches = torch.stack([ crop(x, size) for x, size in zip(X, sizes) ])
 
         return patches
 
     def __call__(self, x):
-        x = self.sample_patches(x, mean=self.size) if self.use_patches else x
+        size = int(self.frac * x.shape[2]) if self.frac is not None else self.size
+        x = self.sample_patches(x, mean=size) if self.use_patches else x
         return self.discriminator(x)
 
     def save(self, weights_file=None):

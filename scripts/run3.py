@@ -23,9 +23,16 @@ def delete(env):
     link = visdom.Visdom(server="http://35.229.22.191", port=7000, env=env)
     link.delete_env(env)
 
+def save():
+    import visdom
+    link = visdom.Visdom(server="http://35.229.22.191", port=7000)
+    envs = link.get_env_list()
+    link.save(envs)
+
 def run(cmd, instance="cloud1", zone="us-west1-b", config="job", shutdown=False, debug=False):
     exp_id = experiment_id(config)
     print ("Experiment ID: ", exp_id)
+    # save()
 
     # create a file called command.txt
     os.system(f"echo {cmd} > command.txt")
