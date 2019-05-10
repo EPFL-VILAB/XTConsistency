@@ -25,9 +25,10 @@ import IPython
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
-	ood_batch_size=None, subset_size=64,
+	ood_batch_size=None, subset_size=None,
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
-	cont_gan=None, pre_gan=None, **kwargs,
+	cont_gan=None, pre_gan=None, max_epochs=800,
+	use_patches=False, patch_frac=None, patch_size=64, patch_sigma=0, **kwargs,
 ):
 	
 	# CONFIG
@@ -58,7 +59,13 @@ def main(
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not USE_RAID: graph.load_weights(cont)
 	pre_gan = pre_gan or 1
-	discriminator = Discriminator(energy_loss.losses['gan'])
+	discriminator = Discriminator(
+		energy_loss.losses['gan'], 
+		frac=patch_frac,
+		size=(patch_size if use_patches else 224), 
+		sigma=patch_sigma,
+		use_patches=use_patches
+	)
 	if cont_gan is not None: discriminator.load_weights(cont_gan)
 
 	# LOGGING
@@ -69,7 +76,7 @@ def main(
 	energy_loss.logger_hooks(logger)
 
 	# TRAINING
-	for epochs in range(0, 80):
+	for epochs in range(0, max_epochs):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
@@ -81,24 +88,29 @@ def main(
 		for _ in range(0, train_step):
 			if epochs > pre_gan:
 				energy_loss.train_iter += 1
-				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-				graph.step(train_loss)
+
+				train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				train_loss1 = sum([train_loss1[loss_name] for loss_name in train_loss1])
+				
+				# graph.step(train_loss)
 				train.step()
+
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
+				train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
+
+				train_loss = train_loss1 + train_loss2
+				graph.step(train_loss)
+				train_subset.step()
 
 				logger.update("loss", train_loss)
 				del train_loss
 
-				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-				graph.step(train_loss)
-				train_subset.step()
-
-			for i in range(1):
+			warmup = 5 if epochs < pre_gan else 1
+			for i in range(warmup):
 				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
 				discriminator.step(train_loss2)
+				print ("Gan loss warmup: ", train_loss2)
 				train.step()
-			
 
 		graph.eval()
 		discriminator.eval()

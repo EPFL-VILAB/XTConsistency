@@ -52,6 +52,7 @@ def main(
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not use_baseline and not USE_RAID:
 		graph.load_weights(cont)
+
 	pre_gan = pre_gan or 1
 	discriminator = Discriminator(energy_loss.losses['gan'], size=(patch_size if use_patches else 224), use_patches=use_patches)
 	# if cont_gan is not None: discriminator.load_weights(cont_gan)

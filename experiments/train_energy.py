@@ -23,7 +23,11 @@ def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
+<<<<<<< HEAD
 	cont_gan=None, pre_gan=None, use_baseline=False, **kwargs,
+=======
+	cont_gan=None, pre_gan=None, **kwargs,
+>>>>>>> 6396ee388910d4db93454cce76e3f887c7ef0b97
 ):
 	
 	# CONFIG
@@ -52,6 +56,15 @@ def main(
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not use_baseline and not USE_RAID:
 		graph.load_weights(cont)
+
+	# GAN
+	if 'gan' in loss_config:
+		pre_gan = pre_gan or 1
+		discriminator = Discriminator(energy_loss.losses['gan'])
+		if cont_gan is not None: discriminator.load_weights(cont_gan)
+	else:
+		discriminator = None
+		pre_gan = pre_gan or 0
 
 	# GAN
 	if 'gan' in loss_config:

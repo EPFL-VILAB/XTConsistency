@@ -100,7 +100,7 @@ class VisdomLogger(BaseLogger):
         self.windows = {}
         super().__init__(*args, **kwargs)
         self.save()
-        self.add_hook(lambda logger, data: self.save(), feature="epoch", freq=10)
+        self.add_hook(lambda logger, data: self.save(), feature="epoch", freq=1)
 
     def text(self, text, end='\n'):
         print (text, end=end)
