@@ -24,7 +24,8 @@ def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
-	cont_gan=None, pre_gan=None, use_patches=False, patch_size=64, **kwargs,
+	cont_gan=None, pre_gan=None, use_patches=False, patch_size=64, use_baseline=False,
+	**kwargs,
 ):
 	
 	# CONFIG
@@ -46,9 +47,11 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned, 
+						freeze_list=energy_loss.freeze_list)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	if not USE_RAID: graph.load_weights(cont)
+	if not use_baseline and not USE_RAID:
+		graph.load_weights(cont)
 	pre_gan = pre_gan or 1
 	discriminator = Discriminator(energy_loss.losses['gan'], size=(patch_size if use_patches else 224), use_patches=use_patches)
 	# if cont_gan is not None: discriminator.load_weights(cont_gan)
@@ -79,7 +82,7 @@ def main(
 				train.step()
 				logger.update("loss", train_loss)
 
-			for i in range(5):
+			for i in range(5 if epochs <= pre_gan else 1):
 				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
 				discriminator.step(train_loss2)
 				train.step()

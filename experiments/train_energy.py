@@ -23,7 +23,7 @@ def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
-	cont_gan=None, pre_gan=None, **kwargs,
+	cont_gan=None, pre_gan=None, use_baseline=False, **kwargs,
 ):
 	
 	# CONFIG
@@ -47,9 +47,11 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned, 
+						freeze_list=energy_loss.freeze_list)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	if not USE_RAID: graph.load_weights(cont)
+	if not use_baseline and not USE_RAID:
+		graph.load_weights(cont)
 
 	# GAN
 	if 'gan' in loss_config:

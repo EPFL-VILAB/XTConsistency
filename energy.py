@@ -701,6 +701,59 @@ energy_configs = {
             ),
         },
     },
+
+   "conservative_full_triangle_sparse": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("RC(x)", "z^"),
+                    
+                    ("f(n(x))", "z^"),
+                    ("f(n(x))", "RC(x)"),
+
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                ],
+            },
+        },
+        "freeze_list": [
+            [tasks.normal, tasks.principal_curvature],
+            [tasks.principal_curvature, tasks.normal]
+        ],
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "ID_curv": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "z^",
+                    "RC(x)",
+                    "f(n(x))",
+                ]
+            ),
+        },
+    },
+
     "consistency_multiresolution_gan_baseline": {
         "paths": {
             "x": [tasks.rgb],
@@ -758,18 +811,18 @@ energy_configs = {
             ),
         },
     },
-    "consistency_paired_gaussianblur_gan_patch": {
+    "consistency_paired_gaussianblur6_gan_patch": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=3)],
+            "~x": [tasks.rgb(blur_radius=6)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
-            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
         },
         "losses": {
             "mse": {
@@ -784,8 +837,8 @@ energy_configs = {
             },
             "gan": {
                 ("train", "val"): [
-                    ("n(x)", "n(~x)"),
-                    ("F(RC(x))", "F(RC(~x))"),
+                    ("y^", "n(~x)"),
+                    # ("F(RC(x))", "F(RC(~x))"),
                 ],
             },
         },
@@ -809,6 +862,56 @@ energy_configs = {
                     "~x",
                     "n(~x)",
                     "F(RC(~x))",
+                ]
+            ),
+        },
+    },
+    "baseline_gaussianblur6_gan_patch": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=6)],
+            "y^": [tasks.normal],
+            # "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            # "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            # "F(z^)": [tasks.principal_curvature, tasks.normal],
+            # "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            # "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    # ("F(z^)", "y^"),
+                    # ("RC(x)", "z^"),
+                    # ("F(RC(x))", "y^"),
+                    # ("F(RC(x))", "n(x)"),
+                    # ("F(RC(~x))", "n(~x)"),
+                ],
+            },
+            "gan": {
+                ("train", "val"): [
+                    ("n(x)", "n(~x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
                 ]
             ),
         },
@@ -911,10 +1014,11 @@ def coeff_hook(coeff):
 class EnergyLoss(object):
 
     def __init__(self, paths, losses, plots,
-        pretrained=True, finetuned=False,
+        pretrained=True, finetuned=False, freeze_list=[]
     ):
 
         self.paths, self.losses, self.plots = paths, losses, plots
+        self.freeze_list = [str((path[0].name, path[1].name)) for path in freeze_list]
         self.metrics = {}
 
         self.tasks = []

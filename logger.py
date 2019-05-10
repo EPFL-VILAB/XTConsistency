@@ -99,8 +99,8 @@ class VisdomLogger(BaseLogger):
         self.visdom.delete_env(self.env)
         self.windows = {}
         super().__init__(*args, **kwargs)
-        
-        self.add_hook(lambda logger, data: self.save(), feature="epoch", freq=20)
+        self.save()
+        self.add_hook(lambda logger, data: self.save(), feature="epoch", freq=10)
 
     def text(self, text, end='\n'):
         print (text, end=end)
