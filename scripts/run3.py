@@ -32,7 +32,6 @@ def save():
 def run(cmd, instance="cloud1", zone="us-west1-b", config="job", shutdown=False, debug=False):
     exp_id = experiment_id(config)
     print ("Experiment ID: ", exp_id)
-    # save()
 
     # create a file called command.txt
     os.system(f"echo {cmd} > command.txt")

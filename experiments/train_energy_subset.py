@@ -43,7 +43,6 @@ def main(
 	train_subset_dataset, _, _, _ = load_train_val(
 		energy_loss.get_tasks("train_subset"),
 		batch_size=batch_size, fast=fast,
-		subset_size=subset_size,
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
@@ -89,20 +88,19 @@ def main(
 		for _ in range(0, train_step):
 			if epochs > pre_gan:
 				energy_loss.train_iter += 1
-				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-				
+
+				train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				train_loss1 = sum([train_loss1[loss_name] for loss_name in train_loss1])
+
+				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
+				train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
+				train_loss = train_loss1 + train_loss2
+
 				graph.step(train_loss)
 				train.step()
-
-				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
-				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-
-				graph.step(train_loss)
 				train_subset.step()
 
 				logger.update("loss", train_loss)
-				del train_loss
 
 			warmup = 5 if epochs < pre_gan else 1
 			for i in range(warmup):

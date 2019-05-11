@@ -647,15 +647,15 @@ energy_configs = {
     "consistency_paired_gaussianblur_gan_patch": {
         "paths": {
             "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=3)],
+            "~x": [tasks.rgb(blur_radius=6)],
             "y^": [tasks.normal],
             "z^": [tasks.principal_curvature],
             "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "F(z^)": [tasks.principal_curvature, tasks.normal],
             "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=3), tasks.normal(blur_radius=3)],
-            "F(RC(~x))": [tasks.rgb(blur_radius=3), tasks.principal_curvature(blur_radius=3), tasks.normal(blur_radius=3)],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
         },
         "losses": {
             "mse": {
@@ -956,6 +956,7 @@ energy_configs = {
             ),
         },
     },
+
     "consistency_paired_gaussianblur_subset": {
         "paths": {
             "x": [tasks.rgb],
@@ -987,7 +988,7 @@ energy_configs = {
             }
         },
         "plots": {
-            "ID": dict(
+            "ID_norm": dict(
                 size=256, 
                 realities=("test", "ood"), 
                 paths=[
@@ -995,17 +996,16 @@ energy_configs = {
                     "y^",
                     "n(x)",
                     "F(RC(x))",
-                    "z^",
-                    "RC(x)",
                 ]
             ),
             "OOD": dict(
                 size=256, 
                 realities=("test", "ood"),
                 paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
+                    "x",
+                    "z^",
+                    "RC(x)",
+                    "f(n(x))",
                 ]
             ),
             "SUBSET": dict(
@@ -1029,10 +1029,11 @@ def coeff_hook(coeff):
 class EnergyLoss(object):
 
     def __init__(self, paths, losses, plots,
-        pretrained=True, finetuned=False,
+        pretrained=True, finetuned=False, freeze_list=[]
     ):
 
         self.paths, self.losses, self.plots = paths, losses, plots
+        self.freeze_list = [str((path[0].name, path[1].name)) for path in freeze_list]
         self.metrics = {}
 
         self.tasks = []
@@ -1126,6 +1127,8 @@ class EnergyLoss(object):
                             path_value2.register_hook(coeff_hook(coeff))
                         logit_path2 = discriminator(path_value2)
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
+                        # print ("In BCE loss for gan: ", reality, logit_path1.mean(), logit_path2.mean())
+
                         gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
                         self.metrics[reality.name]['gan : ' + path1 + " -> " + path2] += [gan_loss.detach().cpu()]
                         loss['disgan'+path1+path2] -= gan_loss

@@ -25,6 +25,7 @@ class TaskGraph(TrainableModel):
         self, tasks=tasks, edges=None, edges_exclude=None, 
         pretrained=True, finetuned=False,
         reality=[], task_filter=[tasks.segment_semantic, tasks.class_scene],
+        freeze_list=[],
     ):
 
         super().__init__()
@@ -62,7 +63,10 @@ class TaskGraph(TrainableModel):
             self.in_adj[dest_task.name] += [transfer]
             self.edge_map[str((src_task.name, dest_task.name))] = transfer
             if isinstance(transfer, nn.Module):
-                self.params[str((src_task.name, dest_task.name))] = transfer
+                if str((src_task.name, dest_task.name)) not in freeze_list:
+                    self.params[str((src_task.name, dest_task.name))] = transfer
+                else:
+                    print("freezing " + str((src_task.name, dest_task.name)))
                 try:
                     transfer.load_model()
                 except:
@@ -115,6 +119,7 @@ class TaskGraph(TrainableModel):
 
 
 class Discriminator(object):
+
     def __init__(self, loss_config, frac=None, size=224, sigma=12, use_patches=False):
         super(Discriminator, self).__init__()
         self.size = size
@@ -142,10 +147,13 @@ class Discriminator(object):
             x = nn.functional.interpolate(x.unsqueeze(0), size=(mean, mean))
             return x[0]
 
+        def sample(x, size, n):
+            return torch.cat([crop(x, size) for _ in range(n)], dim=1).view(-1, 3, 3)
+
         sizes = np.clip(np.random.randn(N) * sigma, sigma*2, sigma*-2).astype(int) + mean
         sizes = np.clip(sizes, a_min=1, a_max=(min(H, W)))
         patches = torch.stack([ crop(x, size) for x, size in zip(X, sizes) ])
-
+        # patches = torch.stack([ sample(x, size, 9) for x, size in zip(X, sizes)])
         return patches
 
     def __call__(self, x):
