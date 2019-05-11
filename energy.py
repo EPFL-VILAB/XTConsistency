@@ -809,14 +809,12 @@ energy_configs = {
                     ("RC(x)", "z^"),
                     ("F(RC(x))", "y^"),
                     ("F(RC(x))", "n(x)"),
-                ],
-                ("train_subset",): [
                     ("F(RC(~x))", "n(~x)"),
                 ],
             },
             "gan": {
-                ("train_subset",): [
-                    ("n(x)", "n(~x)"),
+                ("train", "val"): [
+                    ("y^", "n(x)"),
                 ],
             },
         },
@@ -1129,7 +1127,7 @@ class EnergyLoss(object):
                         logit_path2 = discriminator(path_value2)
                         binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
                         gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
-                        self.metrics[reality.name]['gan : '+path1 + " -> " + path2] += [gan_loss.detach().cpu()]
+                        self.metrics[reality.name]['gan : ' + path1 + " -> " + path2] += [gan_loss.detach().cpu()]
                         loss['disgan'+path1+path2] -= gan_loss
                         #binary_label_ood = torch.Tensor([0.5]*(logit_path1.size(0)+logit_path2.size(0))).float().cuda()
                         #gan_loss_ood = nn.BCELoss(size_average=True)(nn.Sigmoid()(torch.cat((logit_path1,logit_path2), dim=0).view(-1)), binary_label_ood)
@@ -1163,7 +1161,7 @@ class EnergyLoss(object):
         for loss_type, loss_item in self.losses.items():
             for realities, losses in loss_item.items():
                 for path1, path2 in losses:
-                    name = loss_type+" : "+path1 + " -> " + path2
+                    name = loss_type +" : "+path1 + " -> " + path2
                     name_to_realities[name] += list(realities)
         for name, realities in name_to_realities.items():
             for reality in realities:
