@@ -89,9 +89,6 @@ class TaskGraph(TrainableModel):
                     self.edge(path[i-1], path[i])(x)
                 )
             except KeyError:
-                print ("Failed")
-                pdb.set_trace()
-                IPython.embed()
                 return None
             if use_cache: cache[tuple(path[0:(i+1)])] = x
         return x

@@ -21,7 +21,6 @@ from fire import Fire
 
 import IPython
 
-
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
@@ -89,23 +88,50 @@ def main(
 			if epochs > pre_gan:
 				energy_loss.train_iter += 1
 
-				train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train])
-				train_loss1 = sum([train_loss1[loss_name] for loss_name in train_loss1])
-
-				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
-				train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
-				train_loss = train_loss1 + train_loss2
+				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
+				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
 
 				graph.step(train_loss)
 				train.step()
-				train_subset.step()
+
+
+				# train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['mse'])
+				# train_loss1 = sum([train_loss[loss_name] for loss_name in train_loss1])
+				# train.step()
+
+				# train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['gan'])
+				# train_loss2 = sum([train_loss[loss_name] for loss_name in train_loss2])
+				# train.step()
+
+				# graph.step(train_loss1 + train_loss2)
+
+				# graph fooling loss 
+				# n(~x), and y^ (128 subset)
+				# train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train])
+				# train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
+				# train_loss = train_loss1 + train_loss2
 
 				logger.update("loss", train_loss)
 
 			warmup = 5 if epochs < pre_gan else 1
 			for i in range(warmup):
-				train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train_subset])
-				discriminator.step(train_loss2)
+				y_hat = graph.sample_path([tasks.normal], reality=train_subset)
+				n_x = graph.sample_path([tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)], reality=train)
+				def coeff_hook(coeff):
+					def fun1(grad):
+						return coeff*grad.clone()
+					return fun1
+				logit_path1 = discriminator(y_hat.detach())
+				coeff = 0.1
+				path_value2 = n_x * 1.0
+				path_value2.register_hook(coeff_hook(coeff))
+				logit_path2 = discriminator(path_value2)
+				binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
+				gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
+				discriminator.discriminator.step(gan_loss)
+
+				print ("Gan loss: ", (-gan_loss).data.cpu().numpy())
+				train.step()
 				train_subset.step()
 
 		graph.eval()
