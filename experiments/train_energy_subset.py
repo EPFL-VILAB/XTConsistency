@@ -74,11 +74,14 @@ def main(
 	logger.add_hook(lambda _, __: discriminator.save(f"{RESULTS_DIR}/discriminator.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
 
+	best_ood_val_loss = float('inf')
+
 	# TRAINING
 	for epochs in range(0, max_epochs):
 
 		logger.update("epoch", epochs)
 		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
+
 		if visualize: return
 
 		graph.train()
@@ -93,17 +96,35 @@ def main(
 
 				graph.step(train_loss)
 				train.step()
-
+				logger.update("loss", train_loss)
 
 				# train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['mse'])
-				# train_loss1 = sum([train_loss[loss_name] for loss_name in train_loss1])
+				# train_loss1 = sum([train_loss1[loss_name] for loss_name in train_loss1])
 				# train.step()
 
 				# train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['gan'])
-				# train_loss2 = sum([train_loss[loss_name] for loss_name in train_loss2])
+				# train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
 				# train.step()
 
 				# graph.step(train_loss1 + train_loss2)
+				# logger.update("loss", train_loss1 + train_loss2)
+
+
+				# train_loss1 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['mse_id'])
+				# train_loss1 = sum([train_loss1[loss_name] for loss_name in train_loss1])
+				# graph.step(train_loss1)
+
+				# train_loss2 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['mse_ood'])
+				# train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
+				# graph.step(train_loss2)
+
+				# train_loss3 = energy_loss(graph, discriminator=discriminator, realities=[train], loss_types=['gan'])
+				# train_loss3 = sum([train_loss3[loss_name] for loss_name in train_loss3])
+				# graph.step(train_loss3)
+
+				# logger.update("loss", train_loss1 + train_loss2 + train_loss3)
+				# train.step()
+
 
 				# graph fooling loss 
 				# n(~x), and y^ (128 subset)
@@ -111,10 +132,12 @@ def main(
 				# train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
 				# train_loss = train_loss1 + train_loss2
 
-				logger.update("loss", train_loss)
 
 			warmup = 5 if epochs < pre_gan else 1
 			for i in range(warmup):
+				# y_hat = graph.sample_path([tasks.normal(size=512)], reality=train_subset)
+				# n_x = graph.sample_path([tasks.rgb(size=512), tasks.normal(size=512)], reality=train)
+
 				y_hat = graph.sample_path([tasks.normal], reality=train_subset)
 				n_x = graph.sample_path([tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)], reality=train)
 				def coeff_hook(coeff):
@@ -138,7 +161,7 @@ def main(
 		discriminator.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
-				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val])
+				val_loss = energy_loss(graph, discriminator=discriminator, realities=[val, train_subset])
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
 			logger.update("loss", val_loss)
@@ -146,6 +169,10 @@ def main(
 		if epochs > pre_gan:
 			energy_loss.logger_update(logger)
 			logger.step()
+
+			# if logger.data['val_mse : y^ -> n(~x)'][-1] < best_ood_val_loss:
+			# 	best_ood_val_loss = logger.data['val_mse : y^ -> n(~x)'][-1]
+			# 	energy_loss.plot_paths(graph, logger, [val], prefix="best")
 
 if __name__ == "__main__":
 	Fire(main)
