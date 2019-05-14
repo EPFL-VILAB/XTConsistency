@@ -89,7 +89,6 @@ def main(
 
 		for _ in range(0, train_step):
 			if epochs > pre_gan:
-				energy_loss.train_iter += 1
 
 				train_loss = energy_loss(graph, discriminator=discriminator, realities=[train])
 				train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
