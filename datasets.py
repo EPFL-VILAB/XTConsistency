@@ -37,7 +37,7 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
     val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
-    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks, unpaired=False)
+    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
@@ -52,7 +52,7 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     val_step = int(245592 // (400 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
-    if fast: train_step, val_step = 2, 2
+    if fast: train_step, val_step = 8, 8
 
     return train_loader, val_loader, train_step, val_step
 
@@ -111,12 +111,12 @@ def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[0]], tasks=all_tasks),
+        TaskDataset(buildings=[buildings[0]], tasks=all_tasks, shuffle=False),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
     test_loader2 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[1]], tasks=all_tasks),
+        TaskDataset(buildings=[buildings[1]], tasks=all_tasks, shuffle=False),
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
@@ -162,7 +162,7 @@ def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
 class TaskDataset(Dataset):
 
     def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
-            building_files=None, convert_path=None, use_raid=USE_RAID, resize=None, unpaired=False):
+            building_files=None, convert_path=None, use_raid=USE_RAID, resize=None, unpaired=False, shuffle=True):
 
         super().__init__()
         self.buildings, self.tasks, self.data_dirs = buildings, tasks, data_dirs
@@ -172,6 +172,7 @@ class TaskDataset(Dataset):
         if use_raid:
             self.convert_path = self.convert_path_raid
             self.building_files = self.building_files_raid
+        
         # Build a map from buildings to directories
         self.file_map = {}
         for data_dir in self.data_dirs:
@@ -179,26 +180,16 @@ class TaskDataset(Dataset):
                 res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
                 if res is None: continue
                 self.file_map[file[len(data_dir)+1:]] = data_dir
-        filtered_files = set()
-        for i, task in enumerate(tasks):
-            task_files = []
-            for building in buildings:
-                task_files += sorted(self.building_files(task, building))
-            print(f"{task.name} file len: {len(task_files)}")
-            task_set = {self.convert_path(x, tasks[0]) for x in task_files}
-            filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-        self.idx_files = sorted(list(filtered_files))
 
-        self.unpaired = unpaired
-        if unpaired:
-            rgb_tasks = []
-            for task in tasks:
-                if 'rgb' in task.name:
-                    if task.name[3:]:
-                        rgb_tasks.append(task.name[3:])
-                    else:
-                        rgb_tasks.append('none')
-            self.task_indices = {task:random.sample(range(len(self.idx_files)), len(self.idx_files)) for task in rgb_tasks}
+        filtered_files = None
+        task = tasks[0]
+        task_files = []
+        for building in buildings:
+            task_files += self.building_files(task, building)
+        print(f"{task.name} file len: {len(task_files)}")
+        self.idx_files = task_files
+        if not shuffle: self.idx_files = sorted(task_files)
+
         print ("Intersection files len: ", len(self.idx_files))
 
     def reset_unpaired(self):
@@ -241,18 +232,12 @@ class TaskDataset(Dataset):
             try:
                 res = []
                 seed = random.randint(0, 1e10)
+
                 for task in self.tasks:
-                    if self.unpaired:
-                        task_idx = 'none'
-                        for task_index in self.task_indices:
-                            if task_index in task.name:
-                                task_idx = task_index
-                        task_idx = self.task_indices[task_idx][idx]
-                        file_name = self.convert_path(self.idx_files[task_idx], task)
-                    else:
-                        file_name = self.convert_path(self.idx_files[idx], task)
+                    file_name = self.convert_path(self.idx_files[idx], task)
                     if len(file_name) == 0: raise Exception("unable to convert file")
                     image = task.file_loader(file_name, resize=self.resize, seed=seed)
+
                     res.append(image)
                 return tuple(res)
             except Exception as e:
@@ -364,8 +349,12 @@ class ImagePairDataset(Dataset):
 if __name__ == "__main__":
 
     logger = VisdomLogger("data", env=JOB)
-    train_loader = TaskDataset(buildings=["almena", "albertville"], tasks=[tasks.rgb, tasks.normal])
+    train_dataset, val_dataset, train_step, val_step = load_train_val(
+        [tasks.rgb, tasks.normal, tasks.principal_curvature, tasks.rgb(size=512)],
+        batch_size=32,
+    )
+    print ("created dataset")
     logger.add_hook(lambda logger, data: logger.step(), freq=32)
 
-    for i, (X, Y) in enumerate(train_loader):
+    for i, _ in enumerate(train_dataset):
         logger.update("epoch", i)

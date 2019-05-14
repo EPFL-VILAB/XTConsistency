@@ -202,135 +202,6 @@ energy_configs = {
         },
     },
 
-    
-
-    "consistency_paired_res_subset": {
-        "paths": {
-            "x": [tasks.rgb],
-            "~x": [tasks.rgb(size=512)],
-            "y^": [tasks.normal],
-            "~y^": [tasks.normal(size=512)],
-            "z^": [tasks.principal_curvature],
-            "n(x)": [tasks.rgb, tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
-            "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(size=512), tasks.normal(size=512)],
-            "F(RC(~x))": [tasks.rgb(size=512), tasks.principal_curvature(size=512), tasks.normal(size=512)],
-        },
-        "losses": {
-            "mse_id": {
-                ("train", "val"): [
-                    ("n(x)", "y^"),
-                    ("F(z^)", "y^"),
-                    ("RC(x)", "z^"),
-                    ("F(RC(x))", "y^"),
-                    ("F(RC(x))", "n(x)"),
-                ],
-            },
-            "mse_ood": {
-                ("train", "val"): [
-                    ("F(RC(~x))", "n(~x)"),
-                ],
-                ("val",): [
-                    ("~y^", "n(~x)")
-                ]
-            },
-            "val_ood": {
-                ("train_subset",): [
-                    ("~y^", "n(~x)")
-                ]
-            },
-            "gan": {
-                ("train", "val"): [
-                    ("~y^", "n(~x)"),
-                ],
-                ("train_subset",): [
-                    ("~y^", "~y^"),
-                ],
-            }
-        },
-        "plots": {
-            "ID_norm": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                ]
-            ),
-            "OOD": dict(
-                size=512, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
-            "SUBSET": dict(
-                size=256, 
-                realities=("train_subset",),
-                paths=[
-                    "~x", 
-                    "n(~x)", 
-                    "F(RC(~x))", 
-                ]
-            ),
-        },
-    },
-
-
-    "consistency_gaussianblur": {
-        "paths": {
-            "x": [tasks.rgb],
-            "~x": [tasks.rgb(blur_radius=6)],
-            "y^": [tasks.normal],
-            "z^": [tasks.principal_curvature],
-            "n(x)": [tasks.rgb, tasks.normal],
-            "RC(x)": [tasks.rgb, tasks.principal_curvature],
-            "F(z^)": [tasks.principal_curvature, tasks.normal],
-            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
-            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
-            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
-        },
-        "losses": {
-            "mse": {
-                ("train", "val"): [
-                    ("n(x)", "y^"),
-                    ("F(z^)", "y^"),
-                    ("RC(x)", "z^"),
-                    ("F(RC(x))", "y^"),
-                    ("F(RC(x))", "n(x)"),
-                    ("F(RC(~x))", "n(~x)"),
-                ],
-            },
-        },
-        "plots": {
-            "ID_norm": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "F(RC(x))",
-                ]
-            ),
-            "OOD": dict(
-                size=256, 
-                realities=("test", "ood"),
-                paths=[
-                    "~x",
-                    "n(~x)",
-                    "F(RC(~x))",
-                ]
-            ),
-        },
-    },
-
     "consistency_paired_gaussianblur_subset": {
         "paths": {
             "x": [tasks.rgb],
@@ -403,12 +274,261 @@ energy_configs = {
             ),
         },
     },
+
+    "consistency_paired_res_subset": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(size=512)],
+            "y^": [tasks.normal],
+            "~y^": [tasks.normal(size=512)],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(size=512), tasks.normal(size=512)],
+            "F(RC(~x))": [tasks.rgb(size=512), tasks.principal_curvature(size=512), tasks.normal(size=512)],
+        },
+        "losses": {
+            "mse_id": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                ],
+            },
+            "mse_ood": {
+                ("train", "val"): [
+                    ("F(RC(~x))", "n(~x)"),
+                ],
+                ("val",): [
+                    ("~y^", "n(~x)")
+                ]
+            },
+            "val_ood": {
+                ("train_subset",): [
+                    ("~y^", "n(~x)")
+                ]
+            },
+            "gan": {
+                ("train", "val"): [
+                    ("~y^", "n(~x)"),
+                ],
+                # ("train_subset",): [
+                #     ("~y^", "~y^"),
+                # ],
+            }
+        },
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "OOD": dict(
+                size=512, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+            "SUBSET": dict(
+                size=256, 
+                realities=("train_subset",),
+                paths=[
+                    "~x", 
+                    "n(~x)", 
+                    "F(RC(~x))", 
+                ]
+            ),
+        },
+    },
+
+
+    "consistency_gaussianblur": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=6)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                ],
+                ("val",): [
+                    ("y^", "n(~x)")
+                ]
+            },
+        },
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+        },
+    },
+
+    "consistency_paired_gaussianblur_subset": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=6)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                    ("F(z^)", "y^"),
+                    ("RC(x)", "z^"),
+                    ("F(RC(x))", "y^"),
+                    ("F(RC(x))", "n(x)"),
+                    ("F(RC(~x))", "n(~x)"),
+                ],
+            },
+        },
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+        },
+    },
+
+    "consistency_paired_gaussianblur_truebaseline": {
+        "paths": {
+            "x": [tasks.rgb],
+            "~x": [tasks.rgb(blur_radius=6)],
+            "y^": [tasks.normal],
+            "z^": [tasks.principal_curvature],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "F(z^)": [tasks.principal_curvature, tasks.normal],
+            "F(RC(x))": [tasks.rgb, tasks.principal_curvature, tasks.normal],
+            "n(~x)": [tasks.rgb(blur_radius=6), tasks.normal(blur_radius=6)],
+            "F(RC(~x))": [tasks.rgb(blur_radius=6), tasks.principal_curvature(blur_radius=6), tasks.normal(blur_radius=6)],
+        },
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                ],
+                ("val",): [
+                    ("y^", "n(~x)")
+                ]
+            },
+            "val_ood": {
+                ("train_subset",): [
+                    ("y^", "n(~x)")
+                ]
+            },
+            "gan": {
+                ("train", "val"): [
+                    ("y^", "n(~x)"),
+                ],
+                # ("train_subset",): [
+                #     ("y^", "y^"),
+                # ],
+            }
+        },
+        "plots": {
+            "ID_norm": dict(
+                size=256, 
+                realities=("test", "ood"), 
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "F(RC(x))",
+                ]
+            ),
+            "OOD": dict(
+                size=256, 
+                realities=("test", "ood"),
+                paths=[
+                    "~x",
+                    "n(~x)",
+                    "F(RC(~x))",
+                ]
+            ),
+            "SUBSET": dict(
+                size=256,
+                realities=("train_subset",),
+                paths=[
+                    "~x", 
+                    "n(~x)", 
+                    "F(RC(~x))", 
+                ]
+            ),
+        },
+    },
 }
+
+
 
 def coeff_hook(coeff):
     def fun1(grad):
         return coeff*grad.clone()
     return fun1
+
 
 class EnergyLoss(object):
 
@@ -565,10 +685,10 @@ class EnergyLoss(object):
                 )
         self.metrics = {}
 
-    def plot_paths(self, graph, logger, realities=[], prefix=""):
+    def plot_paths(self, graph, logger, realities=[], plot_names=None, prefix=""):
         
         realities_map = {reality.name: reality for reality in realities}
-        for name, config in self.plots.items():
+        for name, config in (plot_names or self.plots.items()):
             paths = config["paths"]
             realities = config["realities"]
             images = [[] for _ in range(0, len(paths))]

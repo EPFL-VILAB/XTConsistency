@@ -40,6 +40,7 @@ def main(
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
+	print (train_step, val_step)
 	
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
@@ -47,7 +48,7 @@ def main(
 	ood = RealityTask.from_static("ood", ood_set, energy_loss.get_tasks("ood"))
 
 	# GRAPH
-	realities = [train, train_subset, val, test, ood]
+	realities = [train, val, test, ood]
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not USE_RAID: graph.load_weights(cont)
@@ -57,13 +58,22 @@ def main(
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
 	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
+	best_ood_val_loss = float('inf')
 
 	# TRAINING
 	for epochs in range(0, max_epochs):
 
 		logger.update("epoch", epochs)
-		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
+		energy_loss.plot_paths(graph, logger, realities, prefix=f"epoch_{epochs}")
 		if visualize: return
+
+		graph.eval()
+		for _ in range(0, val_step):
+			with torch.no_grad():
+				val_loss = energy_loss(graph, realities=[val])
+				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
+			val.step()
+			logger.update("loss", val_loss)
 
 		graph.train()
 		for _ in range(0, train_step):
@@ -74,15 +84,12 @@ def main(
 			train.step()
 			logger.update("loss", train_loss)
 
-		graph.eval()
-		for _ in range(0, val_step):
-			with torch.no_grad():
-				val_loss = energy_loss(graph, realities=[val])
-				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
-			val.step()
-			logger.update("loss", val_loss)
-
 		energy_loss.logger_update(logger)
+		
+		# if logger.data["val_mse : y^ -> n(~x)"][-1] < best_ood_val_loss:
+		# 	best_ood_val_loss = logger.data["val_mse : y^ -> n(~x)"][-1]
+		# 	energy_loss.plot_paths(graph, logger, realities, prefix="best")
+
 		logger.step()
 
 if __name__ == "__main__":

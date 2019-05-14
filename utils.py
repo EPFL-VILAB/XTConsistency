@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, time, glob, math, itertools, yaml
+import random, sys, os, time, glob, math, itertools, yaml, pickle
 import parse
 from collections import defaultdict
 
@@ -81,6 +81,10 @@ def average(arr):
 
 def get_files(exp, data_dirs=DATA_DIRS, recursive=False):
     """ Gets data files across mounted directories matching glob expression pattern. """
+    # cache = SHARED_DIR + "/filecache_" + "_".join(exp.split()).replace(".", "_").replace("/", "_").replace("*", "_") + ("r" if recursive else "f") + ".pkl"
+    # print ("Cache file: ", cache)
+    # if os.path.exists(cache):
+    #     return pickle.load(open(cache, 'rb'))
 
     files, seen = [], set()
     for data_dir in data_dirs:
@@ -88,6 +92,8 @@ def get_files(exp, data_dirs=DATA_DIRS, recursive=False):
             if file[len(data_dir):] not in seen:
                 files.append(file)
                 seen.add(file[len(data_dir):])
+
+    # pickle.dump(files, open(cache, 'wb'))
     return files
 
 

@@ -26,7 +26,7 @@ def main(
 	pretrained=True, finetuned=False, fast=False, batch_size=None, 
 	ood_batch_size=None, subset_size=None,
 	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
-	cont_gan=None, pre_gan=None, max_epochs=800,
+	cont_gan=None, pre_gan=None, max_epochs=800, use_baseline=False,
 	use_patches=False, patch_frac=None, patch_size=64, patch_sigma=0, **kwargs,
 ):
 	
@@ -43,6 +43,7 @@ def main(
 		energy_loss.get_tasks("train_subset"),
 		batch_size=batch_size, fast=fast,
 	)
+	train_step, val_step = train_step//4, val_step//4
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 	
@@ -56,7 +57,7 @@ def main(
 	realities = [train, train_subset, val, test, ood]
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	if not USE_RAID: graph.load_weights(cont)
+	if not USE_RAID and not use_baseline: graph.load_weights(cont)
 	pre_gan = pre_gan or 1
 	discriminator = Discriminator(
 		energy_loss.losses['gan'], 
@@ -75,6 +76,8 @@ def main(
 	energy_loss.logger_hooks(logger)
 
 	best_ood_val_loss = float('inf')
+
+	logger.add_hook(partial(jointplot, loss_type=f"gan_subset"), feature=f"val_gan_subset", freq=1)
 
 	# TRAINING
 	for epochs in range(0, max_epochs):
@@ -131,8 +134,7 @@ def main(
 				# train_loss2 = sum([train_loss2[loss_name] for loss_name in train_loss2])
 				# train_loss = train_loss1 + train_loss2
 
-
-			warmup = 5 if epochs < pre_gan else 1
+			warmup = 5 # if epochs < pre_gan else 1
 			for i in range(warmup):
 				# y_hat = graph.sample_path([tasks.normal(size=512)], reality=train_subset)
 				# n_x = graph.sample_path([tasks.rgb(size=512), tasks.normal(size=512)], reality=train)
@@ -152,7 +154,10 @@ def main(
 				gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
 				discriminator.discriminator.step(gan_loss)
 
-				print ("Gan loss: ", (-gan_loss).data.cpu().numpy())
+				logger.update("train_gan_subset", gan_loss)
+				logger.update("val_gan_subset", gan_loss)
+
+				# print ("Gan loss: ", (-gan_loss).data.cpu().numpy())
 				train.step()
 				train_subset.step()
 
@@ -169,9 +174,9 @@ def main(
 			energy_loss.logger_update(logger)
 			logger.step()
 
-			# if logger.data['val_mse : y^ -> n(~x)'][-1] < best_ood_val_loss:
-			# 	best_ood_val_loss = logger.data['val_mse : y^ -> n(~x)'][-1]
-			# 	energy_loss.plot_paths(graph, logger, [val], prefix="best")
+			if logger.data["train_subset_val_ood : y^ -> n(~x)"][-1] < best_ood_val_loss:
+				best_ood_val_loss = logger.data["train_subset_val_ood : y^ -> n(~x)"][-1]
+				energy_loss.plot_paths(graph, logger, realities, prefix="best")
 
 if __name__ == "__main__":
 	Fire(main)

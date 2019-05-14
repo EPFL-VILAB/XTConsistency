@@ -31,12 +31,23 @@ class GanDisNet(TrainableModel):
                                  norm_layer=lambda a: nn.GroupNorm(8, a),
                                  num_classes=1,
                                  )
-        # self.backbone.fc = nn.Linear(self.backbone.fc.in_features,1)
+        # self.backbone = nn.Sequential(
+        #     nn.Conv2d(3, 64, kernel_size=(3, 3), padding=1),
+        #     nn.Conv2d(64, 64, kernel_size=(3, 3), padding=1),
+        #     nn.Conv2d(64, 64, kernel_size=(3, 3), padding=1),
+        #     nn.MaxPool2d(2),
+        #     nn.Conv2d(64, 128, kernel_size=(3, 3), padding=1),
+        #     nn.Conv2d(128, 128, kernel_size=(3, 3), padding=1),
+        #     nn.AdaptiveAvgPool2d(1),
+        # )
+        # self.fc = nn.Linear(128, 1)
         self.apply(weight_init)
 
     def forward(self, x):
         x = nn.functional.interpolate(x,size=(self.size, self.size), mode='bilinear',align_corners=True)
         x = self.backbone(x)
+        # x = x.view(x.size(0), -1)
+        # x = self.fc(x)
         return x
 
     def step(self, loss, train=True, retain_graph=False):
@@ -51,6 +62,9 @@ class GanDisNet(TrainableModel):
         self.optimizer.step()
         self.zero_grad()
         self.optimizer.zero_grad()
+
+
+
 
 
 model_urls = {
