@@ -44,12 +44,12 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
         train_loader = torch.utils.data.Subset(train_loader, 
             random.sample(range(len(train_loader)), subset_size or int(len(train_loader)*subset)),
         )
-        val_loader = torch.utils.data.Subset(val_loader, 
-            random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
-        )
+        # val_loader = torch.utils.data.Subset(val_loader, 
+        #     random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
+        # )
 
-    train_step = int(2248616 // (400 * batch_size))
-    val_step = int(245592 // (400 * batch_size))
+    train_step = int(2248616 // (100 * batch_size))
+    val_step = int(245592 // (100 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
     if fast: train_step, val_step = 8, 8
@@ -174,6 +174,23 @@ class TaskDataset(Dataset):
             self.building_files = self.building_files_raid
         
         # Build a map from buildings to directories
+        # self.file_map = {}
+        # for data_dir in self.data_dirs:
+        #     for file in glob.glob(f'{data_dir}/*'):
+        #         res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
+        #         if res is None: continue
+        #         self.file_map[file[len(data_dir)+1:]] = data_dir
+        # filtered_files = set()
+        # for i, task in enumerate(tasks):
+        #     task_files = []
+        #     for building in buildings:
+        #         task_files += sorted(self.building_files(task, building))
+        #     print(f"{task.name} file len: {len(task_files)}")
+        #     task_set = {self.convert_path(x, tasks[0]) for x in task_files}
+        #     filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
+        # self.idx_files = sorted(list(filtered_files))
+        # print ("Intersection files len: ", len(self.idx_files))
+
         self.file_map = {}
         for data_dir in self.data_dirs:
             for file in glob.glob(f'{data_dir}/*'):
@@ -211,6 +228,7 @@ class TaskDataset(Dataset):
         dest_file = f"{building}_{task.file_name}/{task.file_name}/{view}_domain_{task.file_name_alt}.{task.file_ext}"
         if f"{building}_{task.file_name}" not in self.file_map:
             print (f"{building}_{task.file_name} not in file map")
+            # IPython.embed()
             return ""
         data_dir = self.file_map[f"{building}_{task.file_name}"]
         return f"{data_dir}/{dest_file}"
@@ -231,6 +249,7 @@ class TaskDataset(Dataset):
         for i in range(200):
             try:
                 res = []
+
                 seed = random.randint(0, 1e10)
 
                 for task in self.tasks:
@@ -334,9 +353,12 @@ class ImagePairDataset(Dataset):
 
         file = self.files[idx]
         try:
-            image = Image.open(file)
-            image = transform(image).float()[0:3, :, :]
-            if image.shape[0] == 1: image = image.expand(3, -1, -1)
+            with Image.open(file) as image:
+                try:
+                    image = transform(image).float()[0:3, :, :]
+                    if image.shape[0] == 1: image = image.expand(3, -1, -1)
+                except Exception as e:
+                    return self.__getitem__(random.randrange(0, len(self.files)))
         except Exception as e:
             return self.__getitem__(random.randrange(0, len(self.files)))
         # print(image.shape, file)

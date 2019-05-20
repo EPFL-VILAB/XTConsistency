@@ -1,11 +1,18 @@
 
+job run --instance cloud3 --config "SAMPLEFF_baseline100k" "python -m experiments.train_percep baseline --batch-size 128 --subset-size 100000 --early-stopping 40 --max-epochs 200" --shutdown
 
-job run --instance cloud4 --config "GAN_patches_3_blur6_subsetgan128_truebaseline_bestval" "python -m experiments.train_energy_subset consistency_paired_gaussianblur_truebaseline --batch-size 24 --use-patches --patch-size 3 --patch-sigma 0 --subset-size 128 --use-baseline --max-epochs 50" --shutdown
+# job run --instance cloud4 --config "SAMPLEFF_baseline2x100k" "python -m experiments.train_percep baseline --batch-size 128 --subset-size 200000 --early-stopping 40 --max-epochs 200" --shutdown
+
+# job run --instance cloud3 --config "SAMPLEFF_baseline1m" "python -m experiments.train_percep baseline --batch-size 128 --subset-size 1000000 --early-stopping 40 --max-epochs 200" --shutdown
+
+# job run --instance cloud4 --config "SAMPLEFF_baseline2x1m" "python -m experiments.train_percep baseline --batch-size 128 --subset-size 2000000 --early-stopping 40 --max-epochs 200" --shutdown
+
+# job run --instance cloud10 --config "SAMPLEFF_consistency10k" "python -m experiments.train_consistency --subset-size 10000 --mode curriculum --percep-step 0.1 --max-epochs 200" --shutdown
+
+# job run --instance cloud5 --config "SAMPLEFF_consistency100k" "python -m experiments.train_consistency --subset-size 100000 --mode curriculum --percep-step 0.1 --max-epochs 200" --shutdown
+
+# job run --instance cloud7 --config "SAMPLEFF_consistency1m" "python -m experiments.train_consistency --subset-size 1000000 --mode curriculum --percep-step 0.1 --max-epochs 200" --shutdown
+
+# job run --instance cloud4 --config "SAMPLEFF_full_data_multipercep_step0.1" "python -m experiments.train_percep multipercep --mode curriculum --batch-size 16 --max-epochs 200 --percep-step 0.1 --fast" --shutdown
 
 
-
-job run --instance cloud2 --config "GAN_patches_10_blur6_subsetgan128_10xupd_bestval" "python -m experiments.train_energy_subset consistency_paired_gaussianblur_subset --batch-size 24 --use-patches --patch-size 10 --patch-sigma 6 --subset-size 128 --max-epochs 50" --shutdown
-
-job run --instance cloud6 --config "GAN_patches_10_blur6_subsetgan128_overfit" "python -m experiments.train_energy_subset consistency_paired_gaussianblur_subset --batch-size 24 --use-patches --patch-size 10 --patch-sigma 6 --subset-size 128 --max-epochs 50" --shutdown
-
-job run --instance cloud7 --config "GAN_patches_10_blur6_subsetgan10000_overfit" "python -m experiments.train_energy_subset consistency_paired_gaussianblur_subset --batch-size 24 --use-patches --patch-size 10 --patch-sigma 6 --subset-size 10000 --max-epochs 50" --shutdown

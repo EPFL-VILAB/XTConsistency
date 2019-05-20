@@ -42,8 +42,9 @@ def main(
 	train_subset_dataset, _, _, _ = load_train_val(
 		energy_loss.get_tasks("train_subset"),
 		batch_size=batch_size, fast=fast,
+		subset_size=subset_size
 	)
-	train_step, val_step = train_step//4, val_step//4
+	train_step, val_step = train_step//16, val_step//16
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 	

@@ -17,6 +17,26 @@ import transforms
 
 from modules.gan_dis import GanDisNet
 
+
+import os, sys, math, random, itertools, heapq
+from collections import namedtuple, defaultdict
+from functools import partial, reduce
+import numpy as np
+import IPython
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from utils import *
+from models import TrainableModel, WrapperModel
+from datasets import TaskDataset
+from task_configs import get_task, task_map, tasks, get_model, RealityTask
+from transfers import Transfer, RealityTransfer, get_transfer_name
+import transforms
+
+from modules.gan_dis import GanDisNet
+
 class TaskGraph(TrainableModel):
     """Basic graph that encapsulates set of edge constraints. Can be saved and loaded
     from directories."""
@@ -73,7 +93,7 @@ class TaskGraph(TrainableModel):
                     IPython.embed()
 
         self.params = nn.ModuleDict(self.params)
-
+    
     def edge(self, src_task, dest_task):
         key1 = str((src_task.name, dest_task.name))
         key2 = str((src_task.kind, dest_task.kind))
@@ -85,6 +105,8 @@ class TaskGraph(TrainableModel):
         x = None
         for i in range(1, len(path)):
             try:
+                # if x is not None: print (x.shape)
+                # print (self.edge(path[i-1], path[i]))
                 x = cache.get(tuple(path[0:(i+1)]), 
                     self.edge(path[i-1], path[i])(x)
                 )

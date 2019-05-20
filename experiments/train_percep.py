@@ -12,6 +12,7 @@ from graph import TaskGraph, Discriminator
 from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
+from transfers import functional_transfers
 from evaluation import run_eval_suite
 
 from modules.resnet import ResNet
@@ -23,9 +24,8 @@ import IPython
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
-	pretrained=True, finetuned=False, fast=False, batch_size=None, 
-	ood_batch_size=None, subset_size=None,
-	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
+	fast=False, batch_size=None, 
+	subset_size=None, early_stopping=float('inf'),
 	max_epochs=800, **kwargs,
 ):
 	
@@ -37,7 +37,7 @@ def main(
 	train_dataset, val_dataset, train_step, val_step = load_train_val(
 		energy_loss.get_tasks("train"),
 		batch_size=batch_size, fast=fast,
-		subset_size=subset_size
+		subset_size=subset_size,
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
@@ -50,31 +50,32 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
-	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	if not USE_RAID: graph.load_weights(cont)
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=False, 
+		freeze_list=[
+			functional_transfers.f,
+			functional_transfers.s,
+			functional_transfers.g,
+			functional_transfers.nr,
+			functional_transfers.Nk2,
+		],
+	)
+
+	# n(x)/norm(n(x))
+	# (f(n(x)) / RC(x)) 
+	graph.compile(torch.optim.Adam, lr=4e-4, weight_decay=2e-6, amsgrad=True)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
-	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
-	best_ood_val_loss = float('inf')
+	best_val_loss, stop_idx = float('inf'), 0
 
 	# TRAINING
 	for epochs in range(0, max_epochs):
 
 		logger.update("epoch", epochs)
-		energy_loss.plot_paths(graph, logger, realities, prefix=f"epoch_{epochs}")
+		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
-
-		graph.eval()
-		for _ in range(0, val_step):
-			with torch.no_grad():
-				val_loss = energy_loss(graph, realities=[val])
-				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
-			val.step()
-			logger.update("loss", val_loss)
 
 		graph.train()
 		for _ in range(0, train_step):
@@ -85,13 +86,27 @@ def main(
 			train.step()
 			logger.update("loss", train_loss)
 
-		energy_loss.logger_update(logger)
-		
-		# if logger.data["val_mse : y^ -> n(~x)"][-1] < best_ood_val_loss:
-		# 	best_ood_val_loss = logger.data["val_mse : y^ -> n(~x)"][-1]
-		# 	energy_loss.plot_paths(graph, logger, realities, prefix="best")
+		graph.eval()
+		for _ in range(0, val_step):
+			with torch.no_grad():
+				val_loss = energy_loss(graph, realities=[val])
+				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
+			val.step()
+			logger.update("loss", val_loss)
 
+		energy_loss.logger_update(logger)
 		logger.step()
+
+		stop_idx += 1
+		if logger.data["val_mse : n(x) -> y^"][-1] < best_val_loss:
+			print ("Better val loss, reset stop_idx: ", stop_idx)
+			best_val_loss, stop_idx = logger.data["val_mse : n(x) -> y^"][-1], 0
+			energy_loss.plot_paths(graph, logger, realities, prefix="best")
+			graph.save(f"{RESULTS_DIR}/graph.pth")
+
+		if stop_idx >= early_stopping:
+			print ("Stopping training now")
+			return
 
 if __name__ == "__main__":
 	Fire(main)

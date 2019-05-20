@@ -101,6 +101,10 @@ class AbstractModel(nn.Module):
             model.load_state_dict(data)
         return model
 
+    def load_weights(self, weights_file):
+        data = torch.load(weights_file)
+        self.load_state_dict(data)
+
     def save(self, weights_file):
         torch.save(self.state_dict(), weights_file)
 

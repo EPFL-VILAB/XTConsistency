@@ -23,7 +23,7 @@ EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().sp
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/shared/models"
-DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/small_data"]
+DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/data2/taskonomy3", f"{BASE_DIR}/small_data"]
 RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
@@ -176,5 +176,4 @@ def sobel_kernel(x):
         return edge
 
     x = torch.stack([sobel_transform(y) for y in x], dim=0)
-    print (x.shape)
-    return x
+    return x.to(DEVICE).requires_grad_()

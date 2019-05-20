@@ -12,6 +12,7 @@ from graph import TaskGraph, Discriminator
 from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
+from transfers import functional_transfers
 from evaluation import run_eval_suite
 
 from modules.resnet import ResNet
@@ -23,9 +24,8 @@ import IPython
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
-	pretrained=True, finetuned=False, fast=False, batch_size=None, 
+	fast=False, batch_size=None, 
 	ood_batch_size=None, subset_size=None,
-	cont=f"{MODELS_DIR}/conservative/conservative.pth", 
 	max_epochs=800, **kwargs,
 ):
 	
@@ -39,6 +39,7 @@ def main(
 		batch_size=batch_size, fast=fast,
 		subset_size=subset_size
 	)
+	train_step, val_step = train_step//4, val_step//4
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 	print (train_step, val_step)
@@ -50,9 +51,14 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False, 
+		freeze_list=energy_loss.freeze_list,
+	)
+
+	graph.edge(tasks.rgb, tasks.normal).model = None 
+	graph.edge(tasks.rgb, tasks.normal).path = None
+	graph.edge(tasks.rgb, tasks.normal).load_model()
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	if not USE_RAID: graph.load_weights(cont)
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
@@ -65,7 +71,7 @@ def main(
 	for epochs in range(0, max_epochs):
 
 		logger.update("epoch", epochs)
-		energy_loss.plot_paths(graph, logger, realities, prefix=f"epoch_{epochs}")
+		energy_loss.plot_paths(graph, logger, realities, prefix="start" if epochs == 0 else "")
 		if visualize: return
 
 		graph.eval()

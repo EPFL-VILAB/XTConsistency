@@ -252,6 +252,9 @@ functional_transfers = (
     Transfer('keypoints3d', 'normal', name='k3N'),
     Transfer('normal', 'keypoints3d', name='Nk3'),
 
+    Transfer('keypoints2d', 'normal', name='k2N'),
+    Transfer('normal', 'keypoints2d', name='Nk2'),
+
     Transfer('sobel_edges', 'reshading', name='Er'),
 )
 
@@ -265,7 +268,7 @@ def get_transfer_name(transfer):
             return t.name
     return transfer.name
 
-(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er) = functional_transfers
+(f, F, g, G, s, S, CE, EC, DE, ED, h, H, n, npstep, RC, k, a, r, d, KC, k3C, Ck3, nr, rn, k3N, Nk3, Er, k2N, N2k) = functional_transfers
 
 if __name__ == "__main__":
     y = g(F(f(x)))

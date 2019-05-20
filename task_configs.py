@@ -105,9 +105,12 @@ class Task(object):
         self.plot_func = plot_func or self.plot_func
         self.kind = name
 
-    def norm(self, pred, target):
-        loss = ((pred - target)**2).mean()
-        return loss, (loss.detach(),)
+    def norm(self, pred, target, batch_mean=True):
+        if batch_mean:
+            loss = ((pred - target)**2).mean()
+        else:
+            loss = ((pred - target)**2).mean(dim=1).mean(dim=1).mean(dim=1)
+        return loss, (loss.mean().detach(),)
 
     def __call__(self, size=256):
         task = copy.deepcopy(self)
@@ -148,7 +151,7 @@ class RealityTask(Task):
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=self.batch_size, shuffle=self.shuffle, pin_memory=True
+            num_workers=max(self.batch_size, 16), shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
         self.step()
@@ -170,7 +173,7 @@ class RealityTask(Task):
         reality.static = True
         return reality
 
-    def norm(self, pred, target):
+    def norm(self, pred, target, batch_mean=True):
         loss = torch.tensor(0.0, device=pred.device)
         return loss, (loss.detach(),)
 
@@ -211,9 +214,9 @@ class ImageTask(Task):
         mask = F.conv2d(mask.float(), torch.ones(1, 1, 5, 5, device=mask.device), padding=2) != 0
         return (~mask).expand_as(target)
 
-    def norm(self, pred, target):
+    def norm(self, pred, target, batch_mean=True):
         mask = ImageTask.build_mask(target, val=self.mask_val)
-        return super().norm(pred*mask.float(), target*mask.float())
+        return super().norm(pred*mask.float(), target*mask.float(), batch_mean=batch_mean)
 
     def __call__(self, size=256, blur_radius=None):
         task = copy.deepcopy(self)
