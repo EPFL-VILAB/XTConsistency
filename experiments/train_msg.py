@@ -55,8 +55,8 @@ def main(
 		freeze_list=energy_loss.freeze_list,
 	)
 
-	graph.edge(tasks.rgb, tasks.normal).model = None 
-	graph.edge(tasks.rgb, tasks.normal).path = None
+	#graph.edge(tasks.rgb, tasks.normal).model = None 
+	#graph.edge(tasks.rgb, tasks.normal).path = None
 	graph.edge(tasks.rgb, tasks.normal).load_model()
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
