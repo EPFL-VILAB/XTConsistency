@@ -20,6 +20,7 @@ from models import DataParallelModel
 from modules.unet import UNet, UNetOld2, UNetOld
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
+from modules.passthrough import PassThroughModel
 
 import IPython
 
@@ -62,6 +63,13 @@ model_types = {
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
     ('rgb', 'normal'): lambda : UNet(downsample=6),
     ('rgb', 'keypoints2d'): lambda : UNet(downsample=3, out_channels=1),
+    ('rgb', 'latent'): lambda : UNet(downsample=5, out_channels=12),
+    ('latent', 'normal'): lambda : PassThroughModel(channel_range=(0, 3)),
+    ('latent', 'principal_curvature'): lambda : PassThroughModel(channel_range=(3, 6)),
+    ('latent', 'depth_zbuffer'): lambda : PassThroughModel(channel_range=(6, 7)),
+    ('latent', 'reshading'): lambda : PassThroughModel(channel_range=(7, 10)),
+    ('latent', 'keypoints3d'): lambda : PassThroughModel(channel_range=(10, 11)),
+    ('latent', 'edge_occlusion'): lambda : PassThroughModel(channel_range=(11, 12)),
 }
 
 def get_model(src_task, dest_task):
@@ -91,6 +99,18 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
 class Task(object):
+
+    variances = {
+        "normal": 1.0,
+        "principal_curvature": 1.0,
+        "sobel_edges": 5,
+        "depth_zbuffer": 0.1,
+        "reshading": 1.0,
+        "keypoints2d": 0.3,
+        "keypoints3d": 0.6,
+        "edge_occlusion": 0.1,
+    }
+
     """ General task output space"""
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
@@ -103,6 +123,8 @@ class Task(object):
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
+        self.variance = Task.variances.get(name, 1.0)
+        print ("Variance: ", self.variance)
         self.kind = name
 
     def norm(self, pred, target, batch_mean=True):
@@ -220,10 +242,10 @@ class ImageTask(Task):
 
     def __call__(self, size=256, blur_radius=None):
         task = copy.deepcopy(self)
-        task.shape = (3, size, size)
+        task.shape = (task.shape[0], size, size)
         task.resize = size
         task.blur_radius = blur_radius
-        task.name +=  "blur" if blur_radius else str(size) 
+        task.name +=  "blur" if blur_radius else (str(size) if size != 256 else "")
         task.base = self
         return task
 
@@ -332,7 +354,13 @@ class PointInfoTask(Task):
         points = json.load(open(path))[self.point_type]
         return np.array(points['x'] + points['y'] + points['z'])
 
+class LatentTask(Task):
+    """ Output space for latent-space of VAE """
 
+    def __init__(self, *args, **kwargs):
+
+        self.size = kwargs.pop("size")
+        super().__init__(*args, **kwargs)
 
 
 """ 
@@ -428,6 +456,7 @@ tasks = [
         file_name_alt="class_places", 
         classes=365, classes_file="data/scene_classes.txt"
     ),
+    ImageTask('latent', shape=(64, 256, 256)),
     # ClassTask('class_object', 
     #     classes=1000, classes_file="data/object_classes.txt"
     # ),

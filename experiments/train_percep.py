@@ -1,4 +1,4 @@
-import os, sys, math, random, itertools
+import os, sys, math, random, itertools, time
 import numpy as np
 
 import torch
@@ -50,19 +50,14 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=False, 
-		freeze_list=[
-			functional_transfers.f,
-			functional_transfers.s,
-			functional_transfers.g,
-			functional_transfers.nr,
-			functional_transfers.Nk2,
-		],
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, 
+		freeze_list=energy_loss.freeze_list,
 	)
-
-	# n(x)/norm(n(x))
-	# (f(n(x)) / RC(x)) 
+	graph.edge(tasks.rgb, tasks.normal).model = None 
+	graph.edge(tasks.rgb, tasks.normal).path = None
+	graph.edge(tasks.rgb, tasks.normal).load_model()
 	graph.compile(torch.optim.Adam, lr=4e-4, weight_decay=2e-6, amsgrad=True)
+	graph.save(weights_dir=f"{RESULTS_DIR}")
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
@@ -102,7 +97,7 @@ def main(
 			print ("Better val loss, reset stop_idx: ", stop_idx)
 			best_val_loss, stop_idx = logger.data["val_mse : n(x) -> y^"][-1], 0
 			energy_loss.plot_paths(graph, logger, realities, prefix="best")
-			graph.save(f"{RESULTS_DIR}/graph.pth")
+			graph.save(weights_dir=f"{RESULTS_DIR}")
 
 		if stop_idx >= early_stopping:
 			print ("Stopping training now")

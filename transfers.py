@@ -17,7 +17,7 @@ from transforms import resize
 
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
-from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
+from modules.unet import UNet, UNetOld, UNetOld2, UNetOld3, UNetReshade
 
 from fire import Fire
 import IPython
@@ -89,6 +89,8 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
     ('keypoints3d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
+    # ('normal', 'rgb'):
+    #     (lambda: UNetOld3(), f"{SHARED_DIR}/results_normals2rgb_unet_5/model.pth"),
 }
 
 class Transfer(nn.Module):
@@ -97,7 +99,6 @@ class Transfer(nn.Module):
         checkpoint=True, name=None, model_type=None, path=None, 
         pretrained=True, finetuned=False
     ):
-        print ("Transfer finetuning: ", finetuned)
         super().__init__()
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
@@ -115,7 +116,6 @@ class Transfer(nn.Module):
             path = f"{MODELS_DIR}/ft_perceptual/{src_task.name}2{dest_task.name}.pth"
             if os.path.exists(path):
                 self.model_type, self.path = saved_type or (lambda: get_model(src_task, dest_task)), path
-                print ("Using finetuned: ", path)
                 return
 
         if self.model_type is None:
@@ -138,7 +138,10 @@ class Transfer(nn.Module):
                 path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}_new.pth"
             if os.path.exists(path):
                 self.model_type, self.path = lambda: get_model(src_task, dest_task), path
-        
+            # else:
+            #     self.model_type = lambda: get_model(src_task, dest_task)
+            #     print ("Not using pretrained b/c no model file avail")
+
         if not pretrained:
             print ("Not using pretrained [heavily discouraged]")
             self.path = None
@@ -147,8 +150,6 @@ class Transfer(nn.Module):
         if self.model is None:
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().to(DEVICE), self.path)
-                # if optimizer:
-                #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
                 self.model = self.model_type()
                 if isinstance(self.model, nn.Module):
@@ -190,12 +191,10 @@ class FineTunedTransfer(Transfer):
 
         if model_path not in self.cached_models: 
             if not os.path.exists(model_path):
-                print(f"{model_path} not found, loading pretrained")
                 self.cached_models[model_path] = super().load_model()
             else:
-                print(f"{model_path} found, loading finetuned")
                 self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
-                print(f"")
+
         self.model = self.cached_models[model_path]
         return self.model
 

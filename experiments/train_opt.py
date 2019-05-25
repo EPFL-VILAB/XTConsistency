@@ -1,4 +1,4 @@
-import os, sys, math, random, itertools, time
+import os, sys, math, random, itertools
 import numpy as np
 
 import torch
@@ -24,10 +24,10 @@ import IPython
 
 def main(
 	loss_config="conservative_full", mode="standard", visualize=False,
-	fast=False, batch_size=None, cont=None,
+	fast=False, batch_size=None, use_optimizer=False,
 	subset_size=None, max_epochs=800, **kwargs,
 ):
-		
+	
 	# CONFIG
 	batch_size = batch_size or (4 if fast else 64)
 	print (kwargs)
@@ -54,8 +54,14 @@ def main(
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False, 
 		freeze_list=energy_loss.freeze_list,
 	)
-	if cont is not None: graph.load_weights(cont)
-	graph.compile(torch.optim.Adam, lr=4e-4, weight_decay=2e-6, amsgrad=True)
+	graph.edge(tasks.rgb, tasks.normal).model = None 
+	graph.edge(tasks.rgb, tasks.normal).path = "mount/shared/results_SAMPLEFF_baseline_fulldata_opt_4/n.pth"
+	graph.edge(tasks.rgb, tasks.normal).load_model()
+	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+
+	if use_optimizer:
+		optimizer = torch.load("mount/shared/results_SAMPLEFF_baseline_fulldata_opt_4/optimizer.pth")
+		graph.optimizer.load_state_dict(optimizer.state_dict())
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)

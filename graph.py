@@ -45,7 +45,7 @@ class TaskGraph(TrainableModel):
         self, tasks=tasks, edges=None, edges_exclude=None, 
         pretrained=True, finetuned=False,
         reality=[], task_filter=[tasks.segment_semantic, tasks.class_scene],
-        freeze_list=[],
+        freeze_list=[], lazy=False,
     ):
 
         super().__init__()
@@ -65,7 +65,6 @@ class TaskGraph(TrainableModel):
             if edges_exclude is not None and key in edges_exclude: continue
             if src_task == dest_task: continue
             if isinstance(dest_task, RealityTask): continue
-            print (src_task, dest_task)
             transfer = None
             if isinstance(src_task, RealityTask):
                 if dest_task not in src_task.tasks: continue
@@ -77,7 +76,6 @@ class TaskGraph(TrainableModel):
                 transfer.name = get_transfer_name(transfer)
             if transfer.model_type is None: 
                 continue
-            print ("Added transfer", transfer)
             self.edges += [transfer]
             self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
@@ -88,7 +86,7 @@ class TaskGraph(TrainableModel):
                 else:
                     print("freezing " + str((src_task.name, dest_task.name)))
                 try:
-                    transfer.load_model()
+                    if not lazy: transfer.load_model()
                 except:
                     IPython.embed()
 
@@ -112,6 +110,9 @@ class TaskGraph(TrainableModel):
                 )
             except KeyError:
                 return None
+            except Exception as e:
+                IPython.embed()
+                
             if use_cache: cache[tuple(path[0:(i+1)])] = x
         return x
 
@@ -128,12 +129,15 @@ class TaskGraph(TrainableModel):
             os.makedirs(weights_dir, exist_ok=True)
             for key, model in self.edge_map.items():
                 if isinstance(model, RealityTransfer): continue
+                if not isinstance(model.model, TrainableModel): continue
                 model.model.save(f"{weights_dir}/{model.name}.pth")
+            torch.save(self.optimizer, f"{weights_dir}/optimizer.pth")
 
 
     def load_weights(self, weights_file=None):
         for key, state_dict in torch.load(weights_file).items():
             if key in self.edge_map:
+                self.edge_map[key].load_model()
                 self.edge_map[key].load_state_dict(state_dict)
 
 
