@@ -54,6 +54,7 @@ def main(
 	graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False, 
 		freeze_list=energy_loss.freeze_list,
 	)
+
 	if cont is not None: graph.load_weights(cont)
 	graph.compile(torch.optim.Adam, lr=4e-4, weight_decay=2e-6, amsgrad=True)
 
