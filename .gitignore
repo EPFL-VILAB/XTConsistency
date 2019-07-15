@@ -1,3 +1,4 @@
+.vscode
 raw
 __pycache__/*
 sftp-config*.json

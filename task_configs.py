@@ -100,17 +100,6 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 
 class Task(object):
 
-    variances = {
-        "normal": 1.0,
-        "principal_curvature": 1.0,
-        "sobel_edges": 5,
-        "depth_zbuffer": 0.1,
-        "reshading": 1.0,
-        "keypoints2d": 0.3,
-        "keypoints3d": 0.6,
-        "edge_occlusion": 0.1,
-    }
-
     """ General task output space"""
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
@@ -123,8 +112,6 @@ class Task(object):
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
-        self.variance = Task.variances.get(name, 1.0)
-        print ("Variance: ", self.variance)
         self.kind = name
 
     def norm(self, pred, target, batch_mean=True):

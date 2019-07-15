@@ -75,7 +75,8 @@ def main(
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
 			logger.update("loss", val_loss)
-
+		energy_loss.select_losses(val)
+		
 		graph.train()
 		for _ in range(0, train_step):
 			train_loss = energy_loss(graph, realities=[train])

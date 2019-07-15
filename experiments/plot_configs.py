@@ -31,57 +31,57 @@ def main(
 ):
 
     configs = {
-        # "VISUALS2_rgb2normals2x_multipercep8_winrate_standardized_upd": dict(
-        #     loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
-        #     cont="mount/shared/results_LBP_multipercep8_winrate_standardized_upd_3/graph.pth",
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2reshade2x_latwinrate_reshadetarget": dict(
-        #     loss_configs=["baseline_reshade_size256", "baseline_reshade_size320", "baseline_reshade_size384", "baseline_reshade_size448", "baseline_reshade_size512"],
-        #     cont="mount/shared/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth",
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2reshade2x_reshadebaseline": dict(
-        #     loss_configs=["baseline_reshade_size256", "baseline_reshade_size320", "baseline_reshade_size384", "baseline_reshade_size448", "baseline_reshade_size512"],
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2reshade2x_latwinrate_depthtarget": dict(
-        #     loss_configs=["baseline_depth_size256", "baseline_depth_size320", "baseline_depth_size384", "baseline_depth_size448", "baseline_depth_size512"],
-        #     cont="mount/shared/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth",
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2reshade2x_depthbaseline": dict(
-        #     loss_configs=["baseline_depth_size256", "baseline_depth_size320", "baseline_depth_size384", "baseline_depth_size448", "baseline_depth_size512"],
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2normals2x_baseline": dict(
-        #     loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
-        #     test=True, ood=True, oodfull=True,
-        # ),
-        # "VISUALS2_rgb2normals2x_multipercep": dict(
-        #     loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
-        #     test=True, ood=True, oodfull=True,
-        #     cont="mount/shared/results_LBP_multipercep_32/graph.pth",
-        # ),
-        "VISUALS2_rgb2x2normals_baseline": dict(
+        "VISUALS3_rgb2normals2x_multipercep8_winrate_standardized_upd": dict(
+            loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
+            cont="mount/shared/results_LBP_multipercep8_winrate_standardized_upd_3/graph.pth",
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2reshade2x_latwinrate_reshadetarget": dict(
+            loss_configs=["baseline_reshade_size256", "baseline_reshade_size320", "baseline_reshade_size384", "baseline_reshade_size448", "baseline_reshade_size512"],
+            cont="mount/shared/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth",
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2reshade2x_reshadebaseline": dict(
+            loss_configs=["baseline_reshade_size256", "baseline_reshade_size320", "baseline_reshade_size384", "baseline_reshade_size448", "baseline_reshade_size512"],
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2reshade2x_latwinrate_depthtarget": dict(
+            loss_configs=["baseline_depth_size256", "baseline_depth_size320", "baseline_depth_size384", "baseline_depth_size448", "baseline_depth_size512"],
+            cont="mount/shared/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth",
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2reshade2x_depthbaseline": dict(
+            loss_configs=["baseline_depth_size256", "baseline_depth_size320", "baseline_depth_size384", "baseline_depth_size448", "baseline_depth_size512"],
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2normals2x_baseline": dict(
+            loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
+            test=True, ood=True, oodfull=False,
+        ),
+        "VISUALS3_rgb2normals2x_multipercep": dict(
+            loss_configs=["baseline_size256", "baseline_size320", "baseline_size384", "baseline_size448", "baseline_size512"],
+            test=True, ood=True, oodfull=False,
+            cont="mount/shared/results_LBP_multipercep_32/graph.pth",
+        ),
+        "VISUALS3_rgb2x2normals_baseline": dict(
             loss_configs=["rgb2x2normals_plots", "rgb2x2normals_plots_size320", "rgb2x2normals_plots_size384", "rgb2x2normals_plots_size448", "rgb2x2normals_plots_size512"],
             finetuned=False,
-            test=True, ood=True, ood_full=True,
+            test=True, ood=True, ood_full=False,
         ),
-        "VISUALS2_rgb2x2normals_finetuned": dict(
+        "VISUALS3_rgb2x2normals_finetuned": dict(
             loss_configs=["rgb2x2normals_plots", "rgb2x_plots2normals_size320", "rgb2x2normals_plots_size384", "rgb2x2normals_plots_size448", "rgb2x2normals_plots_size512"],
             finetuned=True,
-            test=True, ood=True, ood_full=True,
+            test=True, ood=True, ood_full=False,
         ),
-        "VISUALS2_rgb2x_baseline": dict(
+        "VISUALS3_rgb2x_baseline": dict(
             loss_configs=["rgb2x_plots", "rgb2x_plots_size320", "rgb2x_plots_size384", "rgb2x_plots_size448", "rgb2x_plots_size512"],
             finetuned=False,
-            test=True, ood=True, ood_full=True,
+            test=True, ood=True, ood_full=False,
         ),
-        "VISUALS2_rgb2x_finetuned": dict(
+        "VISUALS3_rgb2x_finetuned": dict(
             loss_configs=["rgb2x_plots", "rgb2x_plots_size320", "rgb2x_plots_size384", "rgb2x_plots_size448", "rgb2x_plots_size512"],
             finetuned=True,
-            test=True, ood=True, ood_full=True,
+            test=True, ood=True, ood_full=False,
         ),
     }
 

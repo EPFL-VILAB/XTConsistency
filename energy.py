@@ -3723,6 +3723,8 @@ class EnergyLoss(object):
                 shape = list(path_values[list(path_values.keys())[0]].shape)
                 shape[1] = 3
 
+                errors_list = []
+
                 for i, path in enumerate(paths):
                     X = path_values.get(path, torch.zeros(shape, device=DEVICE))
                     if first: images += [[]]
@@ -3743,18 +3745,23 @@ class EnergyLoss(object):
 
                         print (out_task, errors.max())
                         errors = (3*errors/(out_task.variance)).clamp(min=0, max=1)
-                        log_errors = torch.log(errors + 1)
-                        log_errors = log_errors / log_errors.max()
+                        log_errors = torch.log(errors)
+                        log_errors = (log_errors - log_errors.min())/(log_errors.max() - log_errors.min())
 
                         errors = torch.tensor(cmap(errors.cpu()))[:, 0].permute((0, 3, 1, 2)).float()[:, 0:3]
                         errors = errors.clamp(min=0, max=1).expand(*shape).to(DEVICE)
                         errors[~mask.expand_as(errors)] = 0.505
                         images[-2].append(errors)
 
+                        errors_list.append(errors) 
+
                         log_errors = torch.tensor(cmap(log_errors.cpu()))[:, 0].permute((0, 3, 1, 2)).float()[:, 0:3]
                         log_errors = log_errors.clamp(min=0, max=1).expand(*shape).to(DEVICE)
                         log_errors[~mask.expand_as(log_errors)] = 0.505
                         images[-1].append(log_errors)
+
+                    # mean_vals = np.mean(np.array(errors_list), axis=0)
+                    # min_vals = np.amin(np.array(errors_list), axis=0)
 
                 first = False
 
@@ -3842,107 +3849,28 @@ class CurriculumEnergyLoss(EnergyLoss):
 
 
 
-# class RandomBatchCurricEnergyLoss(EnergyLoss):
-    
-#     def __init__(self, *args, **kwargs):
-#         self.k = kwargs.pop('k', 3)
-#         self.random_select = False
-#         self.percep_weight = 0.0
-#         self.percep_step = kwargs.pop("percep_step", 0.1)
-#         self.running_stats = {}
-
-#         super().__init__(*args, **kwargs)
-
-#         self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-#         print (self.percep_losses)
-#         self.chosen_losses = random.sample(self.percep_losses, self.k)
-
-#     def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-
-#         if self.random_select or len(self.running_stats) < len(self.percep_losses):
-#             self.chosen_losses = random.sample(self.percep_losses, self.k)
-#         else:
-#             self.chosen_losses = sorted(self.running_stats, key=self.running_stats.get, reverse=True)[:self.k]
-        
-#         logger.text (f"Chosen losses: {self.chosen_losses}")
-#         loss_types = ["mse"] + [("percep_" + loss) for loss in self.chosen_losses] + [("direct_" + loss) for loss in self.chosen_losses]
-#         print (self.chosen_losses)
-#         loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-#         # everything in loss_dict["percep"] should be normalized via a direct path
-#         # everything in loss_dict["direct"] should be used as a normalizer
-#         # everything in loss_dict["mse"] should be standardized to 1
-
-#         for key in self.chosen_losses:
-#             loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] / loss_dict[f"direct_{key}"].detach()
-#             loss_dict.pop(f"direct_{key}")
-#             self.running_stats[key] = loss_dict[f"percep_{key}"].detach().cpu().item()
-#             loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] * (0.0035 * self.percep_weight)
-
-#         loss_dict["mse"] = loss_dict["mse"]
-#         return loss_dict
-
-
-#     def logger_hooks(self, logger):
-        
-#         name_to_realities = defaultdict(list)
-#         for loss_type, loss_item in self.losses.items():
-#             for realities, losses in loss_item.items():
-#                 for path1, path2 in losses:
-#                     name = loss_type+" : "+path1 + " -> " + path2
-#                     name_to_realities[name] += list(realities)
-
-#         # for name, realities in name_to_realities.items():
-#         #     def jointplot(logger, data, name=name, realities=realities):
-#         #         names = [f"{reality}_{name}" for reality in realities]
-#         #         if not all(x in data for x in names):
-#         #             return
-#         #         data = np.stack([data[x] for x in names], axis=1)
-#         #         logger.plot(data, name, opts={"legend": names})
-
-#         #     logger.add_hook(partial(jointplot, name=name, realities=realities), feature=f"{realities[-1]}_{name}", freq=1)
-        
-#         for name, realities in name_to_realities.items():
-#             for reality in realities:
-#                 def plot(logger, data, name=name, reality=reality):
-#                     logger.plot(data[f"{reality}_{name}"], f"{reality}_{name}")
-#                 logger.add_hook(partial(plot, name=name, reality=reality), feature=f"{reality}_{name}", freq=1)
-
-#     def logger_update(self, logger):
-#         super().logger_update(logger)
-
-#         self.percep_weight += self.percep_step
-#         logger.text (f"Percep weight: {self.percep_weight}")
-
-
-
-
-
-
 class WinRateEnergyLoss(EnergyLoss):
     
     def __init__(self, *args, **kwargs):
+        
         self.k = kwargs.pop('k', 3)
-        self.random_select = kwargs.pop('random_select', False)
-        self.update_every_batch = kwargs.pop('update_every_batch', False)
-        self.percep_weight = kwargs.pop('percep_weight', 1.0)
-        self.percep_step = kwargs.pop('percep_step', 0.0)
-        self.standardize = kwargs.pop('standardize', False)
-        self.unit_mean = kwargs.pop('unit_mean', False)
-        self.update_freq = kwargs.pop('update_freq', 20)
-        self.running_stats = {}
-        self.mean_cache, self.idx = None, 0
-
+        
         super().__init__(*args, **kwargs)
-        self.select_losses()
+
+        self.percep_losses = [key[7:] for key in self.losses.keys() if key[:7] == "percep_"]
+        # last winrate computed on test set
+        self.percep_winrate = {loss: 1.0 for loss in self.percep_losses}
+        # running winrate stats
+        self.running_stats = defaultdict(lambda: defaultdict(list))
+        self.chosen_losses = random.sample(self.percep_losses, self.k)
 
     def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
         
-        if self.update_every_batch: self.select_losses()
         loss_types = ["mse"] + \
                     [("percep_" + loss) for loss in self.chosen_losses] + \
                     [("direct_" + loss) for loss in self.chosen_losses] + \
                     [("indirect_" + loss) for loss in self.chosen_losses]
-
+        
         loss_dict = super().__call__(graph, 
             discriminator=discriminator, 
             realities=realities, 
@@ -3951,62 +3879,30 @@ class WinRateEnergyLoss(EnergyLoss):
         )
 
         mse = loss_dict["mse"]
-        if self.unit_mean and self.idx % self.update_freq == 0:
-            self.mean_cache = mse.mean().detach()
-        self.idx += 1
+        self.losses["mse"]
 
         for key in self.chosen_losses:
-            percep, direct, indirect = loss_dict.pop(f"percep_{key}"), loss_dict.pop(f"direct_{key}"), loss_dict.pop(f"indirect_{key}")
-            winrate = torch.mean((direct < indirect).float()) # high winrate means direct is beating indirect significantly
-            self.running_stats[key] = winrate.detach().cpu().item()
-            if self.standardize:
-                percep = 0.0068 * torch.mean((percep - percep.mean().detach())/percep.std().detach())
-            if self.unit_mean:
-                percep = self.mean_cache * percep.mean() / direct.detach().mean()
-            loss_dict[f"percep_{key}"] = percep * self.percep_weight
-
-        if self.standardize:
-            loss_dict["mse"] = 0.0068 * torch.mean((mse - mse.mean().detach())/mse.std().detach())
-        if self.unit_mean:
-            loss_dict["mse"] = mse.mean()
+            direct, indirect = loss_dict.pop(f"direct_{key}"), loss_dict.pop(f"indirect_{key}")
+            
+            # high winrate means direct is beating indirect significantly
+            winrate = (direct < indirect).float()
+            for reality in realities:
+                self.running_stats[reality][key] += [list(winrate.detach().cpu().numpy())]
 
         return loss_dict
 
     def logger_update(self, logger):
         super().logger_update(logger)
-        self.select_losses()
-        self.percep_weight += self.percep_step
-        logger.text (f"Chosen losses: {self.chosen_losses}")
-        logger.text (f"Perceptual weight: {self.percep_weight}")
 
-    def logger_hooks(self, logger):
-        if not self.update_every_batch:
-            super().logger_hooks(logger)
-            return
+    def select_losses(self, reality):
 
-        # Split up train and val because they are no longer necessarily equal 
-        name_to_realities = defaultdict(list)
-        for loss_type, loss_item in self.losses.items():
-            for realities, losses in loss_item.items():
-                for path1, path2 in losses:
-                    name = loss_type+" : "+path1 + " -> " + path2
-                    name_to_realities[name] += list(realities)
-
-        for name, realities in name_to_realities.items():
-            for reality in realities:
-                def plot(logger, data, name=name, reality=reality):
-                    logger.plot(data[f"{reality}_{name}"], f"{reality}_{name}")
-                logger.add_hook(partial(plot, name=name, reality=reality), feature=f"{reality}_{name}", freq=1)
-
-
-    def select_losses(self):
-
-        self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-        if self.random_select or len(self.running_stats) < len(self.percep_losses):
-            self.chosen_losses = random.sample(self.percep_losses, self.k)
-        else:
-            self.chosen_losses = sorted(self.running_stats, key=self.running_stats.get, reverse=True)[:self.k]
-
+        self.percep_winrate.update({loss: np.mean(value) for loss, value in self.running_stats[reality].items()})
+        self.chosen_losses = sorted(
+            self.percep_losses, 
+            key=self.percep_winrate.get, 
+            reverse=True
+        ) [:self.k]
+        self.running_stats[reality] = defaultdict(list)
 
 
 
