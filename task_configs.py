@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, time, glob, math, itertools, json, copy
+import random, sys, os, time, glob, math, itertools, json, copy, pickle
 from collections import defaultdict, namedtuple
 from functools import partial
 
@@ -99,7 +99,28 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
 class Task(object):
-
+    loss_data = {
+        'mean': {
+            'depth_zbuffer': 0.0019921332132071257,
+            'edge_occlusion': 0.0011569896014407277,
+            'keypoints2d': 1.860377778939437e-05,
+            'keypoints3d': 0.006980584934353828,
+            'normal': 0.011797692626714706,
+            'principal_curvature': 0.006907616276293993,
+            'reshading': 0.019728055223822594,
+            'sobel_edges': 0.027776412665843964
+        },
+        'std': {
+            'depth_zbuffer': 0.0026024647522717714,
+            'edge_occlusion': 0.001091460813768208,
+            'keypoints2d': 7.5412835940369405e-06,
+            'keypoints3d': 0.0027347521390765905,
+            'normal': 0.007238822057843208,
+            'principal_curvature': 0.003230677917599678,
+            'reshading': 0.01584836095571518,
+            'sobel_edges': 0.00939561054110527
+        }
+    }
     """ General task output space"""
     def __init__(self, name, 
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
@@ -113,12 +134,21 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.kind = name
+        self.mean = Task.loss_data["mean"].get(self.name, 0.0)
+        self.std = Task.loss_data["std"].get(self.name, 1.0)
+
+        # id_percep_losses = pickle.load(
+        #     open("mount/shared/energy_calc/id_percep_losses.p", "rb"))
+        # self.mean = np.mean(id_percep_losses["percep_{name}"])
+        # self.std = np.std(id_percep_losses[])
+        # IPython.embed()
 
     def norm(self, pred, target, batch_mean=True):
         if batch_mean:
             loss = ((pred - target)**2).mean()
         else:
             loss = ((pred - target)**2).mean(dim=1).mean(dim=1).mean(dim=1)
+        loss = (loss - self.mean) / self.std
         return loss, (loss.mean().detach(),)
 
     def __call__(self, size=256):

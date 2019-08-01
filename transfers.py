@@ -89,8 +89,8 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
     ('keypoints3d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
-    # ('normal', 'rgb'):
-    #     (lambda: UNetOld3(), f"{SHARED_DIR}/results_normals2rgb_unet_5/model.pth"),
+    ('normal', 'rgb'):
+        (lambda: UNetOld3(), f"{SHARED_DIR}/results_normals2rgb_unet_5/model.pth"),
 }
 
 class Transfer(nn.Module):

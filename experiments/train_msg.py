@@ -57,7 +57,7 @@ def main(
 
 	if cont is not None: graph.load_weights(cont)
 	graph.compile(torch.optim.Adam, lr=4e-4, weight_decay=2e-6, amsgrad=True)
-
+	
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)

@@ -436,39 +436,6 @@ energy_configs = {
         },
     },
 
-    "cycle": {
-        "paths": {
-            "x": [tasks.rgb],
-            "y^": [tasks.normal],
-            "n(x)": [tasks.rgb, tasks.normal],
-            "N(n(x))": [tasks.rgb, tasks.normal, tasks.rgb],
-        },
-        "losses": {
-            "mse": {
-                ("train", "val"): [
-                    ("n(x)", "y^"),
-                ],
-            },
-            "percep": {
-                ("train", "val"): [
-                    ("N(n(x))", "x"),
-                ],
-            },
-        },
-        "plots": {
-            "ID": dict(
-                size=256, 
-                realities=("test", "ood"), 
-                paths=[
-                    "x",
-                    "y^",
-                    "n(x)",
-                    "N(n(x))",
-                ]
-            ),
-        },
-    },
-
     "percep_curv": {
         "paths": {
             "x": [tasks.rgb],
@@ -3860,6 +3827,7 @@ class WinRateEnergyLoss(EnergyLoss):
         self.percep_losses = [key[7:] for key in self.losses.keys() if key[:7] == "percep_"]
         # last winrate computed on test set
         self.percep_winrate = {loss: 1.0 for loss in self.percep_losses}
+
         # running winrate stats
         self.running_stats = defaultdict(lambda: defaultdict(list))
         self.chosen_losses = random.sample(self.percep_losses, self.k)
@@ -3878,8 +3846,7 @@ class WinRateEnergyLoss(EnergyLoss):
             batch_mean=False
         )
 
-        mse = loss_dict["mse"]
-        self.losses["mse"]
+        loss_dict["mse"] = loss_dict.pop("mse").mean()
 
         for key in self.chosen_losses:
             direct, indirect = loss_dict.pop(f"direct_{key}"), loss_dict.pop(f"indirect_{key}")
@@ -3888,6 +3855,8 @@ class WinRateEnergyLoss(EnergyLoss):
             winrate = (direct < indirect).float()
             for reality in realities:
                 self.running_stats[reality][key] += [list(winrate.detach().cpu().numpy())]
+            
+            loss_dict[f"percep_{key}"] = loss_dict.pop(f"percep_{key}").mean()
 
         return loss_dict
 

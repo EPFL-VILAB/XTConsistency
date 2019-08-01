@@ -41,6 +41,7 @@ def main(
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
+	train_step, val_step = 4, 4
 	print (train_step, val_step)
 	
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
@@ -50,7 +51,8 @@ def main(
 
 	# GRAPH
 	realities = [train, val, test, ood]
-	graph = TaskGraph(tasks=energy_loss.tasks + realities, finetuned=finetuned)
+	graph = TaskGraph(tasks=energy_loss.tasks + realities, 
+		freeze_list=energy_loss.freeze_list, finetuned=finetuned)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 	if not USE_RAID: graph.load_weights(cont)
 
@@ -75,24 +77,29 @@ def main(
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
 			logger.update("loss", val_loss)
+
 		energy_loss.select_losses(val)
-		
+		if epochs != 0: 
+			energy_loss.logger_update(logger)
+		else:
+			energy_loss.metrics = {}
+		logger.step()
+
+		logger.text(f"Chosen losses: {energy_loss.chosen_losses}")
+		logger.text(f"Percep winrate: {energy_loss.percep_winrate}")
 		graph.train()
 		for _ in range(0, train_step):
-			train_loss = energy_loss(graph, realities=[train])
-			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-
+			train_loss2 = energy_loss(graph, realities=[train])
+			train_loss = sum(train_loss2.values())
+ 
 			graph.step(train_loss)
 			train.step()
+
 			logger.update("loss", train_loss)
 
-		energy_loss.logger_update(logger)
-		
 		# if logger.data["val_mse : y^ -> n(~x)"][-1] < best_ood_val_loss:
 		# 	best_ood_val_loss = logger.data["val_mse : y^ -> n(~x)"][-1]
 		# 	energy_loss.plot_paths(graph, logger, realities, prefix="best")
-
-		logger.step()
 
 if __name__ == "__main__":
 	Fire(main)
