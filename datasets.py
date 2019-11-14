@@ -23,33 +23,33 @@ import IPython
 import pdb
 
 """ Default data loading configurations for training, validation, and testing. """
-def load_train_val(train_tasks, val_tasks=None, fast=False, 
-        train_buildings=None, val_buildings=None, split_file="data/split.txt", 
+def load_train_val(train_tasks, val_tasks=None, fast=False,
+        train_buildings=None, val_buildings=None, split_file="data/split.txt",
         dataset_cls=None, batch_size=64, batch_transforms=cycle,
         subset=None, subset_size=None,
     ):
-    
+
     dataset_cls = dataset_cls or TaskDataset
     train_tasks = [get_task(t) if isinstance(t, str) else t for t in train_tasks]
     if val_tasks is None: val_tasks = train_tasks
     val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
 
-    data = yaml.load(open(split_file))
-    train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
-    val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
+    #data = yaml.load(open(split_file))
+    #train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
+    #val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
     train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
-        train_loader = torch.utils.data.Subset(train_loader, 
+        train_loader = torch.utils.data.Subset(train_loader,
             random.sample(range(len(train_loader)), subset_size or int(len(train_loader)*subset)),
         )
-        # val_loader = torch.utils.data.Subset(val_loader, 
+        # val_loader = torch.utils.data.Subset(val_loader,
         #     random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
         # )
 
-    train_step = int(2248616 // (100 * batch_size))
-    val_step = int(245592 // (100 * batch_size))
+    train_step = int(3415276 // (100 * batch_size))
+    val_step = int(534331 // (100 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
     if fast: train_step, val_step = 8, 8
@@ -57,13 +57,13 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     return train_loader, val_loader, train_step, val_step
 
 """ Default data loading configurations for training, validation, and testing. """
-def load_sintel_train_val_test(source_task, dest_task, 
+def load_sintel_train_val_test(source_task, dest_task,
         batch_size=64, batch_transforms=cycle
     ):
 
     if isinstance(source_task, str) and isinstance(dest_task, str):
         source_task, dest_task = get_task(source_task), get_task(dest_task)
-    
+
     buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth/*")])
     train_buildings, val_buildings = train_test_split(buildings, test_size=0.2)
     print (len(train_buildings))
@@ -87,7 +87,7 @@ def load_sintel_train_val_test(source_task, dest_task,
 
     test_set = list(itertools.islice(val_loader, 1))
     test_images = torch.cat([x for x, y in test_set], dim=0)
-    
+
     return train_loader, val_loader, train_step, val_step, test_set, test_images
 
 
@@ -107,7 +107,7 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
+def load_test(all_tasks, buildings=["almena", "albertville", "brinnon", "espanola"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
@@ -120,9 +120,21 @@ def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
+    test_loader3 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[2]], tasks=all_tasks, shuffle=False),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True,
+    )
+    test_loader4 = torch.utils.data.DataLoader(
+        TaskDataset(buildings=[buildings[3]], tasks=all_tasks, shuffle=False),
+        batch_size=sample,
+        num_workers=sample, shuffle=False, pin_memory=True,
+    )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
-    test_set = tuple(torch.cat([x, y], dim=0) for x, y in zip(set1, set2))
+    set3 = list(itertools.islice(test_loader3, 1))[0]
+    set4 = list(itertools.islice(test_loader4, 1))[0]
+    test_set = tuple(torch.cat([x, y, z, w], dim=0) for x, y, z, w in zip(set1, set2, set3, set4))
     return test_set
 
 
@@ -154,14 +166,14 @@ def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
     )
     ood_images = list(itertools.islice(ood_loader, 1))
     return ood_loader, ood_images
-    
+
 
 
 
 
 class TaskDataset(Dataset):
 
-    def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS, 
+    def __init__(self, buildings, tasks=[get_task("rgb"), get_task("normal")], data_dirs=DATA_DIRS,
             building_files=None, convert_path=None, use_raid=USE_RAID, resize=None, unpaired=False, shuffle=True):
 
         super().__init__()
@@ -172,7 +184,7 @@ class TaskDataset(Dataset):
         if use_raid:
             self.convert_path = self.convert_path_raid
             self.building_files = self.building_files_raid
-        
+
         # Build a map from buildings to directories
         # self.file_map = {}
         # for data_dir in self.data_dirs:
@@ -288,7 +300,7 @@ class SintelDataset(TaskDataset):
 
         dest_file = f"{BASE_DIR}/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
         return dest_file
-            
+
 
 
 class ImageDataset(Dataset):
@@ -303,15 +315,15 @@ class ImageDataset(Dataset):
         self.tasks = tasks
         if not USE_RAID and files is None:
             os.system(f"ls {data_dir}/*.png")
-            os.system(f"sudo ls {data_dir}/*.png")
-            os.system(f"sudo ls {data_dir}/*.png")
-            os.system(f"sudo ls {data_dir}/*.png")
+            # os.system(f"sudo ls {data_dir}/*.png")
+            # os.system(f"sudo ls {data_dir}/*.png")
+            # os.system(f"sudo ls {data_dir}/*.png")
             os.system(f"ls {data_dir}/*.png")
 
         self.files = files \
             or sorted(
-                glob.glob(f"{data_dir}/*.png") 
-                + glob.glob(f"{data_dir}/*.jpg") 
+                glob.glob(f"{data_dir}/*.png")
+                + glob.glob(f"{data_dir}/*.jpg")
                 + glob.glob(f"{data_dir}/*.jpeg")
             )
 
@@ -337,7 +349,7 @@ class ImagePairDataset(Dataset):
     def __init__(self, data_dir, resize=256, files=None):
 
         self.data_dir = data_dir
-        
+
         self.resize = resize
         self.files = files or glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
         print("num files = ", len(self.files))
@@ -365,7 +377,7 @@ class ImagePairDataset(Dataset):
         return image, image
 
 
-    
+
 
 
 if __name__ == "__main__":

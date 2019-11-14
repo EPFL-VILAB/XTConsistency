@@ -13,8 +13,8 @@ train_buildings: [woodbine, hometown, haymarket, emmaus, swormville, haxtun, mar
   collierville, maguayo, brentsville, mckeesport, hitchland, browntown, aldine, spotswood,
   chrisney, kildare, stockman, ribera, hortense, mentasta, soldier, kettle, northgate,
   crandon, ovalo, cullison, dedham, vails, tallmadge, gratz, fonda, helton, mogadore,
-  highspire, sharon, foyil, shelbiana, benevolence, seiling, brevort, noonday, springhill,
-  coronado, sundown, carneiro, silas, assinippi, monticello, wappingers, tansboro,
+  highspire, sharon, foyil, shelbiana, seiling, brevort, noonday, springhill,
+  coronado, sundown, carneiro, silas, assinippi, monticello, wappingers,
   lakeville, stockwell, ogilvie, victorville, braxton, sodaville, silerton, hobson,
   tradewinds, sands, coffeen, umpqua, blackstone, sarcoxie, model, bremerton, capistrano,
   deatsville, graceville, dansville, belpre, edson, mcnary, kirwin, rosenberg, lynchburg,
@@ -58,6 +58,6 @@ val_buildings: [cottonport, elton, corder, mazomanie, barranquitas, ihlen, wilke
   macedon, portal, gastonia, thrall, orangeburg, poipu, kankakee, chiloquin, sussex,
   maricopa, wesley, bowlus, copemish, tariffville, pomaria, kathryn, rutherford, plumerville,
   waimea, experiment, dalcour, ohoopee, mifflinburg, callicoon, manassas, macksville,
-  apache, mosquito, alfred, maida, dauberville, chireno, stilwell, albertville, ellaville,
+  apache, alfred, maida, dauberville, chireno, stilwell, albertville, ellaville,
   kobuk, burien, carpio, placida, forkland, tippecanoe, beach, eagan, grace, portola,
   hominy, maben]

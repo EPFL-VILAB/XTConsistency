@@ -10,11 +10,9 @@ import torchvision
 
 from utils import *
 from models import TrainableModel, DataParallelModel
-from task_configs import RealityTask, get_task, get_model, tasks
-from transfers import Transfer
+from task_configs import get_task, get_model, tasks
 from logger import Logger, VisdomLogger
-from graph import TaskGraph
-from datasets import TaskDataset, ImageDataset, SintelDataset, load_test, load_ood
+from datasets import TaskDataset, SintelDataset, load_ood
 import transforms
 
 torch.manual_seed(229) # cpu  vars
@@ -56,7 +54,8 @@ class ValidationMetrics(object):
     def load_dataset(self):
         self.dataset = TaskDataset(["almena", "albertville"], tasks=[self.src_task, self.dest_task])
 
-    def build_dataloader(self, sample=None, batch_size=64, seed=229):
+    def build_dataloader(self, sample=None, batch_size=32, seed=229):
+        print ("Dataset length: ", len(self.dataset))
         sampler = torch.utils.data.SequentialSampler() if sample is None else \
             torch.utils.data.SubsetRandomSampler(random.Random(seed).sample(range(len(self.dataset)), sample))
 
@@ -69,10 +68,7 @@ class ValidationMetrics(object):
     def get_metrics(self, pred, target):
         """ Gets standard set of metrics for predictions and targets """
 
-        batch_losses, _ = self.dest_task.norm(pred, target, batch_mean=False)
-
         masks = self.dest_task.build_mask(target, val=self.dest_task.mask_val)
-        (pred * masks.float() - target * masks.float()) ** 2
         original_pred, original_target, masks = (x.data.permute((0, 2, 3, 1)).cpu().numpy() for x in [pred, target, masks])
         masks = masks[:, :, :, 0]
         
@@ -85,43 +81,37 @@ class ValidationMetrics(object):
         original_pred = original_pred.astype('float64')
         original_target = original_target.astype('float64')
         num_examples, width, height, num_channels = original_pred.shape
-        _, _, _, num_channels_targ = original_pred.shape
 
         pred = original_pred.reshape([-1, num_channels])
-        target = original_target.reshape([-1, num_channels_targ])
+        target = original_target.reshape([-1, num_channels])
         num_valid_pixels, num_invalid_pixels = np.sum(masks), np.sum(1 - masks)
 
-        # ang_errors_per_pixel_unraveled = np.arccos(cosine_similarity(pred, target)) * 180 / math.pi
-        # ang_errors_per_pixel = ang_errors_per_pixel_unraveled.reshape(num_examples, width, height)
-        # ang_errors_per_pixel_masked = ang_errors_per_pixel * masks
-        # ang_error_mean = np.sum(ang_errors_per_pixel_masked) / num_valid_pixels
-        # ang_error_without_masking = np.mean(ang_errors_per_pixel)
-        # ang_error_median = np.mean(np.median(np.ma.masked_equal(ang_errors_per_pixel_masked, 0), axis=1))
+        ang_errors_per_pixel_unraveled = np.arccos(cosine_similarity(pred, target)) * 180 / math.pi
+        ang_errors_per_pixel = ang_errors_per_pixel_unraveled.reshape(num_examples, width, height)
+        ang_errors_per_pixel_masked = ang_errors_per_pixel * masks
+        ang_error_mean = np.sum(ang_errors_per_pixel_masked) / num_valid_pixels
+        ang_error_without_masking = np.mean(ang_errors_per_pixel)
+        ang_error_median = np.mean(np.median(np.ma.masked_equal(ang_errors_per_pixel_masked, 0), axis=1))
 
         normed_pred = pred / (norm(pred)[:, None] + 2e-1)
         normed_target = target / (norm(target)[:, None] + 2e-1)
-        masks_expanded = np.expand_dims(masks, num_channels_targ).reshape([-1])
-
+        masks_expanded = np.expand_dims(masks, 3).reshape([-1])
         mse = (normed_pred - normed_target) * masks_expanded[:, None]
-        l1 = np.mean(np.absolute(mse))
-        losses = np.mean(mse.reshape(num_examples, -1) ** 2, axis=0)
         mse, rmse = np.mean(mse ** 2), np.sqrt(np.mean(mse ** 2)) * 255.0
-        
-        # threshold_1125 = (np.sum(ang_errors_per_pixel_masked <= 11.25) - num_invalid_pixels) / num_valid_pixels
-        # threshold_225 = (np.sum(ang_errors_per_pixel_masked <= 22.5) - num_invalid_pixels) / num_valid_pixels
-        # threshold_30 = (np.sum(ang_errors_per_pixel_masked <= 30) - num_invalid_pixels) / num_valid_pixels
+
+        threshold_1125 = (np.sum(ang_errors_per_pixel_masked <= 11.25) - num_invalid_pixels) / num_valid_pixels
+        threshold_225 = (np.sum(ang_errors_per_pixel_masked <= 22.5) - num_invalid_pixels) / num_valid_pixels
+        threshold_30 = (np.sum(ang_errors_per_pixel_masked <= 30) - num_invalid_pixels) / num_valid_pixels
         
         return {
-            # "ang_error_without_masking": ang_error_without_masking,
-            # "ang_error_mean": f"{ang_error_mean:0.2f}",
-            # "ang_error_median": f"{ang_error_median:0.2f}",
-            "eval_mse": f"{np.mean(losses) * 100:0.5f}",
-            "eval_std": f"{np.std(losses)*100:0.3f}",
-            # "eval_rmse": rmse,
-            "eval_L1": f"{l1 * 100:0.2f}",
-            # 'percentage_within_11.25_degrees': threshold_1125,
-            # 'percentage_within_22.5_degrees': threshold_225,
-            # 'percentage_within_30_degrees': threshold_30,
+            "ang_error_without_masking": ang_error_without_masking,
+            "ang_error_mean": ang_error_mean,
+            "ang_error_median": ang_error_median,
+            "eval_mse": mse,
+            "eval_rmse": rmse,
+            'percentage_within_11.25_degrees': threshold_1125,
+            'percentage_within_22.5_degrees': threshold_225,
+            'percentage_within_30_degrees': threshold_30,
         }
 
     @staticmethod
@@ -139,8 +129,8 @@ class ValidationMetrics(object):
         metrics = self.get_metrics(preds, targets)
 
         if logger is not None:
-            # for metric in ValidationMetrics.PLOT_METRICS:
-            #     logger.update(f"{self.name}_{metric}", metrics[metric])
+            for metric in ValidationMetrics.PLOT_METRICS:
+                logger.update(f"{self.name}_{metric}", metrics[metric])
             if show_images:
                 logger.images_grouped([images[0:image_limit], preds[0:image_limit], targets[0:image_limit]], self.name, resize=256)
 
@@ -242,189 +232,34 @@ class SintelMetrics(ValidationMetrics):
         self.dataset = SintelDataset(tasks=[self.src_task, self.dest_task])
         print (len(self.dataset))
 
-# datasets = [
-#     ValidationMetrics("almena"),
-#     # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
-#     # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
-#     # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
-#     # ImageCorruptionMetrics("almena_corrupted4", corruption=4),
-#     # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
-#     # AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
-#     # SintelMetrics("sintel"),
-# ]
+datasets = [
+    # ValidationMetrics("almena"),
+    # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
+    # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
+    # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
+    # ImageCorruptionMetrics("almena_corrupted4", corruption=4),
+    # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
+    # AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
+    SintelMetrics("sintel"),
+]
 
 
-def run_eval_suite(name, dest_task=tasks.normal, graph_file=None, model_file=None, logger=None, sample=800, show_images=False, old=False):
-    
-    if graph_file is not None:
-        graph = TaskGraph(tasks=[tasks.rgb, dest_task], pretrained=False)
-        graph.load_weights(graph_file)
-        model = graph.edge(tasks.rgb, dest_task).load_model()
-    elif old:
-        model = DataParallelModel.load(UNetOld().cuda(), model_file)
-    elif model_file is not None:
-        model = DataParallelModel.load(UNet(downsample=5).cuda(), model_file)
-    else:
-        model = Transfer(src_task=tasks.normal, dest_task=dest_task).load_model()
-
+def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=400, show_images=False):
+    print ("Model: ", model)
+    # load_ood()
+    model = model or DataParallelModel.load(UNet().cuda(), f"{MODELS_DIR}/{model_file}")
     model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
 
-    dataset = ValidationMetrics("almena", dest_task=dest_task)
-    result = dataset.evaluate(model, sample=800)
-    logger.text (name + ": " + str(result))
+    logger = logger or VisdomLogger("eval", env=JOB)
 
+    for dataset in datasets:
+        logger.text (str(dataset.evaluate(model, sample=sample, logger=logger, show_images=show_images)))
 
-def run_viz_suite(name, data, dest_task=tasks.normal, graph_file=None, model_file=None, logger=None, old=False, multitask=False):
-    
-    if graph_file is not None:
-        graph = TaskGraph(tasks=[tasks.rgb, dest_task], pretrained=False)
-        graph.load_weights(graph_file)
-        model = graph.edge(tasks.rgb, dest_task).load_model()
-    elif old:
-        model = DataParallelModel.load(UNetOld().cuda(), model_file)
-    elif multitask:
-        model = DataParallelModel.load(UNet(downsample=5, out_channels=6).cuda(), model_file)
-    elif model_file is not None:
-        model = DataParallelModel.load(UNet(downsample=6).cuda(), model_file)
-    else:
-        model = Transfer(src_task=tasks.rgb, dest_task=dest_task).load_model()
-
-    model.compile(torch.optim.Adam, lr=3e-4, weight_decay=2e-6, amsgrad=True)
-
-    # DATA LOADING 1
-    results = model.predict(data)[:, -3:].clamp(min=0, max=1)
-    return results
-
+    ValidationMetrics.plot(logger)
 
 
 
 if __name__ == "__main__":
-    logger = VisdomLogger("eval", env=JOB)
-
-    # run_eval_suite("r2n-m", model_file=f"{MODELS_DIR}/rgb2normal_multitask.pth", logger=logger, multitask=True)
-    # run_eval_suite("cycle", model_file=f"{SHARED_DIR}/results_BASELINES_doublecycle_percepstep0.02_2/n.pth", logger=logger)
-    # run_eval_suite("cycle-cons", model_file=f"{SHARED_DIR}/results_BASELINES_cycleconsistency_percepstep0.02_1/n.pth", logger=logger)
-    # run_eval_suite("r2n-i", model_file=f"{MODELS_DIR}/rgb2normal_imagepercep.pth", logger=logger)
-    # run_eval_suite("r2n-r", model_file=f"{MODELS_DIR}/rgb2normal_random.pth", logger=logger)
-    # run_eval_suite("unet-b", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_baseline_3/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("unet-pe", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("mp-5-avg", graph_file=f"{SHARED_DIR}/results_LBP_multipercep_32/graph.pth", logger=logger)
-    
-    # run_eval_suite("unet-b-10k", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_baseline10k_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc-10k", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_consistency10k_8/graph.pth", logger=logger)
-    # run_eval_suite("std-1", model_file=f"{SHARED_DIR}/results_STD_baseline_cont1_3/n.pth", logger=logger)
-    # run_eval_suite("std-2", model_file=f"{SHARED_DIR}/results_STD_baseline_cont2_4/n.pth", logger=logger)
-    # run_eval_suite("std-3", model_file=f"{SHARED_DIR}/results_STD_baseline_cont3_2/n.pth", logger=logger)
-    # run_eval_suite("cycle", model_file=f"{SHARED_DIR}/results_BASELINESV2_cycle_percepstep0.01_cont_2/n.pth", logger=logger)
-    run_eval_suite("cycle-cons", model_file=f"{SHARED_DIR}/results_BASELINESV2_cycleconsistency_percepstep0.01_cont_1/n.pth", logger=logger)
-    
-    # logger.images_grouped(images, "grouped_data", resize=256)
-
-    # run_eval_suite("depth-b", dest_task=tasks.depth_zbuffer, model_file=f"{MODELS_DIR}/rgb2zdepth_buffer.pth", logger=logger)
-    # run_eval_suite("depth-mp", dest_task=tasks.depth_zbuffer, graph_file=f"{SHARED_DIR}/results_LBP_multipercep_latwinrate_depthtarget_3/graph.pth", logger=logger)
-    # # # run_eval_suite("depth-mp2", dest_task=tasks.depth_zbuffer, graph_file=f"{SHARED_DIR}/results_LBP_multipercep8_winrate_standardized_depthtarget2_2/graph.pth", logger=logger)
-
-    # run_eval_suite("reshade-b", dest_task=tasks.reshading, model_file=f"{MODELS_DIR}/rgb2reshade.pth", logger=logger)
-    # run_eval_suite("reshade-mp", dest_task=tasks.reshading, graph_file=f"{SHARED_DIR}/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth", logger=logger)
-    # # # run_eval_suite("apc-tr", graph_file=f"{SHARED_DIR}/results_2FF_conservative_full_triangle_4/graph.pth", logger=logger, old=True)
-
-    # run_eval_suite("unet-b-old", model_file=f"{MODELS_DIR}/unet_baseline.pth", logger=logger, old=True)
-    # run_eval_suite("cycle-cons", model_file=f"{SHARED_DIR}/results_BASELINES_cycleconsistency_percepstep0.02_1/n.pth", logger=logger)
-    # run_eval_suite("cycle", model_file=f"{SHARED_DIR}/results_BASELINES_doublecycle_percepstep0.02_2/n.pth", logger=logger)
-    
-    # run_eval_suite("r2n-d", model_file=f"{MODELS_DIR}/rgb2normal_discriminator.pth", logger=logger)
-    # run_eval_suite("r2n-i", model_file=f"{MODELS_DIR}/rgb2normal_imagepercep.pth", logger=logger)
-    # run_eval_suite("r2n-r", model_file=f"{MODELS_DIR}/rgb2normal_random.pth", logger=logger)
-    # # run_eval_suite("r2n-m", model_file=f"{MODELS_DIR}/rgb2normal_multitask.pth", logger=logger)
-
-    # run_eval_suite("unet-pe", graph_file=f"{SHARED_DIR}/results_LBP_percepedge2_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("unet-pk3", model_file=f"{SHARED_DIR}/results_LBP_percepkeypoints3d_6/graph.pth", logger=logger, old=True)
-    
-    # run_eval_suite("unet-pe", graph_file=f"{SHARED_DIR}/results_LBP_percepedge2_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("unet-pk3", graph_file=f"{SHARED_DIR}/results_LBP_percepkeypoints3d_6/graph.pth", logger=logger, old=True)
-
-    # run_eval_suite("mp-5-avg", graph_file=f"{SHARED_DIR}/results_LBP_multipercep_32/graph.pth", logger=logger)
-    # run_eval_suite("mp-8-lat", graph_file=f"{SHARED_DIR}/results_LBP_multipercep8_winrate_standardized_upd_3/graph.pth", logger=logger)
-    # run_eval_suite("mp-8-rnd", graph_file=f"{SHARED_DIR}/results_LBP_multipercep_rndv2_2/graph.pth", logger=logger)
-
-    # run_eval_suite("unet-p0.1-graph", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_percepstep0.1_15/graph.pth", logger=logger)
-    # run_eval_suite("unet-b", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_baseline_3/graph.pth", logger=logger)
-
-    
-
-    # test_set = load_test([tasks.rgb(size=320), tasks.normal(size=320)], sample=8)
-    # ood_set = load_ood([tasks.rgb(size=320), tasks.normal(size=320)], sample=12)
-    
-    # ood_loader = torch.utils.data.DataLoader(
-    #     ImageDataset(tasks=[tasks.rgb(size=320), tasks.normal(size=320)], data_dir=f"{SHARED_DIR}/ood_images"),
-    #     batch_size=16,
-    #     num_workers=16, shuffle=False, pin_memory=True
-    # )
-    # dataset = list(ood_loader)
-    # data = [test_set[0][:, 0:3], ood_set[0][:, 0:3], 
-    #     dataset[0][0][:, 0:3], dataset[1][0][:, 0:3],
-    #     dataset[2][0][:, 0:3], dataset[3][0][:, 0:3],
-    #     dataset[4][0][:, 0:3], dataset[5][0][:, 0:3],
-    # ]
-    # target = [test_set[1][:, 0:3], ood_set[1][:, 0:3], 
-    #     dataset[0][1][:, 0:3], dataset[1][1][:, 0:3],
-    #     dataset[2][1][:, 0:3], dataset[3][1][:, 0:3],
-    #     dataset[4][1][:, 0:3], dataset[5][1][:, 0:3],
-    # ]
-    # images = torch.cat(data, dim=0)
-    # targets = torch.cat(target, dim=0)
-
-    # images = [images, targets]
-    # images += [run_viz_suite("r2n-m", data, model_file=f"{MODELS_DIR}/rgb2normal_multitask.pth", logger=logger, multitask=True)]
-    # # images += [run_viz_suite("cycle", data, model_file=f"{SHARED_DIR}/results_BASELINES_doublecycle_percepstep0.02_2/n.pth", logger=logger)]
-    # images += [run_viz_suite("cycle-cons", data, model_file=f"{SHARED_DIR}/results_BASELINES_cycleconsistency_percepstep0.02_1/n.pth", logger=logger)]
-    # images += [run_viz_suite("r2n-i", data, model_file=f"{MODELS_DIR}/rgb2normal_imagepercep.pth", logger=logger)]
-    # images += [run_viz_suite("r2n-r", data, model_file=f"{MODELS_DIR}/rgb2normal_random.pth", logger=logger)]
-    # images += [run_viz_suite("unet-b", data, graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_baseline_3/graph.pth", logger=logger)]
-    # images += [run_viz_suite("unet-pc", data, model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)]
-    # images += [run_viz_suite("unet-pe", data, model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)]
-    # images += [run_viz_suite("mp-5-avg", data, graph_file=f"{SHARED_DIR}/results_LBP_multipercep_32/graph.pth", logger=logger)]
-    # images += [run_viz_suite("mp-8-lat", data, graph_file=f"{SHARED_DIR}/results_LBP_multipercep8_winrate_standardized_upd_3/graph.pth", logger=logger)]
-    # # run_eval_suite("unet-b-1m", model_file=f"{SHARED_DIR}/results_SAMPLEFF_baseline1m_3/n.pth", logger=logger)
-    # # run_eval_suite("unet-pc-1m", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_consistency1m_25/graph.pth", logger=logger)
-    # logger.images_grouped(images, "r2n-multi, cycle-cons, r2n-img, r2n-rnd, unet-base, unet-pc, unet-pe, mp-5-avg, mp-8-lat-win", resize=320)
-    
-    # run_eval_suite("reshade-b", data, dest_task=tasks.reshading, model_file=f"{MODELS_DIR}/rgb2reshade.pth", logger=logger)
-    # run_eval_suite("reshade-mp", data, dest_task=tasks.reshading, graph_file=f"{SHARED_DIR}/results_LBP_multipercep_latwinrate_reshadingtarget_6/graph.pth", logger=logger)
-    # run_eval_suite("apc-tr", data, graph_file=f"{SHARED_DIR}/results_2FF_conservative_full_triangle_4/graph.pth", logger=logger, old=True)
-
-    # run_eval_suite("unet-b-old", model_file=f"{MODELS_DIR}/unet_baseline.pth", logger=logger, old=True)
-    # run_eval_suite("cycle-cons", model_file=f"{SHARED_DIR}/results_BASELINES_cycleconsistency_percepstep0.02_1/n.pth", logger=logger)
-    
-    
-    # run_eval_suite("r2n-d", model_file=f"{MODELS_DIR}/rgb2normal_discriminator.pth", logger=logger)
-    # run_eval_suite("r2n-i", model_file=f"{MODELS_DIR}/rgb2normal_imagepercep.pth", logger=logger)
-    # run_eval_suite("r2n-r", model_file=f"{MODELS_DIR}/rgb2normal_random.pth", logger=logger)
-
-    # run_eval_suite("unet-pe", graph_file=f"{SHARED_DIR}/results_LBP_percepedge2_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("unet-pk3", model_file=f"{SHARED_DIR}/results_LBP_percepkeypoints3d_6/graph.pth", logger=logger, old=True)
-    
-    # run_eval_suite("unet-pe", graph_file=f"{SHARED_DIR}/results_LBP_percepedge2_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc", model_file=f"{MODELS_DIR}/unet_percepstep_0.1.pth", logger=logger, old=True)
-    # run_eval_suite("unet-pk3", graph_file=f"{SHARED_DIR}/results_LBP_percepkeypoints3d_6/graph.pth", logger=logger, old=True)
-
-    # run_eval_suite("mp-5-avg", graph_file=f"{SHARED_DIR}/results_LBP_multipercep_32/graph.pth", logger=logger)
-    # run_eval_suite()
-    # run_eval_suite("mp-8-rnd", graph_file=f"{SHARED_DIR}/results_LBP_multipercep_rndv2_2/graph.pth", logger=logger)
-
-    # run_eval_suite("unet-p0.1-graph", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_percepstep0.1_15/graph.pth", logger=logger)
-    # run_eval_suite("unet-b", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_full_data_baseline_3/graph.pth", logger=logger)
-
-    # run_eval_suite("unet-b-10k", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_baseline10k_4/graph.pth", logger=logger)
-    # run_eval_suite("unet-pc-10k", graph_file=f"{SHARED_DIR}/results_SAMPLEFF_consistency10k_8/graph.pth", logger=logger)
-    
-
-    
-    
-    # Fire(run_eval_suite)
+    Fire(run_eval_suite)
 
 

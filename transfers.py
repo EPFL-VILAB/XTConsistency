@@ -17,34 +17,34 @@ from transforms import resize
 
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
-from modules.unet import UNet, UNetOld, UNetOld2, UNetOld3, UNetReshade
+from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
 
 from fire import Fire
 import IPython
 
 
 pretrained_transfers = {
-    ('normal', 'principal_curvature'): 
+    ('normal', 'principal_curvature'):
         (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth"),
-    ('normal', 'depth_zbuffer'): 
+    ('normal', 'depth_zbuffer'):
         (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth"),
-    ('normal', 'sobel_edges'): 
+    ('normal', 'sobel_edges'):
         (lambda: UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d_sobel_unet4.pth"),
-    ('sobel_edges', 'normal'): 
+    ('sobel_edges', 'normal'):
         (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
-    ('normal', 'grayscale'): 
+    ('normal', 'grayscale'):
         (lambda: UNet(out_channels=1, downsample=6).cuda(), f"{MODELS_DIR}/normals2gray_unet.pth"),
-    ('principal_curvature', 'normal'): 
+    ('principal_curvature', 'normal'):
         (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
-    ('principal_curvature', 'sobel_edges'): 
+    ('principal_curvature', 'sobel_edges'):
         (lambda: UNet(downsample=4, out_channels=1), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth"),
-    # ('depth_zbuffer', 'normal'): 
+    # ('depth_zbuffer', 'normal'):
     #     (lambda: UNet(in_channels=1, downsample=4), f"{MODELS_DIR}/depth2normal_unet4.pth"),
-    ('depth_zbuffer', 'normal'): 
+    ('depth_zbuffer', 'normal'):
         (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal_unet6.pth"),
-    ('depth_zbuffer', 'sobel_edges'): 
+    ('depth_zbuffer', 'sobel_edges'):
         (lambda: UNet(downsample=4, in_channels=1, out_channels=1).cuda(), f"{MODELS_DIR}/depth_zbuffer2sobel_edges.pth"),
-    ('sobel_edges', 'principal_curvature'): 
+    ('sobel_edges', 'principal_curvature'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
     ('rgb', 'sobel_edges'):
         (lambda: sobel_kernel, None),
@@ -61,14 +61,19 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
         (lambda: UNet(downsample=3, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d_new.pth"),
+    ('rgb', 'keypoints3d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints3d.pth"),
     ('rgb', 'reshading'):
         (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
     ('rgb', 'depth_zbuffer'):
         (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_buffer.pth"),
 
+    ('rgb', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2edge_occlusion.pth"),
+
     ('keypoints2d', 'principal_curvature'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_new.pth"),
-    
+
 
     ('keypoints3d', 'principal_curvature'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2principal_curvature.pth"),
@@ -89,16 +94,31 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
     ('keypoints3d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
-    ('normal', 'rgb'):
-        (lambda: UNetOld3(), f"{SHARED_DIR}/results_normals2rgb_unet_5/model.pth"),
+
+    ('reshading', 'depth_zbuffer'):
+        (lambda: UNetReshade(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2depth_zbuffer.pth"),
+    ('depth_zbuffer', 'reshading'):
+        (lambda: UNetReshade(downsample=5, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2reshading.pth"),
+
+    ('keypoints3d', 'depth_zbuffer'):
+        (lambda: UNet(downsample=5, out_channels=1, in_channels=1), f"{MODELS_DIR}/keypoints3d2depth_zbuffer.pth"),
+    ('depth_zbuffer', 'keypoints3d'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints3d.pth"),
+
+    ('depth_zbuffer', 'keypoints2d'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints2d.pth"),
+    ('depth_zbuffer', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2edge_occlusion.pth"),
+
 }
 
 class Transfer(nn.Module):
-    
-    def __init__(self, src_task, dest_task, 
-        checkpoint=True, name=None, model_type=None, path=None, 
+
+    def __init__(self, src_task, dest_task,
+        checkpoint=True, name=None, model_type=None, path=None,
         pretrained=True, finetuned=False
     ):
+        print ("Transfer finetuning: ", finetuned)
         super().__init__()
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)
@@ -116,6 +136,7 @@ class Transfer(nn.Module):
             path = f"{MODELS_DIR}/ft_perceptual/{src_task.name}2{dest_task.name}.pth"
             if os.path.exists(path):
                 self.model_type, self.path = saved_type or (lambda: get_model(src_task, dest_task)), path
+                print ("Using finetuned: ", path)
                 return
 
         if self.model_type is None:
@@ -138,9 +159,6 @@ class Transfer(nn.Module):
                 path = f"{MODELS_DIR}/{src_task.name}2{dest_task.name}_new.pth"
             if os.path.exists(path):
                 self.model_type, self.path = lambda: get_model(src_task, dest_task), path
-            # else:
-            #     self.model_type = lambda: get_model(src_task, dest_task)
-            #     print ("Not using pretrained b/c no model file avail")
 
         if not pretrained:
             print ("Not using pretrained [heavily discouraged]")
@@ -150,6 +168,8 @@ class Transfer(nn.Module):
         if self.model is None:
             if self.path is not None:
                 self.model = DataParallelModel.load(self.model_type().to(DEVICE), self.path)
+                # if optimizer:
+                #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
                 self.model = self.model_type()
                 if isinstance(self.model, nn.Module):
@@ -180,7 +200,7 @@ class RealityTransfer(Transfer):
 
 
 class FineTunedTransfer(Transfer):
-    
+
     def __init__(self, transfer):
         super().__init__(transfer.src_task, transfer.dest_task, checkpoint=transfer.checkpoint, name=transfer.name)
         self.cached_models = {}
@@ -189,18 +209,20 @@ class FineTunedTransfer(Transfer):
 
         model_path = get_finetuned_model_path(parents + [self])
 
-        if model_path not in self.cached_models: 
+        if model_path not in self.cached_models:
             if not os.path.exists(model_path):
+                print(f"{model_path} not found, loading pretrained")
                 self.cached_models[model_path] = super().load_model()
             else:
+                print(f"{model_path} found, loading finetuned")
                 self.cached_models[model_path] = DataParallelModel.load(self.model_type().cuda(), model_path)
-
+                print(f"")
         self.model = self.cached_models[model_path]
         return self.model
 
     def __call__(self, x):
 
-        if not hasattr(x, "parents"): 
+        if not hasattr(x, "parents"):
             x.parents = []
 
         self.load_model(parents=x.parents)
@@ -219,7 +241,7 @@ functional_transfers = (
 
     Transfer('normal', 'sobel_edges', name='s'),
     Transfer('sobel_edges', 'normal', name='S'),
-    
+
     Transfer('principal_curvature', 'sobel_edges', name='CE'),
     Transfer('sobel_edges', 'principal_curvature', name='EC'),
 
@@ -230,7 +252,7 @@ functional_transfers = (
     Transfer('depth_zbuffer', 'principal_curvature', name='H'),
 
     Transfer('rgb', 'normal', name='n'),
-    Transfer('rgb', 'normal', name='npstep', 
+    Transfer('rgb', 'normal', name='npstep',
         model_type=lambda: UNetOld(),
         path=f"{MODELS_DIR}/unet_percepstep_0.1.pth",
     ),
@@ -247,7 +269,7 @@ functional_transfers = (
 
     Transfer('normal', 'reshading', name='nr'),
     Transfer('reshading', 'normal', name='rn'),
- 
+
     Transfer('keypoints3d', 'normal', name='k3N'),
     Transfer('normal', 'keypoints3d', name='Nk3'),
 
@@ -272,7 +294,7 @@ def get_transfer_name(transfer):
 if __name__ == "__main__":
     y = g(F(f(x)))
     print (y.shape)
-    
+
 
 
 

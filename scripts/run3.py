@@ -14,18 +14,14 @@ def upload(exp_id):
     os.system(f"echo {exp_id}, 0, mount > scripts/jobinfo.txt")
     subprocess.run(["rsync", "-av", "--progress", ".", "checkpoints/" + exp_id, "--exclude",
         "checkpoints", "--exclude", ".git", "--exclude", "data/snapshots", 
-        "--exclude", "data/results", "--exclude", "local", "--exclude", "data/alllinks.txt", 
+        "--exclude", "data/results", "--exclude", "local", 
         "--exclude", "__pycache__", "--exclude", "experiments/__pycache__"])
     subprocess.run(f"gsutil -m cp -r checkpoints/{exp_id} gs://taskonomy-code".split())
 
-def delete(env_prefix):
+def delete(env):
     import visdom
     link = visdom.Visdom(server="http://35.229.22.191", port=7000, env=env)
-    envs = link.get_env_list()
-    
-    for env in envs:
-        if env[0:len(env_prefix)] == env_prefix:
-            link.delete_env(env)
+    link.delete_env(env)
 
 def save():
     import visdom

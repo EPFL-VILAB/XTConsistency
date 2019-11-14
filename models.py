@@ -203,7 +203,7 @@ class DataParallelModel(TrainableModel):
     def load(cls, model=TrainableModel(), weights_file=None):
         model = cls(model)
         if weights_file is not None:
-            data = torch.load(weights_file)
+            data = torch.load(weights_file, map_location=lambda storage, loc: storage)
             # hack for models saved with optimizers
             if "optimizer" in data: data = data["state_dict"]
             model.load_state_dict(data)

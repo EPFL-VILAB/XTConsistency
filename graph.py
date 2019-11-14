@@ -37,15 +37,17 @@ import transforms
 
 from modules.gan_dis import GanDisNet
 
+import pdb
+
 class TaskGraph(TrainableModel):
     """Basic graph that encapsulates set of edge constraints. Can be saved and loaded
     from directories."""
 
     def __init__(
-        self, tasks=tasks, edges=None, edges_exclude=None, 
+        self, tasks=tasks, edges=None, edges_exclude=None,
         pretrained=True, finetuned=False,
         reality=[], task_filter=[tasks.segment_semantic, tasks.class_scene],
-        freeze_list=[], lazy=False,
+        freeze_list=[],
     ):
 
         super().__init__()
@@ -65,17 +67,19 @@ class TaskGraph(TrainableModel):
             if edges_exclude is not None and key in edges_exclude: continue
             if src_task == dest_task: continue
             if isinstance(dest_task, RealityTask): continue
+            print (src_task, dest_task)
             transfer = None
             if isinstance(src_task, RealityTask):
                 if dest_task not in src_task.tasks: continue
                 transfer = RealityTransfer(src_task, dest_task)
             else:
-                transfer = Transfer(src_task, dest_task, 
+                transfer = Transfer(src_task, dest_task,
                     pretrained=pretrained, finetuned=finetuned
                 )
                 transfer.name = get_transfer_name(transfer)
-            if transfer.model_type is None: 
+            if transfer.model_type is None:
                 continue
+            print ("Added transfer", transfer)
             self.edges += [transfer]
             self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
@@ -86,12 +90,12 @@ class TaskGraph(TrainableModel):
                 else:
                     print("freezing " + str((src_task.name, dest_task.name)))
                 try:
-                    if not lazy: transfer.load_model()
+                    transfer.load_model()
                 except:
                     IPython.embed()
 
         self.params = nn.ModuleDict(self.params)
-    
+
     def edge(self, src_task, dest_task):
         key1 = str((src_task.name, dest_task.name))
         key2 = str((src_task.kind, dest_task.kind))
@@ -105,14 +109,14 @@ class TaskGraph(TrainableModel):
             try:
                 # if x is not None: print (x.shape)
                 # print (self.edge(path[i-1], path[i]))
-                x = cache.get(tuple(path[0:(i+1)]), 
+                x = cache.get(tuple(path[0:(i+1)]),
                     self.edge(path[i-1], path[i])(x)
                 )
             except KeyError:
                 return None
             except Exception as e:
                 IPython.embed()
-                
+
             if use_cache: cache[tuple(path[0:(i+1)])] = x
         return x
 
@@ -137,7 +141,6 @@ class TaskGraph(TrainableModel):
     def load_weights(self, weights_file=None):
         for key, state_dict in torch.load(weights_file).items():
             if key in self.edge_map:
-                self.edge_map[key].load_model()
                 self.edge_map[key].load_state_dict(state_dict)
 
 

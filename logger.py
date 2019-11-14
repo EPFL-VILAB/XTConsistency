@@ -35,7 +35,7 @@ class BaseLogger(object):
         if feature not in self.running_data or self.reset_running.pop(feature, False):
             self.running_data[feature] = []
         self.running_data[feature].append(x)
-        
+
         for hook, hook_feature, freq in self.hooks:
             if feature == hook_feature and len(self.data[feature]) % freq == 0:
                 hook(self, self.data)
@@ -46,7 +46,7 @@ class BaseLogger(object):
         for feature in self.running_data.keys():
             if len(self.running_data[feature]) == 0: continue
             val = np.mean(self.running_data[feature])
-            if float(val).is_integer(): 
+            if float(val).is_integer():
                 buf += f"{feature}: {int(val)}, "
             else:
                 buf += f"{feature}: {val:0.4f}" + ", "
@@ -83,7 +83,7 @@ class Logger(BaseLogger):
     def plot(self, data, plot_name, opts={}):
         np.savez_compressed(f"{self.results}/{plot_name}.npz", data)
         plt.plot(data)
-        plt.savefig(f"{self.results}/{plot_name}.jpg"); 
+        plt.savefig(f"{self.results}/{plot_name}.jpg");
         plt.clf()
 
 
@@ -92,14 +92,12 @@ class VisdomLogger(BaseLogger):
     def __init__(self, *args, **kwargs):
         self.port = kwargs.pop('port', 7000)
         self.server = kwargs.pop('server', '35.229.22.191')
-        self.env = kwargs.pop('env', 'main')
-        self.delete = kwargs.pop('delete', True)
-        print ("No deletion")
+        # self.server = kwargs.pop('server', 'localhost')
+        self.env = kwargs.pop('env', 'CH')
         print ("In (git) scaling-reset")
         print (f"Logging to environment {self.env}")
         self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
-        if self.delete:
-            self.visdom.delete_env(self.env)
+        self.visdom.delete_env(self.env)
         self.windows = {}
         super().__init__(*args, **kwargs)
         self.save()
@@ -119,7 +117,7 @@ class VisdomLogger(BaseLogger):
         self.windows["text"] = window, display
 
     def window(self, plot_name, plot_func, *args, **kwargs):
-        
+
         options = {'title': plot_name}
         options.update(kwargs.pop("opts", {}))
         window = self.windows.get(plot_name, None)
@@ -131,10 +129,10 @@ class VisdomLogger(BaseLogger):
         self.windows[plot_name] = window
 
     def plot(self, data, plot_name, opts={}):
-        self.window(plot_name, self.visdom.line, 
+        self.window(plot_name, self.visdom.line,
             np.array(data), X=np.array(range(len(data))), opts=opts
         )
-        
+
     def histogram(self, data, plot_name, opts={}):
         self.window(plot_name, self.visdom.histogram, np.array(data), opts=opts)
 

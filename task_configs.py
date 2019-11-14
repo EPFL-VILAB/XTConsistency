@@ -1,6 +1,6 @@
 
 import numpy as np
-import random, sys, os, time, glob, math, itertools, json, copy, pickle
+import random, sys, os, time, glob, math, itertools, json, copy
 from collections import defaultdict, namedtuple
 from functools import partial
 
@@ -20,7 +20,6 @@ from models import DataParallelModel
 from modules.unet import UNet, UNetOld2, UNetOld
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
-from modules.passthrough import PassThroughModel
 
 import IPython
 
@@ -63,17 +62,10 @@ model_types = {
     ('principal_curvature', 'depth_zbuffer'): lambda : UNet(downsample=6, in_channels=3, out_channels=1),
     ('rgb', 'normal'): lambda : UNet(downsample=6),
     ('rgb', 'keypoints2d'): lambda : UNet(downsample=3, out_channels=1),
-    ('rgb', 'latent'): lambda : UNet(downsample=5, out_channels=12),
-    ('latent', 'normal'): lambda : PassThroughModel(channel_range=(0, 3)),
-    ('latent', 'principal_curvature'): lambda : PassThroughModel(channel_range=(3, 6)),
-    ('latent', 'depth_zbuffer'): lambda : PassThroughModel(channel_range=(6, 7)),
-    ('latent', 'reshading'): lambda : PassThroughModel(channel_range=(7, 10)),
-    ('latent', 'keypoints3d'): lambda : PassThroughModel(channel_range=(10, 11)),
-    ('latent', 'edge_occlusion'): lambda : PassThroughModel(channel_range=(11, 12)),
 }
 
 def get_model(src_task, dest_task):
-    
+
     if isinstance(src_task, str) and isinstance(dest_task, str):
         src_task, dest_task = get_task(src_task), get_task(dest_task)
 
@@ -93,37 +85,15 @@ def get_model(src_task, dest_task):
 
 
 
-""" 
-Abstract task type definitions. 
+"""
+Abstract task type definitions.
 Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
 class Task(object):
-    loss_data = {
-        'mean': {
-            'depth_zbuffer': 0.0019921332132071257,
-            'edge_occlusion': 0.0011569896014407277,
-            'keypoints2d': 1.860377778939437e-05,
-            'keypoints3d': 0.006980584934353828,
-            'normal': 0.011797692626714706,
-            'principal_curvature': 0.006907616276293993,
-            'reshading': 0.019728055223822594,
-            'sobel_edges': 0.027776412665843964
-        },
-        'std': {
-            'depth_zbuffer': 0.0026024647522717714,
-            'edge_occlusion': 0.001091460813768208,
-            'keypoints2d': 7.5412835940369405e-06,
-            'keypoints3d': 0.0027347521390765905,
-            'normal': 0.007238822057843208,
-            'principal_curvature': 0.003230677917599678,
-            'reshading': 0.01584836095571518,
-            'sobel_edges': 0.00939561054110527
-        }
-    }
     """ General task output space"""
-    def __init__(self, name, 
-            file_name=None, file_name_alt=None, file_ext="png", file_loader=None, 
+    def __init__(self, name,
+            file_name=None, file_name_alt=None, file_ext="png", file_loader=None,
             plot_func=None
         ):
 
@@ -134,21 +104,12 @@ class Task(object):
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
         self.kind = name
-        self.mean = Task.loss_data["mean"].get(self.name, 0.0)
-        self.std = Task.loss_data["std"].get(self.name, 1.0)
-
-        # id_percep_losses = pickle.load(
-        #     open("mount/shared/energy_calc/id_percep_losses.p", "rb"))
-        # self.mean = np.mean(id_percep_losses["percep_{name}"])
-        # self.std = np.std(id_percep_losses[])
-        # IPython.embed()
 
     def norm(self, pred, target, batch_mean=True):
         if batch_mean:
             loss = ((pred - target)**2).mean()
         else:
             loss = ((pred - target)**2).mean(dim=1).mean(dim=1).mean(dim=1)
-        loss = (loss - self.mean) / self.std
         return loss, (loss.mean().detach(),)
 
     def __call__(self, size=256):
@@ -172,8 +133,8 @@ class Task(object):
         return hash(self.name)
 
 
-""" 
-Abstract task type definitions. 
+"""
+Abstract task type definitions.
 Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
@@ -190,7 +151,7 @@ class RealityTask(Task):
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=max(self.batch_size, 16), shuffle=self.shuffle, pin_memory=True
+            num_workers=16, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
         self.step()
@@ -222,7 +183,7 @@ class RealityTask(Task):
     def reload(self):
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=64, shuffle=self.shuffle, pin_memory=True
+            num_workers=16, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
 
@@ -259,10 +220,10 @@ class ImageTask(Task):
 
     def __call__(self, size=256, blur_radius=None):
         task = copy.deepcopy(self)
-        task.shape = (task.shape[0], size, size)
+        task.shape = (3, size, size)
         task.resize = size
         task.blur_radius = blur_radius
-        task.name +=  "blur" if blur_radius else (str(size) if size != 256 else "")
+        task.name +=  "blur" if blur_radius else str(size)
         task.base = self
         return task
 
@@ -282,12 +243,12 @@ class ImageTask(Task):
             i = random.randint(0, size - crop)
             j = random.randint(0, size - crop)
             crop_transform = TF.crop(x, i, j, crop, crop)
-        
+
         blur = [GaussianBulr(self.blur_radius)] if self.blur_radius else []
         return transforms.Compose(blur+[
-            transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
-            transforms.CenterCrop(size), 
-            crop_transform, 
+            transforms.Resize(size, interpolation=PIL.Image.NEAREST),
+            transforms.CenterCrop(size),
+            crop_transform,
             transforms.ToTensor(),
             self.transform]
         )
@@ -333,14 +294,14 @@ class ClassTask(Task):
     def norm(self, pred, target):
         # Input and target are BOTH logits
         loss = F.kl_div(pred, torch.exp(target))
-        return loss, (loss.detach(),) 
+        return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger):
 
         probs, idxs = torch.topk(data, 5, dim=1)
         probs = torch.exp(probs)
         probs, idxs = probs.cpu().data.numpy(), idxs.cpu().data.numpy()
-        
+
         output = ""
         for i in range(0, probs.shape[0]):
             output += f"Example {i}: <br>"
@@ -371,17 +332,11 @@ class PointInfoTask(Task):
         points = json.load(open(path))[self.point_type]
         return np.array(points['x'] + points['y'] + points['z'])
 
-class LatentTask(Task):
-    """ Output space for latent-space of VAE """
-
-    def __init__(self, *args, **kwargs):
-
-        self.size = kwargs.pop("size")
-        super().__init__(*args, **kwargs)
 
 
-""" 
-Current list of task definitions. 
+
+"""
+Current list of task definitions.
 Accessible via tasks.{TASK_NAME} or get_task("{TASK_NAME}")
 """
 
@@ -424,7 +379,7 @@ def get_task(task_name):
 def smooth_resolution_file_loader(path, resize=None, crop=None, seed=0, T=0):
     size = [128, 192, 256, 320, 384, 448, 512][T]
     image_transform = transforms.Compose([
-        transforms.Resize(size, interpolation=PIL.Image.NEAREST), 
+        transforms.Resize(size, interpolation=PIL.Image.NEAREST),
         transforms.ToTensor()
     ])
     return image_transform(Image.open(open(path, 'rb')))[0:3]
@@ -436,15 +391,15 @@ def ds_us_file_loader(path, resize=None, crop=None, seed=0, T=0):
         transforms.ToTensor()
     ])
     return image_transform(Image.open(open(path, 'rb')))[0:3]
-    
+
 
 tasks = [
     ImageTask('rgb'),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
     ImageTask('depth_zbuffer',
-        shape=(1, 256, 256), 
-        mask_val=1.0, 
+        shape=(1, 256, 256),
+        mask_val=1.0,
         transform=partial(clamp_maximum_transform, max_val=8000.0),
     ),
     ImageClassTask('segment_semantic',
@@ -452,7 +407,7 @@ tasks = [
         shape=(16, 256, 256), classes=16,
     ),
     ImageTask('reshading', mask_val=0.0507),
-    ImageTask('edge_occlusion', 
+    ImageTask('edge_occlusion',
         shape=(1, 256, 256),
         transform=partial(blur_transform, max_val=4000.0),
     ),
@@ -469,12 +424,11 @@ tasks = [
         shape=(1, 256, 256),
         transform=partial(blur_transform, max_val=2000.0),
     ),
-    ClassTask('class_scene', 
-        file_name_alt="class_places", 
+    ClassTask('class_scene',
+        file_name_alt="class_places",
         classes=365, classes_file="data/scene_classes.txt"
     ),
-    ImageTask('latent', shape=(64, 256, 256)),
-    # ClassTask('class_object', 
+    # ClassTask('class_object',
     #     classes=1000, classes_file="data/object_classes.txt"
     # ),
     # PointInfoTask('point_info'),
@@ -485,8 +439,8 @@ task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
 
 tasks.depth_zbuffer.sintel_depth = ImageTask('depth_sintel',
-    shape=(1, 256, 256), 
-    mask_val=1.0, 
+    shape=(1, 256, 256),
+    mask_val=1.0,
     transform=sintel_depth_transform,
 )
 

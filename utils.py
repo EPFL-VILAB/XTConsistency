@@ -23,34 +23,34 @@ EXPERIMENT, RESUME_JOB, BASE_DIR = open("scripts/jobinfo.txt").read().strip().sp
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/shared/models"
-DATA_DIRS = [f"{BASE_DIR}/data/taskonomy3", f"{BASE_DIR}/data2/taskonomy3", f"{BASE_DIR}/small_data"]
-RESULTS_DIR = f"{BASE_DIR}/shared/results_{EXPERIMENT}"
+DATA_DIRS = [f"/taskonomy-data/taskonomydata"]
+RESULTS_DIR = f"/workspace/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
-if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
-    RESULTS_DIR = "/result"
-    MODELS_DIR = "/models"
-elif BASE_DIR == "locals":
-    DATA_DIRS = ["local/small_data"]
-    RESULTS_DIR = "local/result"
-    MODELS_DIR = "local/models"
-elif BASE_DIR == "cvgl":
-    DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
-    RESULTS_DIR = "local/result"
-    MODELS_DIR = "local/models"
-elif BASE_DIR == "raid":
-    USE_RAID = True
-    BASE_DIR = "/raid/scratch/rsuri2"
-    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
-    RESULTS_DIR = f"results/results_{EXPERIMENT}"
-    MODELS_DIR = "/raid/scratch/rsuri2/models"
-    OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
-    os.system(f"mkdir -p {RESULTS_DIR}")
-else:
-    os.system(f"sudo mkdir -p {RESULTS_DIR}")
+# if BASE_DIR == "/":
+#     DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
+#     RESULTS_DIR = "/result"
+#     MODELS_DIR = "/models"
+# elif BASE_DIR == "locals":
+#     DATA_DIRS = ["local/small_data"]
+#     RESULTS_DIR = "local/result"
+#     MODELS_DIR = "local/models"
+# elif BASE_DIR == "cvgl":
+#     DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
+#     RESULTS_DIR = "local/result"
+#     MODELS_DIR = "local/models"
+# elif BASE_DIR == "raid":
+#     USE_RAID = True
+#     BASE_DIR = "/raid/scratch/rsuri2"
+#     DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
+#     RESULTS_DIR = f"results/results_{EXPERIMENT}"
+#     MODELS_DIR = "/raid/scratch/rsuri2/models"
+#     OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
+#     os.system(f"mkdir -p {RESULTS_DIR}")
+# else:
+#     os.system(f"sudo mkdir -p {RESULTS_DIR}")
 
 print (DATA_DIRS)
 
@@ -105,12 +105,12 @@ def get_finetuned_model_path(parents):
 
 
 def plot_images(model, logger, test_set, dest_task="normal",
-        ood_images=None, show_masks=False, loss_models={}, 
+        ood_images=None, show_masks=False, loss_models={},
         preds_name=None, target_name=None, ood_name=None,
     ):
 
     from task_configs import get_task, ImageTask
-    
+
     test_images, preds, targets, losses, _ = model.predict_with_data(test_set)
 
     if isinstance(dest_task, str):
@@ -122,7 +122,7 @@ def plot_images(model, logger, test_set, dest_task="normal",
 
     dest_task.plot_func(preds, preds_name or f"{dest_task.name}_preds", logger)
     dest_task.plot_func(targets, target_name or f"{dest_task.name}_target", logger)
-    
+
     if ood_images is not None:
         ood_preds = model.predict(ood_images)
         dest_task.plot_func(ood_preds, ood_name or f"{dest_task.name}_ood_preds", logger)
@@ -151,7 +151,7 @@ def gaussian_filter(channels=3, kernel_size=5, sigma=1.0, device=0):
     gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
     gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
     gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
-    
+
     return gaussian_kernel
 
 
