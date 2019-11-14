@@ -18,3 +18,4 @@ data/results
 .DS_Store
 local
 command.txt
+*.ipynb_checkpoints
