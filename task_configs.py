@@ -262,7 +262,8 @@ class ImageClassTask(ImageTask):
         super().__init__(*args, **kwargs)
 
     def norm(self, pred, target):
-        loss = F.kl_div(F.log_softmax(pred, dim=1), F.softmax(target, dim=1))
+        masks = (1-target[:,0]).unsqueeze(1)
+        loss = F.cross_entropy(pred[:,1:]*masks,target[:,1:].argmax(1))
         return loss, (loss.detach(),)
 
     def plot_func(self, data, name, logger, resize=None):

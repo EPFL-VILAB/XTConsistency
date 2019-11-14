@@ -483,6 +483,119 @@ energy_configs = {
         },
     },
 
+    "multiperceptual_segmentation": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.segment_semantic],
+            "n(x)": [tasks.rgb, tasks.segment_semantic],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "a(x)": [tasks.rgb, tasks.depth_zbuffer],
+            "d(x)": [tasks.rgb, tasks.normal],
+            "r(x)": [tasks.rgb, tasks.reshading],
+            "k3(x)": [tasks.rgb, tasks.keypoints3d],
+            "curv": [tasks.principal_curvature],
+            "normal": [tasks.normal],
+            "depth": [tasks.depth_zbuffer],
+            "reshading": [tasks.reshading],
+            "keypoints3d": [tasks.keypoints3d],
+            "f(y^)": [tasks.segment_semantic, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.segment_semantic, tasks.principal_curvature],
+            "s(y^)": [tasks.segment_semantic, tasks.depth_zbuffer],
+            "s(n(x))": [tasks.rgb, tasks.segment_semantic, tasks.depth_zbuffer],
+            "g(y^)": [tasks.segment_semantic, tasks.normal],
+            "g(n(x))": [tasks.rgb, tasks.segment_semantic, tasks.normal],
+            "nr(y^)": [tasks.segment_semantic, tasks.reshading],
+            "nr(n(x))": [tasks.rgb, tasks.segment_semantic, tasks.reshading],
+            "Nk3(y^)": [tasks.segment_semantic, tasks.keypoints3d],
+            "Nk3(n(x))": [tasks.rgb, tasks.segment_semantic, tasks.keypoints3d],
+        },
+        "freeze_list": [
+            [tasks.segment_semantic, tasks.principal_curvature],
+            [tasks.segment_semantic, tasks.depth_zbuffer],
+            [tasks.segment_semantic, tasks.normal],
+            [tasks.segment_semantic, tasks.reshading],
+            [tasks.segment_semantic, tasks.keypoints3d],
+        ],
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                ],
+            },
+            "percep_curv": {
+                ("train", "val"): [
+                    ("f(n(x))", "f(y^)"),
+                ],
+            },
+            "direct_curv": {
+                ("train", "val"): [
+                    ("RC(x)", "curv"),
+                ],
+            },
+            "percep_depth": {
+                ("train", "val"): [
+                    ("s(n(x))", "s(y^)"),
+                ],
+            },
+            "direct_depth": {
+                ("train", "val"): [
+                    ("a(x)", "depth"),
+                ],
+            },
+            "percep_normal": {
+                ("train", "val"): [
+                    ("g(n(x))", "g(y^)"),
+                ],
+            },
+            "direct_normal": {
+                ("train", "val"): [
+                    ("d(x)", "normal"),
+                ],
+            },
+            "percep_reshading": {
+                ("train", "val"): [
+                    ("nr(n(x))", "nr(y^)"),
+                ],
+            },
+            "direct_reshading": {
+                ("train", "val"): [
+                    ("r(x)", "reshading"),
+                ],
+            },
+            "percep_keypoints3d": {
+                ("train", "val"): [
+                    ("Nk3(n(x))", "Nk3(y^)"),
+                ],
+            },
+            "direct_keypoints3d": {
+                ("train", "val"): [
+                    ("k3(x)", "keypoints3d"),
+                ],
+            },
+        },
+        "plots": {
+            "": dict(
+                size=256,
+                realities=("test", "ood"),
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "f(y^)",
+                    "f(n(x))",
+                    "s(y^)",
+                    "s(n(x))",
+                    "g(y^)",
+                    "g(n(x))",
+                    "nr(n(x))",
+                    "nr(y^)",
+                    "Nk3(y^)",
+                    "Nk3(n(x))",
+                ]
+            ),
+        },
+    },
+
 }
 
 
@@ -674,6 +787,10 @@ class EnergyLoss(object):
                 shape[1] = 3
                 for i, path in enumerate(paths):
                     X = path_values.get(path, torch.zeros(shape, device=DEVICE))
+                    # if segmentation, ignore first channel and apply colormap
+                    # converting to np and back because its easier to do 2d indexing in np
+                    if X.shape[1] == 16:
+                       X = torch.Tensor(COLORS[X[:,1:].argmax(1).cpu().numpy()]).cuda().permute(0,3,1,2)/255.
                     images[i].append(X.clamp(min=0, max=1).expand(*shape))
 
             for i in range(0, len(paths)):
