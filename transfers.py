@@ -108,7 +108,17 @@ pretrained_transfers = {
     ('depth_zbuffer', 'keypoints2d'):
         (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints2d.pth"),
     ('depth_zbuffer', 'edge_occlusion'):
-        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2edge_occlusion.pth"),
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2edge_occlusion.pth"),   
+
+    ('reshading', 'keypoints2d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2keypoints2d_new.pth"),
+    ('reshading', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2edge_occlusion.pth"),
+
+    ('normal', 'keypoints2d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints2d_new.pth"),
+    ('normal', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2edge_occlusion.pth"),	
 
 }
 

@@ -107,7 +107,7 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(all_tasks, buildings=["almena", "albertville", "brinnon", "espanola"], sample=4):
+def load_test(all_tasks, buildings=["almena", "albertville", "espanola"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     test_loader1 = torch.utils.data.DataLoader(
@@ -125,16 +125,16 @@ def load_test(all_tasks, buildings=["almena", "albertville", "brinnon", "espanol
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
-    test_loader4 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[3]], tasks=all_tasks, shuffle=False),
-        batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True,
-    )
+    # test_loader4 = torch.utils.data.DataLoader(
+    #     TaskDataset(buildings=[buildings[3]], tasks=all_tasks, shuffle=False),
+    #     batch_size=sample,
+    #     num_workers=sample, shuffle=False, pin_memory=True,
+    # )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
     set3 = list(itertools.islice(test_loader3, 1))[0]
-    set4 = list(itertools.islice(test_loader4, 1))[0]
-    test_set = tuple(torch.cat([x, y, z, w], dim=0) for x, y, z, w in zip(set1, set2, set3, set4))
+    # set4 = list(itertools.islice(test_loader4, 1))[0]
+    test_set = tuple(torch.cat([x, y, z], dim=0) for x, y, z in zip(set1, set2, set3))
     return test_set
 
 

@@ -50,7 +50,7 @@ USE_RAID = False
 #     OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
 #     os.system(f"mkdir -p {RESULTS_DIR}")
 # else:
-#     os.system(f"sudo mkdir -p {RESULTS_DIR}")
+os.system(f"mkdir -p {RESULTS_DIR}")
 
 print (DATA_DIRS)
 
