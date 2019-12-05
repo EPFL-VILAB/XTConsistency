@@ -31,6 +31,7 @@ def main(
 
 	# CONFIG
 	data = yaml.load(open("data/split.txt"))
+	#pdb.set_trace()
 	train_buildings, val_buildings = data["train_buildings"], data["val_buildings"]
 	batch_size = batch_size or (4 if fast else 64)
 	energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
@@ -59,6 +60,7 @@ def main(
 		freeze_list=energy_loss.freeze_list,
 	)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
+	# pdb.set_trace()
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
@@ -68,18 +70,18 @@ def main(
 	best_ood_val_loss = float('inf')
 
 	energy_loss.plot_paths(graph, logger, realities, prefix="start")
-	####### computing baseline results ########
+	# ####### computing baseline results ########
 	graph.eval()
 	for _ in range(0, val_step*4):
 		with torch.no_grad():
-			val_loss = energy_loss(graph, realities=[val])
+			val_loss, _ = energy_loss(graph, realities=[val])
 			val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 		val.step()
 		logger.update("loss", val_loss)
 
 	for _ in range(0, train_step*4):
 		with torch.no_grad():
-			train_loss = energy_loss(graph, realities=[train])
+			train_loss, _ = energy_loss(graph, realities=[train])
 			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
 		train.step()
 		logger.update("loss", train_loss)
@@ -87,6 +89,7 @@ def main(
 	energy_loss.logger_update(logger)
 	###########################################
 
+	mse_grad_ratio_history = []
 	# TRAINING
 	for epochs in range(0, max_epochs):
 
@@ -95,23 +98,32 @@ def main(
 		if visualize: return
 
 		graph.train()
+		mse_grad_ratio_epoch = []
 		for _ in range(0, train_step):
-			train_loss = energy_loss(graph, realities=[train])
+			#pdb.set_trace()
+			train_loss, mse_coeff = energy_loss(graph, realities=[train], compute_grad_ratio=True)
 			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-
 			graph.step(train_loss)
 			train.step()
+			mse_grad_ratio_epoch.append(mse_coeff)
 			logger.update("loss", train_loss)
+
+		mse_grad_ratio_history.append(sum(mse_grad_ratio_epoch)/len(mse_grad_ratio_epoch))
+		logger.plot(mse_grad_ratio_history, "mse_coeff")
 
 		graph.eval()
 		for _ in range(0, val_step):
 			with torch.no_grad():
-				val_loss = energy_loss(graph, realities=[val])
+				val_loss, _ = energy_loss(graph, realities=[val])
 				val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
 			val.step()
 			logger.update("loss", val_loss)
 
 		energy_loss.logger_update(logger)
+
+		# if logger.data["val_mse : y^ -> n(~x)"][-1] < best_ood_val_loss:
+		# 	best_ood_val_loss = logger.data["val_mse : y^ -> n(~x)"][-1]
+		# 	energy_loss.plot_paths(graph, logger, realities, prefix="best")
 
 		logger.step()
 

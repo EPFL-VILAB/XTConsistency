@@ -42,48 +42,48 @@ def get_energy_loss(
 
 energy_configs = {
 
-    "multiperceptual_depth": {
+    "multiperceptual": {
         "paths": {
             "x": [tasks.rgb],
-            "y^": [tasks.depth_zbuffer],
-            "n(x)": [tasks.rgb, tasks.depth_zbuffer],
+            "y^": [tasks.normal],
+            "n(x)": [tasks.rgb, tasks.normal],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
             "a(x)": [tasks.rgb, tasks.sobel_edges],
-            "d(x)": [tasks.rgb, tasks.normal],
-            "r(x)": [tasks.rgb, tasks.reshading],
+            "d(x)": [tasks.rgb, tasks.reshading],
+            "r(x)": [tasks.rgb, tasks.depth_zbuffer],
             "EO(x)": [tasks.rgb, tasks.edge_occlusion],
             "k2(x)": [tasks.rgb, tasks.keypoints2d],
             "k3(x)": [tasks.rgb, tasks.keypoints3d],
             "curv": [tasks.principal_curvature],
             "edge": [tasks.sobel_edges],
-            "depth": [tasks.normal],
+            "depth": [tasks.depth_zbuffer],
             "reshading": [tasks.reshading],
             "keypoints2d": [tasks.keypoints2d],
             "keypoints3d": [tasks.keypoints3d],
             "edge_occlusion": [tasks.edge_occlusion],
-            "f(y^)": [tasks.depth_zbuffer, tasks.principal_curvature],
-            "f(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.principal_curvature],
-            "s(y^)": [tasks.depth_zbuffer, tasks.sobel_edges],
-            "s(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.sobel_edges],
-            "g(y^)": [tasks.depth_zbuffer, tasks.normal],
-            "g(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.normal],
-            "nr(y^)": [tasks.depth_zbuffer, tasks.reshading],
-            "nr(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.reshading],
-            "Nk2(y^)": [tasks.depth_zbuffer, tasks.keypoints2d],
-            "Nk2(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.keypoints2d],
-            "Nk3(y^)": [tasks.depth_zbuffer, tasks.keypoints3d],
-            "Nk3(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.keypoints3d],
-            "nEO(y^)": [tasks.depth_zbuffer, tasks.edge_occlusion],
-            "nEO(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.edge_occlusion],
+            "f(y^)": [tasks.normal, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
+            "s(y^)": [tasks.normal, tasks.sobel_edges],
+            "s(n(x))": [tasks.rgb, tasks.normal, tasks.sobel_edges],
+            "g(y^)": [tasks.normal, tasks.reshading],
+            "g(n(x))": [tasks.rgb, tasks.normal, tasks.reshading],
+            "nr(y^)": [tasks.normal, tasks.depth_zbuffer],
+            "nr(n(x))": [tasks.rgb, tasks.normal, tasks.depth_zbuffer],
+            "Nk2(y^)": [tasks.normal, tasks.keypoints2d],
+            "Nk2(n(x))": [tasks.rgb, tasks.normal, tasks.keypoints2d],
+            "Nk3(y^)": [tasks.normal, tasks.keypoints3d],
+            "Nk3(n(x))": [tasks.rgb, tasks.normal, tasks.keypoints3d],
+            "nEO(y^)": [tasks.normal, tasks.edge_occlusion],
+            "nEO(n(x))": [tasks.rgb, tasks.normal, tasks.edge_occlusion],
         },
         "freeze_list": [
-            [tasks.depth_zbuffer, tasks.principal_curvature],
-            [tasks.depth_zbuffer, tasks.sobel_edges],
-            [tasks.depth_zbuffer, tasks.normal],
-            [tasks.depth_zbuffer, tasks.reshading],
-            [tasks.depth_zbuffer, tasks.keypoints3d],
-            [tasks.depth_zbuffer, tasks.keypoints2d],
-            [tasks.depth_zbuffer, tasks.edge_occlusion],
+            [tasks.normal, tasks.principal_curvature],
+            [tasks.normal, tasks.sobel_edges],
+            [tasks.normal, tasks.reshading],
+            [tasks.normal, tasks.depth_zbuffer],
+            [tasks.normal, tasks.keypoints3d],
+            [tasks.normal, tasks.keypoints2d],
+            [tasks.normal, tasks.edge_occlusion],
         ],
         "losses": {
             "mse": {
@@ -111,24 +111,24 @@ energy_configs = {
                     ("a(x)", "s(y^)"),
                 ],
             },
-            "percep_normal": {
+            "percep_reshading": {
                 ("train", "val"): [
                     ("g(n(x))", "g(y^)"),
                 ],
             },
-            "direct_normal": {
+            "direct_reshading": {
                 ("train", "val"): [
-                    ("d(x)", "depth"),
+                    ("d(x)", "reshading"),
                 ],
             },
-            "percep_reshading": {
+            "percep_depth_zbuffer": {
                 ("train", "val"): [
                     ("nr(n(x))", "nr(y^)"),
                 ],
             },
-            "direct_reshading": {
+            "direct_depth_zbuffer": {
                 ("train", "val"): [
-                    ("r(x)", "reshading"),
+                    ("r(x)", "depth"),
                 ],
             },
             "percep_keypoints2d": {
@@ -336,7 +336,155 @@ energy_configs = {
         },
     },
 
-    "multiperceptual": {
+
+    "multiperceptual_depth": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.depth_zbuffer],
+            "n(x)": [tasks.rgb, tasks.depth_zbuffer],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "a(x)": [tasks.rgb, tasks.sobel_edges],
+            "d(x)": [tasks.rgb, tasks.normal],
+            "r(x)": [tasks.rgb, tasks.reshading],
+            "EO(x)": [tasks.rgb, tasks.edge_occlusion],
+            "k2(x)": [tasks.rgb, tasks.keypoints2d],
+            "k3(x)": [tasks.rgb, tasks.keypoints3d],
+            "curv": [tasks.principal_curvature],
+            "edge": [tasks.sobel_edges],
+            "depth": [tasks.normal],
+            "reshading": [tasks.reshading],
+            "keypoints2d": [tasks.keypoints2d],
+            "keypoints3d": [tasks.keypoints3d],
+            "edge_occlusion": [tasks.edge_occlusion],
+            "f(y^)": [tasks.depth_zbuffer, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.principal_curvature],
+            "s(y^)": [tasks.depth_zbuffer, tasks.sobel_edges],
+            "s(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.sobel_edges],
+            "g(y^)": [tasks.depth_zbuffer, tasks.normal],
+            "g(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.normal],
+            "nr(y^)": [tasks.depth_zbuffer, tasks.reshading],
+            "nr(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.reshading],
+            "Nk2(y^)": [tasks.depth_zbuffer, tasks.keypoints2d],
+            "Nk2(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.keypoints2d],
+            "Nk3(y^)": [tasks.depth_zbuffer, tasks.keypoints3d],
+            "Nk3(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.keypoints3d],
+            "nEO(y^)": [tasks.depth_zbuffer, tasks.edge_occlusion],
+            "nEO(n(x))": [tasks.rgb, tasks.depth_zbuffer, tasks.edge_occlusion],
+        },
+        "freeze_list": [
+            [tasks.depth_zbuffer, tasks.principal_curvature],
+            [tasks.depth_zbuffer, tasks.sobel_edges],
+            [tasks.depth_zbuffer, tasks.normal],
+            [tasks.depth_zbuffer, tasks.reshading],
+            [tasks.depth_zbuffer, tasks.keypoints3d],
+            [tasks.depth_zbuffer, tasks.keypoints2d],
+            [tasks.depth_zbuffer, tasks.edge_occlusion],
+        ],
+        "losses": {
+            "mse": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                ],
+            },
+            "percep_curv": {
+                ("train", "val"): [
+                    ("f(n(x))", "f(y^)"),
+                ],
+            },
+            "direct_curv": {
+                ("train", "val"): [
+                    ("RC(x)", "curv"),
+                ],
+            },
+            "percep_edge": {
+                ("train", "val"): [
+                    ("s(n(x))", "s(y^)"),
+                ],
+            },
+            "direct_edge": {
+                ("train", "val"): [
+                    ("a(x)", "s(y^)"),
+                ],
+            },
+            "percep_normal": {
+                ("train", "val"): [
+                    ("g(n(x))", "g(y^)"),
+                ],
+            },
+            "direct_normal": {
+                ("train", "val"): [
+                    ("d(x)", "depth"),
+                ],
+            },
+            "percep_reshading": {
+                ("train", "val"): [
+                    ("nr(n(x))", "nr(y^)"),
+                ],
+            },
+            "direct_reshading": {
+                ("train", "val"): [
+                    ("r(x)", "reshading"),
+                ],
+            },
+            "percep_keypoints2d": {
+                ("train", "val"): [
+                    ("Nk2(n(x))", "Nk2(y^)"),
+                ],
+            },
+            "direct_keypoints2d": {
+                ("train", "val"): [
+                    ("k2(x)", "keypoints2d"),
+                ],
+            },
+            "percep_keypoints3d": {
+                ("train", "val"): [
+                    ("Nk3(n(x))", "Nk3(y^)"),
+                ],
+            },
+            "direct_keypoints3d": {
+                ("train", "val"): [
+                    ("k3(x)", "keypoints3d"),
+                ],
+            },
+            "percep_edge_occlusion": {
+                ("train", "val"): [
+                    ("nEO(n(x))", "nEO(y^)"),
+                ],
+            },
+            "direct_edge_occlusion": {
+                ("train", "val"): [
+                    ("EO(x)", "edge_occlusion"),
+                ],
+            },
+        },
+        "plots": {
+            "": dict(
+                size=256,
+                realities=("test", "ood"),
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "f(y^)",
+                    "f(n(x))",
+                    "s(y^)",
+                    "s(n(x))",
+                    "g(y^)",
+                    "g(n(x))",
+                    "nr(n(x))",
+                    "nr(y^)",
+                    "Nk3(y^)",
+                    "Nk3(n(x))",
+                    "Nk2(y^)",
+                    "Nk2(n(x))",
+                    "nEO(y^)",
+                    "nEO(n(x))",
+                ]
+            ),
+        },
+    },
+
+    "multiperceptual_expanded": {
         "paths": {
             "x": [tasks.rgb],
             "y^": [tasks.normal],
@@ -474,15 +622,10 @@ energy_configs = {
                     "nr(y^)",
                     "Nk2(y^)",
                     "Nk2(n(x))",
-                    "Nk3(y^)",
-                    "Nk3(n(x))",
-                    "nEO(y^)",
-                    "nEO(n(x))",
                 ]
             ),
         },
     },
-
 }
 
 
@@ -628,7 +771,8 @@ class EnergyLoss(object):
 
         for name, realities in name_to_realities.items():
             def jointplot(logger, data, name=name, realities=realities):
-
+                #if 'baseline' not in realities: realities.append('baseline')
+                #data['baseline_mse : n(x) -> y^'] = [data['train_mse : n(x) -> y^'][0]]*len(data['train_mse : n(x) -> y^'])
                 names = [f"{reality}_{name}" for reality in realities]
                 if not all(x in data for x in names):
                     return
@@ -857,6 +1001,8 @@ class WinRateEnergyLoss(EnergyLoss):
         self.k = kwargs.pop('k', 3)
         self.random_select = kwargs.pop('random_select', False)
         self.running_stats = {}
+        self.target_task = kwargs['paths']['y^'][0].name
+        # print("Random Select?", self.random_select)
 
         super().__init__(*args, **kwargs)
 
@@ -864,32 +1010,49 @@ class WinRateEnergyLoss(EnergyLoss):
         print (self.percep_losses)
         self.chosen_losses = random.sample(self.percep_losses, self.k)
 
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
+    def __call__(self, graph, discriminator=None, realities=[], loss_types=None, compute_grad_ratio=False):
 
         loss_types = ["mse"] + [("percep_" + loss) for loss in self.chosen_losses] + [("direct_" + loss) for loss in self.chosen_losses]
         print (self.chosen_losses)
         loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, batch_mean=False)
-        # everything in loss_dict["percep"] should be normalized via a direct path
-        # everything in loss_dict["direct"] should be used as a normalizer
-        # everything in loss_dict["mse"] should be standardized to 1
 
+        chosen_percep_mse_losses = [k for k in loss_dict.keys() if 'direct' not in k]
+        percep_mse_coeffs = dict.fromkeys(chosen_percep_mse_losses, 1.0)
+        ########### to compute loss coefficients #############
+        if compute_grad_ratio:
+            percep_mse_gradnorms = dict.fromkeys(chosen_percep_mse_losses, 1.0)
+            for loss_name in chosen_percep_mse_losses:
+                graph.optimizer.zero_grad()
+                graph.zero_grad()
+                loss_dict[loss_name].mean().backward(retain_graph=True) # retain_graph=True so that backprop can be done again
+                target_weights=list(graph.edge_map[f"('rgb', '{self.target_task}')"].model.parameters())
+                percep_mse_gradnorms[loss_name] = sum([l.grad.abs().sum().item() for l in target_weights])/sum([l.numel() for l in target_weights])
+                graph.optimizer.zero_grad()
+                graph.zero_grad()
+                del target_weights
+            total_gradnorms = sum(percep_mse_gradnorms.values())
+            n_losses = len(chosen_percep_mse_losses)
+            for loss_name, val in percep_mse_coeffs.items():
+                percep_mse_coeffs[loss_name] = (total_gradnorms-percep_mse_gradnorms[loss_name])/((n_losses-1)*total_gradnorms)
+        ###########################################
+        # print(percep_mse_coeffs)
         for key in self.chosen_losses:
             winrate = torch.mean((loss_dict[f"percep_{key}"] > loss_dict[f"direct_{key}"]).float())
             winrate = winrate.detach().cpu().item()
 
             if winrate < 1.0:
                 self.running_stats[key] = winrate
-
-            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"].mean() / loss_dict[f"direct_{key}"].mean().detach()
+            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"].mean() * percep_mse_coeffs[f"percep_{key}"]
             loss_dict.pop(f"direct_{key}")
 
+
         print (self.running_stats)
-        loss_dict["mse"] = loss_dict["mse"].mean() / loss_dict["mse"].mean().detach()
-        return loss_dict
+        loss_dict["mse"] = loss_dict["mse"].mean() * percep_mse_coeffs["mse"]
+
+        return loss_dict, percep_mse_coeffs["mse"]
 
     def logger_update(self, logger):
         super().logger_update(logger)
-        # TODO: randomly select losses if they have the same winrate?
         if self.random_select or len(self.running_stats) < len(self.percep_losses):
             self.chosen_losses = random.sample(self.percep_losses, self.k)
         else:
