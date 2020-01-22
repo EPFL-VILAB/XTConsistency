@@ -12,7 +12,7 @@ from utils import *
 from models import TrainableModel, DataParallelModel
 from task_configs import get_task, get_model, tasks
 from logger import Logger, VisdomLogger
-from datasets import TaskDataset, SintelDataset, load_ood
+from datasets import TaskDataset, load_ood
 import transforms
 
 torch.manual_seed(229) # cpu  vars
@@ -222,26 +222,6 @@ class AdversarialMetrics(ValidationMetrics):
         self.model = model #set the adversarial model to the current model
         return super().evaluate(model, logger=logger, sample=sample, show_images=show_images)
 
-
-class SintelMetrics(ValidationMetrics):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def load_dataset(self):
-        self.dataset = SintelDataset(tasks=[self.src_task, self.dest_task])
-        print (len(self.dataset))
-
-datasets = [
-    # ValidationMetrics("almena"),
-    # ImageCorruptionMetrics("almena_corrupted1", corruption=1),
-    # ImageCorruptionMetrics("almena_corrupted2", corruption=2),
-    # ImageCorruptionMetrics("almena_corrupted3", corruption=3),
-    # ImageCorruptionMetrics("almena_corrupted4", corruption=4),
-    # AdversarialMetrics("almena_adversarial_eps0.005", eps=5e-3),
-    # AdversarialMetrics("almena_adversarial_eps0.01", eps=1e-2, n=20),
-    SintelMetrics("sintel"),
-]
 
 
 def run_eval_suite(model=None, logger=None, model_file="unet_percepstep_0.1.pth", sample=400, show_images=False):

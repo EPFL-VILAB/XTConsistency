@@ -37,18 +37,6 @@ class GaussianBulr(object):
 
     def __repr__(self):
         return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
-'''
-class GaussianBulr(object):
-    def __init__(self, radius):
-        self.radius = radius
-        self.truncate = 1
-
-    def __call__(self, im):
-        return Image.fromarray((255.0*gaussian(np.array(im), sigma=self.radius, multichannel=True, truncate=self.truncate)).astype(np.uint8))
-
-    def __repr__(self):
-        return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
-'''
 
 """ Model definitions for launching new transfer jobs between tasks. """
 model_types = {
@@ -424,14 +412,6 @@ tasks = [
         shape=(1, 256, 256),
         transform=partial(blur_transform, max_val=2000.0),
     ),
-    # ClassTask('class_scene',
-    #     file_name_alt="class_places",
-    #     classes=365, classes_file="data/scene_classes.txt"
-    # ),
-    # ClassTask('class_object',
-    #     classes=1000, classes_file="data/object_classes.txt"
-    # ),
-    # PointInfoTask('point_info'),
 ]
 
 

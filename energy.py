@@ -21,18 +21,12 @@ import IPython
 import pdb
 
 def get_energy_loss(
-    config="", mode="standard",
+    config="", mode="winrate",
     pretrained=True, finetuned=True, **kwargs,
 ):
     """ Loads energy loss from config dict. """
     if isinstance(mode, str):
         mode = {
-            "standard": EnergyLoss,
-            "curriculum": CurriculumEnergyLoss,
-            "curriclat": CurricLATEnergyLoss,
-            "normalized": NormalizedEnergyLoss,
-            "percepnorm": PercepNormEnergyLoss,
-            "lat": LATEnergyLoss,
             "winrate": WinRateEnergyLoss,
         }[mode]
     return mode(**energy_configs[config],
@@ -726,35 +720,6 @@ class EnergyLoss(object):
                             path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=batch_mean)
                             loss[loss_type] += path_loss
                             self.metrics[reality.name][loss_type +" : "+path1 + " -> " + path2] += [path_loss.mean().detach().cpu()]
-
-                elif loss_type == 'gan':
-
-                    for path1, path2 in losses:
-                        if 'gan'+path1+path2 not in loss:
-                            loss['disgan'+path1+path2] = 0
-                            loss['graphgan'+path1+path2] = 0
-
-                        ## Hack: detach() first pass so only OOD is updated
-                        if path_values[path1] is None: continue
-                        if path_values[path2] is None: continue
-                        logit_path1 = discriminator(path_values[path1].detach())
-
-                        ## Progressively increase GAN trade-off
-                        #coeff = np.float(2.0 / (1.0 + np.exp(-10.0*self.train_iter / 10000.0)) - 1.0)
-                        coeff = 0.1
-                        path_value2 = path_values[path2] * 1.0
-                        if reality.name == 'train':
-                            path_value2.register_hook(coeff_hook(coeff))
-                        logit_path2 = discriminator(path_value2)
-                        binary_label = torch.Tensor([1]*logit_path1.size(0)+[0]*logit_path2.size(0)).float().cuda()
-                        # print ("In BCE loss for gan: ", reality, logit_path1.mean(), logit_path2.mean())
-
-                        gan_loss = nn.BCEWithLogitsLoss(size_average=True)(torch.cat((logit_path1,logit_path2), dim=0).view(-1), binary_label)
-                        self.metrics[reality.name]['gan : ' + path1 + " -> " + path2] += [gan_loss.detach().cpu()]
-                        loss['disgan'+path1+path2] -= gan_loss
-                        #binary_label_ood = torch.Tensor([0.5]*(logit_path1.size(0)+logit_path2.size(0))).float().cuda()
-                        #gan_loss_ood = nn.BCELoss(size_average=True)(nn.Sigmoid()(torch.cat((logit_path1,logit_path2), dim=0).view(-1)), binary_label_ood)
-                        #loss['graphgan'+path1+path2] += gan_loss_ood
                 else:
                     raise Exception('Loss {} not implemented.'.format(loss_type))
 
@@ -833,168 +798,6 @@ class EnergyLoss(object):
 
 
 
-
-
-
-class NormalizedEnergyLoss(EnergyLoss):
-
-    def __init__(self, *args, **kwargs):
-        self.loss_weights = {}
-        self.update_freq = kwargs.pop("update_freq", 30)
-        self.iter = 0
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-        if self.iter % self.update_freq == 0:
-            self.loss_weights = {key: 1.0/loss.detach() for key, loss in loss_dict.items()}
-        self.iter += 1
-        return {key: loss * self.loss_weights[key] for key, loss in loss_dict.items()}
-
-
-
-
-
-class CurriculumEnergyLoss(EnergyLoss):
-
-    def __init__(self, *args, **kwargs):
-        self.percep_weight = 0.0
-        self.percep_step = kwargs.pop("percep_step", 0.1)
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-        loss_dict["percep"] = loss_dict["percep"] * self.percep_weight
-        return loss_dict
-
-    def logger_update(self, logger):
-        super().logger_update(logger)
-        self.percep_weight += self.percep_step
-        logger.text (f'Current percep weight: {self.percep_weight}')
-
-
-
-
-
-
-class PercepNormEnergyLoss(EnergyLoss):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-        # everything in loss_dict["percep"] should be normalized via a direct path
-        # everything in loss_dict["direct"] should be used as a normalizer
-        # everything in loss_dict["mse"] should be standardized to 1
-
-        percep_losses = [key[7:] for key in loss_dict if key[0:7] == "percep_"]
-        for key in percep_losses:
-            # print (key, loss_dict[f"percep_{key}"], loss_dict[f"direct_{key}"])
-            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] / loss_dict[f"direct_{key}"]
-            # print (loss_dict[f"percep_{key}"])
-            loss_dict.pop(f"direct_{key}")
-
-        loss_dict["mse"] = loss_dict["mse"] / loss_dict["mse"].detach()
-        return loss_dict
-
-
-
-
-
-
-
-class LATEnergyLoss(EnergyLoss):
-
-    def __init__(self, *args, **kwargs):
-        self.k = kwargs.pop('k', 3)
-        self.random_select = kwargs.pop('random_select', False)
-        self.running_stats = {}
-
-        super().__init__(*args, **kwargs)
-
-        self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-        print (self.percep_losses)
-        self.chosen_losses = random.sample(self.percep_losses, self.k)
-
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-
-        loss_types = ["mse"] + [("percep_" + loss) for loss in self.chosen_losses] + [("direct_" + loss) for loss in self.chosen_losses]
-        print (self.chosen_losses)
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-        # everything in loss_dict["percep"] should be normalized via a direct path
-        # everything in loss_dict["direct"] should be used as a normalizer
-        # everything in loss_dict["mse"] should be standardized to 1
-
-        for key in self.chosen_losses:
-            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] / loss_dict[f"direct_{key}"].detach()
-            loss_dict.pop(f"direct_{key}")
-            self.running_stats[key] = loss_dict[f"percep_{key}"].detach().cpu().item()
-
-        loss_dict["mse"] = loss_dict["mse"] / loss_dict["mse"].detach()
-        return loss_dict
-
-    def logger_update(self, logger):
-        super().logger_update(logger)
-        if self.random_select or len(self.running_stats) < len(self.percep_losses):
-            self.chosen_losses = random.sample(self.percep_losses, self.k)
-        else:
-            self.chosen_losses = sorted(self.running_stats, key=self.running_stats.get, reverse=True)[:self.k]
-
-        logger.text (f"Chosen losses: {self.chosen_losses}")
-
-
-
-
-class CurricLATEnergyLoss(EnergyLoss):
-
-    def __init__(self, *args, **kwargs):
-        self.k = kwargs.pop('k', 3)
-        self.random_select = kwargs.pop('random_select', False)
-        self.percep_weight = 0.0
-        self.percep_step = kwargs.pop("percep_step", 0.1)
-        self.running_stats = {}
-
-        super().__init__(*args, **kwargs)
-
-        self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-        print (self.percep_losses)
-        self.chosen_losses = random.sample(self.percep_losses, self.k)
-
-    def __call__(self, graph, discriminator=None, realities=[], loss_types=None):
-
-        loss_types = ["mse"] + [("percep_" + loss) for loss in self.chosen_losses] + [("direct_" + loss) for loss in self.chosen_losses]
-        print (self.chosen_losses)
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types)
-        # everything in loss_dict["percep"] should be normalized via a direct path
-        # everything in loss_dict["direct"] should be used as a normalizer
-        # everything in loss_dict["mse"] should be standardized to 1
-
-        for key in self.chosen_losses:
-            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] / loss_dict[f"direct_{key}"].detach()
-            loss_dict.pop(f"direct_{key}")
-            self.running_stats[key] = loss_dict[f"percep_{key}"].detach().cpu().item()
-            loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"] * (0.0035 * self.percep_weight)
-
-        loss_dict["mse"] = loss_dict["mse"]
-        return loss_dict
-
-    def logger_update(self, logger):
-        super().logger_update(logger)
-        if self.random_select or len(self.running_stats) < len(self.percep_losses):
-            self.chosen_losses = random.sample(self.percep_losses, self.k)
-        else:
-            self.chosen_losses = sorted(self.running_stats, key=self.running_stats.get, reverse=True)[:self.k]
-
-        logger.text (f"Chosen losses: {self.chosen_losses}")
-        self.percep_weight += self.percep_step
-        logger.text (f"Percep weight: {self.percep_weight}")
-
-
-
-
-
-
 class WinRateEnergyLoss(EnergyLoss):
 
     def __init__(self, *args, **kwargs):
@@ -1007,7 +810,7 @@ class WinRateEnergyLoss(EnergyLoss):
         super().__init__(*args, **kwargs)
 
         self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-        print (self.percep_losses)
+        print ("percep losses: ",self.percep_losses)
         self.chosen_losses = random.sample(self.percep_losses, self.k)
 
     def __call__(self, graph, discriminator=None, realities=[], loss_types=None, compute_grad_ratio=False):

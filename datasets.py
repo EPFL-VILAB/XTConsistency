@@ -34,9 +34,9 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     if val_tasks is None: val_tasks = train_tasks
     val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
 
-    #data = yaml.load(open(split_file))
-    #train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
-    #val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
+    data = yaml.load(open(split_file))
+    train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
+    val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
     train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
@@ -44,51 +44,14 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
         train_loader = torch.utils.data.Subset(train_loader,
             random.sample(range(len(train_loader)), subset_size or int(len(train_loader)*subset)),
         )
-        # val_loader = torch.utils.data.Subset(val_loader,
-        #     random.sample(range(len(val_loader)), subset_size or int(len(val_loader)*subset)),
-        # )
 
-    train_step = int(3415276 // (100 * batch_size))
-    val_step = int(534331 // (100 * batch_size))
+    train_step = int(3415276 // (400 * batch_size))
+    val_step = int(534331 // (400 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
     if fast: train_step, val_step = 8, 8
 
     return train_loader, val_loader, train_step, val_step
-
-""" Default data loading configurations for training, validation, and testing. """
-def load_sintel_train_val_test(source_task, dest_task,
-        batch_size=64, batch_transforms=cycle
-    ):
-
-    if isinstance(source_task, str) and isinstance(dest_task, str):
-        source_task, dest_task = get_task(source_task), get_task(dest_task)
-
-    buildings = sorted([x.split('/')[-1] for x in glob.glob("mount/sintel/training/depth/*")])
-    train_buildings, val_buildings = train_test_split(buildings, test_size=0.2)
-    print (len(train_buildings))
-    print (len(val_buildings))
-
-    train_loader = torch.utils.data.DataLoader(
-        SintelDataset(buildings=train_buildings, tasks=[source_task, dest_task]),
-        batch_size=batch_size,
-        num_workers=64, shuffle=True, pin_memory=True
-    )
-    val_loader = torch.utils.data.DataLoader(
-        SintelDataset(buildings=val_buildings, tasks=[source_task, dest_task]),
-        batch_size=batch_size,
-        num_workers=64, shuffle=True, pin_memory=True
-    )
-
-    train_step = int(2248616 // (100 * batch_size))
-    val_step = int(245592 // (100 * batch_size))
-    print("Train step: ", train_step)
-    print("Val step: ", val_step)
-
-    test_set = list(itertools.islice(val_loader, 1))
-    test_images = torch.cat([x for x, y in test_set], dim=0)
-
-    return train_loader, val_loader, train_step, val_step, test_set, test_images
 
 
 """ Load all buildings """
@@ -148,28 +111,6 @@ def load_ood(tasks=[tasks.rgb], ood_path=OOD_DIR, sample=21):
     return ood_images
 
 
-def load_video_games(ood_path=f"{BASE_DIR}/video_games", resize=256):
-    ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
-        batch_size=66,
-        num_workers=32, shuffle=False, pin_memory=True
-    )
-    ood_images = list(itertools.islice(ood_loader, 1))
-    return ood_images
-
-
-def load_doom(ood_path=f"{BASE_DIR}/Doom/video2", resize=256):
-    ood_loader = torch.utils.data.DataLoader(
-        ImageDataset(data_dir=ood_path, resize=(resize, resize)),
-        batch_size=64,
-        num_workers=64, shuffle=False, pin_memory=True
-    )
-    ood_images = list(itertools.islice(ood_loader, 1))
-    return ood_loader, ood_images
-
-
-
-
 
 class TaskDataset(Dataset):
 
@@ -184,24 +125,6 @@ class TaskDataset(Dataset):
         if use_raid:
             self.convert_path = self.convert_path_raid
             self.building_files = self.building_files_raid
-
-        # Build a map from buildings to directories
-        # self.file_map = {}
-        # for data_dir in self.data_dirs:
-        #     for file in glob.glob(f'{data_dir}/*'):
-        #         res = parse.parse("{building}_{task}", file[len(data_dir)+1:])
-        #         if res is None: continue
-        #         self.file_map[file[len(data_dir)+1:]] = data_dir
-        # filtered_files = set()
-        # for i, task in enumerate(tasks):
-        #     task_files = []
-        #     for building in buildings:
-        #         task_files += sorted(self.building_files(task, building))
-        #     print(f"{task.name} file len: {len(task_files)}")
-        #     task_set = {self.convert_path(x, tasks[0]) for x in task_files}
-        #     filtered_files = filtered_files.intersection(task_set) if i != 0 else task_set
-        # self.idx_files = sorted(list(filtered_files))
-        # print ("Intersection files len: ", len(self.idx_files))
 
         self.file_map = {}
         for data_dir in self.data_dirs:
@@ -274,33 +197,6 @@ class TaskDataset(Dataset):
             except Exception as e:
                 idx = random.randrange(0, len(self.idx_files))
                 if i == 199: raise (e)
-
-
-class SintelDataset(TaskDataset):
-
-    def __init__(self, *args, **kwargs):
-        if "buildings" not in kwargs or ["buildings"] is None:
-            kwargs["buildings"] = sorted([x.split('/')[-1] for x in glob.glob("{BASE_DIR}/sintel/training/depth/*")])
-        super().__init__(*args, **kwargs)
-
-    def building_files(self, task, building):
-        """ Gets all the tasks in a given building (grouping of data) """
-        task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
-
-        return sorted(glob.glob(f"{BASE_DIR}/sintel/training/{task_dir}/{building}/{task_val}*.png"))
-
-    def convert_path(self, source_file, task):
-        """ Converts a file from task A to task B. Can be overriden by subclasses"""
-        result = parse.parse("mount/sintel/training/{task_dir}/{building}/{task_val}_{view}.png", source_file)
-        building, view = (result["building"], result["view"])
-
-        task_dir = {"rgb": "clean", "normal": "depth", "depth_zbuffer": "depth"}[task.name]
-        task_val = {"rgb": "frame", "normal": "normal", "depth_zbuffer": "frame"}[task.name]
-
-        dest_file = f"{BASE_DIR}/sintel/training/{task_dir}/{building}/{task_val}_{view}.png"
-        return dest_file
-
 
 
 class ImageDataset(Dataset):

@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from utils import *
 from plotting import *
 from energy import get_energy_loss
-from graph import TaskGraph, Discriminator
+from graph import TaskGraph
 from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
@@ -24,15 +24,12 @@ import IPython
 import pdb
 
 def main(
-	loss_config="conservative_full", mode="standard", visualize=False,
+	loss_config="conservative_full", mode="winrate", visualize=False,
 	fast=False, batch_size=None,
 	subset_size=None, max_epochs=800, **kwargs,
 ):
 
 	# CONFIG
-	data = yaml.load(open("data/split.txt"))
-	#pdb.set_trace()
-	train_buildings, val_buildings = data["train_buildings"], data["val_buildings"]
 	batch_size = batch_size or (4 if fast else 64)
 	energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
@@ -41,10 +38,7 @@ def main(
 		energy_loss.get_tasks("train"),
 		batch_size=batch_size, fast=fast,
 		subset_size=subset_size,
-		val_buildings=val_buildings,
-		train_buildings=train_buildings
 	)
-	train_step, val_step = train_step//4, val_step//4
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 	print (train_step, val_step)
