@@ -25,7 +25,7 @@ import IPython
 
 
 ### Use case: when finetuning a rgb2normal network
-### Inputs rgb2normal/depth net, image-task dataset 
+### Inputs rgb2normal/depth net, image-task dataset
 
 ### Depth/normal
 
@@ -71,7 +71,7 @@ class ValidationMetrics(object):
         masks = self.dest_task.build_mask(target, val=self.dest_task.mask_val)
         original_pred, original_target, masks = (x.data.permute((0, 2, 3, 1)).cpu().numpy() for x in [pred, target, masks])
         masks = masks[:, :, :, 0]
-        
+
         norm = lambda a: np.sqrt((a * a).sum(axis=1))
         def cosine_similarity(x1, x2, dim=1, eps=1e-8):
             w12 = np.sum(x1 * x2, dim)
@@ -102,7 +102,7 @@ class ValidationMetrics(object):
         threshold_1125 = (np.sum(ang_errors_per_pixel_masked <= 11.25) - num_invalid_pixels) / num_valid_pixels
         threshold_225 = (np.sum(ang_errors_per_pixel_masked <= 22.5) - num_invalid_pixels) / num_valid_pixels
         threshold_30 = (np.sum(ang_errors_per_pixel_masked <= 30) - num_invalid_pixels) / num_valid_pixels
-        
+
         return {
             "ang_error_without_masking": ang_error_without_masking,
             "ang_error_mean": ang_error_mean,
@@ -142,9 +142,9 @@ class ValidationMetrics(object):
 class ImageCorruptionMetrics(ValidationMetrics):
 
     TRANSFORMS = [
-        # transforms.resize, 
-        transforms.resize_rect, 
-        transforms.color_jitter, 
+        # transforms.resize,
+        transforms.resize_rect,
+        transforms.color_jitter,
         transforms.scale,
         transforms.rotate,
         transforms.elastic,

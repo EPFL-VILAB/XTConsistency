@@ -17,26 +17,6 @@ import transforms
 
 from modules.gan_dis import GanDisNet
 
-
-import os, sys, math, random, itertools, heapq
-from collections import namedtuple, defaultdict
-from functools import partial, reduce
-import numpy as np
-import IPython
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from utils import *
-from models import TrainableModel, WrapperModel
-from datasets import TaskDataset
-from task_configs import get_task, task_map, tasks, get_model, RealityTask
-from transfers import Transfer, RealityTransfer, get_transfer_name
-import transforms
-
-from modules.gan_dis import GanDisNet
-
 import pdb
 
 class TaskGraph(TrainableModel):
@@ -46,7 +26,7 @@ class TaskGraph(TrainableModel):
     def __init__(
         self, tasks=tasks, edges=None, edges_exclude=None,
         pretrained=True, finetuned=False,
-        reality=[], task_filter=[tasks.segment_semantic, tasks.class_scene],
+        reality=[], task_filter=[tasks.segment_semantic],
         freeze_list=[],
     ):
 

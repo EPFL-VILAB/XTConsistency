@@ -424,10 +424,10 @@ tasks = [
         shape=(1, 256, 256),
         transform=partial(blur_transform, max_val=2000.0),
     ),
-    ClassTask('class_scene',
-        file_name_alt="class_places",
-        classes=365, classes_file="data/scene_classes.txt"
-    ),
+    # ClassTask('class_scene',
+    #     file_name_alt="class_places",
+    #     classes=365, classes_file="data/scene_classes.txt"
+    # ),
     # ClassTask('class_object',
     #     classes=1000, classes_file="data/object_classes.txt"
     # ),
