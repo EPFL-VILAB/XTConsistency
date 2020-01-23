@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import *
-from plotting import *
 from energy import get_energy_loss
 from graph import TaskGraph
 from logger import Logger, VisdomLogger

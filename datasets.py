@@ -24,7 +24,7 @@ import pdb
 
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, fast=False,
-        train_buildings=None, val_buildings=None, split_file="data/split.txt",
+        train_buildings=None, val_buildings=None, split_file="config/split.txt",
         dataset_cls=None, batch_size=64, batch_transforms=cycle,
         subset=None, subset_size=None,
     ):

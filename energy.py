@@ -11,7 +11,6 @@ from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.checkpoint import checkpoint
 
 from utils import *
-from plotting import *
 from task_configs import tasks, get_task
 from transfers import functional_transfers, finetuned_transfers, get_transfer_name, Transfer
 from datasets import TaskDataset, load_train_val
