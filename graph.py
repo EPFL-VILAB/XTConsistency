@@ -13,7 +13,7 @@ from models import TrainableModel, WrapperModel
 from datasets import TaskDataset
 from task_configs import get_task, task_map, tasks, get_model, RealityTask
 from transfers import Transfer, RealityTransfer, get_transfer_name
-import transforms
+#import transforms
 
 from modules.gan_dis import GanDisNet
 

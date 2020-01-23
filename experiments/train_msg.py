@@ -13,7 +13,6 @@ from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
 from transfers import functional_transfers
-from evaluation import run_eval_suite
 
 from modules.resnet import ResNet
 from modules.unet import UNet, UNetOld
@@ -42,7 +41,7 @@ def main(
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
 	print (train_step, val_step)
-
+	train_step, val_step = 2,2
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
 	test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
@@ -54,7 +53,6 @@ def main(
 		freeze_list=energy_loss.freeze_list,
 	)
 	graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
-	# pdb.set_trace()
 
 	# LOGGING
 	logger = VisdomLogger("train", env=JOB)
@@ -94,7 +92,6 @@ def main(
 		graph.train()
 		mse_grad_ratio_epoch = []
 		for _ in range(0, train_step):
-			#pdb.set_trace()
 			train_loss, mse_coeff = energy_loss(graph, realities=[train], compute_grad_ratio=True)
 			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
 			graph.step(train_loss)
