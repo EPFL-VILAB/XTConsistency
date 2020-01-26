@@ -638,8 +638,6 @@ class EnergyLoss(object):
 
         for name, realities in name_to_realities.items():
             def jointplot(logger, data, name=name, realities=realities):
-                #if 'baseline' not in realities: realities.append('baseline')
-                #data['baseline_mse : n(x) -> y^'] = [data['train_mse : n(x) -> y^'][0]]*len(data['train_mse : n(x) -> y^'])
                 names = [f"{reality}_{name}" for reality in realities]
                 if not all(x in data for x in names):
                     return
@@ -767,13 +765,11 @@ class WinRateEnergyLoss(EnergyLoss):
         self.random_select = kwargs.pop('random_select', False)
         self.running_stats = {}
         self.target_task = kwargs['paths']['y^'][0].name
-        # print("Random Select?", self.random_select)
 
         super().__init__(*args, **kwargs)
 
         self.percep_losses = [key[7:] for key in self.losses.keys() if key[0:7] == "percep_"]
-        # self.percep_losses_optimized = [key for key in self.percep_losses if "mse" not in key]
-        print (self.percep_losses)
+        print ("percep losses:",self.percep_losses)
         self.chosen_losses = random.sample(self.percep_losses, self.k)
 
     def __call__(self, graph, discriminator=None, realities=[], loss_types=None, compute_grad_ratio=False):
@@ -782,15 +778,13 @@ class WinRateEnergyLoss(EnergyLoss):
         print (self.chosen_losses)
         loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, batch_mean=False)
 
-        # loss_dict = {key:value for key,value in loss_dict_all.items() if "mse" not in key}
-
         chosen_percep_mse_losses = [k for k in loss_dict.keys() if 'direct' not in k]
         percep_mse_coeffs = dict.fromkeys(chosen_percep_mse_losses, 1.0)
         ########### to compute loss coefficients #############
         if compute_grad_ratio:
             percep_mse_gradnorms = dict.fromkeys(chosen_percep_mse_losses, 1.0)
             for loss_name in chosen_percep_mse_losses:
-                loss_dict[loss_name].mean().backward(retain_graph=True) # retain_graph=True so that backprop can be done again
+                loss_dict[loss_name].mean().backward(retain_graph=True) 
                 target_weights=list(graph.edge_map[f"('rgb', '{self.target_task}')"].model.parameters())
                 percep_mse_gradnorms[loss_name] = sum([l.grad.abs().sum().item() for l in target_weights])/sum([l.numel() for l in target_weights])
                 graph.optimizer.zero_grad()

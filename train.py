@@ -1,28 +1,59 @@
-import os, sys, math, random, itertools
-import numpy as np
+'''
+  Name: train.py
+  Desc: Executes training of a network with the consistency framework.
+
+    Here are some options that may be specified for any model. If they have a
+    default value, it is given at the end of the description in parens.
+
+        Data pipeline:
+            Data locations:
+                'train_buildings': A list of the folders containing the training data. This
+                	is defined in configs/split.txt.
+                'val_buildings': As above, but for validation data.
+                'data_dirs': The folder that all the data is stored in. This may just be
+                    something like '/', and then all filenames in 'train_filenames' will
+                    give paths relative to 'dataset_dir'. For example, if 'dataset_dir'='/',
+                    then train_filenames might have entries like 'path/to/data/img_01.png'.
+                    This is defiled in utils.py.
+
+        Logging:
+            'results_dir': An absolute path to where checkpoints are saved. This is
+            	defined in utils.py.
+
+        Training:
+            'batch_size': The size of each batch. (64)
+            'num_epochs': The maximum number of epochs to train for. (800)
+            'energy_config': {multiperceptual_targettask} The paths taken to compute the losses.
+            'k': Number of perceptual loss chosen.
+            'data_aug': {True, False} If data augmentation shuold be used during training.
+                See TrainTaskDataset class in datasets.py for the types of data augmentation
+                used. (False)
+
+        Optimization:
+            'initial_learning_rate': The initial learning rate to use for the model. (3e-5)
+
+
+  Usage:
+    python -m train multiperceptual_depth --batch-size 32 --k 8 --max-epochs 100
+'''
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from utils import *
 from energy import get_energy_loss
 from graph import TaskGraph
 from logger import Logger, VisdomLogger
-from datasets import TaskDataset, load_train_val, load_test, load_ood
+from datasets import load_train_val, load_test, load_ood
 from task_configs import tasks, RealityTask
 from transfers import functional_transfers
 
-from modules.resnet import ResNet
-from modules.unet import UNet, UNetOld
-from functools import partial
 from fire import Fire
 
-import IPython
-import pdb
+#import pdb
 
 def main(
-	loss_config="conservative_full", mode="winrate", visualize=False,
+	loss_config="multiperceptual", mode="winrate", visualize=False,
 	fast=False, batch_size=None,
 	subset_size=None, max_epochs=800, dataaug=False, **kwargs,
 ):

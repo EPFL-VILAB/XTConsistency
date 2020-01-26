@@ -228,9 +228,9 @@ class ImageDataset(Dataset):
     ):
 
         self.tasks = tasks
-        if not USE_RAID and files is None:
-            os.system(f"ls {data_dir}/*.png")
-            os.system(f"ls {data_dir}/*.png")
+        #if not USE_RAID and files is None:
+        #    os.system(f"ls {data_dir}/*.png")
+        #    os.system(f"ls {data_dir}/*.png")
 
         self.files = files \
             or sorted(
