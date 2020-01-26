@@ -26,18 +26,19 @@ import pdb
 def load_train_val(train_tasks, val_tasks=None, fast=False,
         train_buildings=None, val_buildings=None, split_file="config/split.txt",
         dataset_cls=None, batch_size=64, batch_transforms=cycle,
-        subset=None, subset_size=None,
+        subset=None, subset_size=None, dataaug=False,
     ):
 
     dataset_cls = dataset_cls or TaskDataset
+    train_cls = TrainTaskDataset if dataaug else dataset_cls
     train_tasks = [get_task(t) if isinstance(t, str) else t for t in train_tasks]
     if val_tasks is None: val_tasks = train_tasks
     val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
-
+    pdb.set_trace()    
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
     val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
-    train_loader = dataset_cls(buildings=train_buildings, tasks=train_tasks)
+    train_loader = train_cls(buildings=train_buildings, tasks=train_tasks)
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
@@ -45,8 +46,8 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
             random.sample(range(len(train_loader)), subset_size or int(len(train_loader)*subset)),
         )
 
-    train_step = int(3415276 // (400 * batch_size))
-    val_step = int(534331 // (400 * batch_size))
+    train_step = int(len(train_loader) // (400 * batch_size))
+    val_step = int(len(val_loader) // (400 * batch_size))
     print("Train step: ", train_step)
     print("Val step: ", val_step)
     if fast: train_step, val_step = 8, 8
@@ -88,15 +89,9 @@ def load_test(all_tasks, buildings=["almena", "albertville", "espanola"], sample
         batch_size=sample,
         num_workers=sample, shuffle=False, pin_memory=True,
     )
-    # test_loader4 = torch.utils.data.DataLoader(
-    #     TaskDataset(buildings=[buildings[3]], tasks=all_tasks, shuffle=False),
-    #     batch_size=sample,
-    #     num_workers=sample, shuffle=False, pin_memory=True,
-    # )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
     set3 = list(itertools.islice(test_loader3, 1))[0]
-    # set4 = list(itertools.islice(test_loader4, 1))[0]
     test_set = tuple(torch.cat([x, y, z], dim=0) for x, y, z in zip(set1, set2, set3))
     return test_set
 
@@ -199,6 +194,30 @@ class TaskDataset(Dataset):
                 if i == 199: raise (e)
 
 
+class TrainTaskDataset(TaskDataset):
+
+    def __getitem__(self, idx):
+
+        for i in range(200):
+            try:
+                res = []
+
+                seed = random.randint(0, 1e10)
+                crop = random.randint(int(0.7*512), 512) if bool(random.getrandbits(1)) else 512
+
+                for task in self.tasks:
+                    jitter = bool(random.getrandbits(1)) if task.name == 'rgb' else False
+                    file_name = self.convert_path(self.idx_files[idx], task)
+                    if len(file_name) == 0: raise Exception("unable to convert file")
+                    image = task.file_loader(file_name, resize=self.resize, seed=seed, crop=crop, jitter=jitter)
+                    res.append(image)
+
+                return tuple(res)
+            except Exception as e:
+                idx = random.randrange(0, len(self.idx_files))
+                if i == 199: raise (e)
+
+
 class ImageDataset(Dataset):
 
     def __init__(
@@ -211,9 +230,6 @@ class ImageDataset(Dataset):
         self.tasks = tasks
         if not USE_RAID and files is None:
             os.system(f"ls {data_dir}/*.png")
-            # os.system(f"sudo ls {data_dir}/*.png")
-            # os.system(f"sudo ls {data_dir}/*.png")
-            # os.system(f"sudo ls {data_dir}/*.png")
             os.system(f"ls {data_dir}/*.png")
 
         self.files = files \
@@ -238,40 +254,6 @@ class ImageDataset(Dataset):
             if image.shape[0] == 1: image = image.expand(3, -1, -1)
             res.append(image)
         return tuple(res)
-
-
-class ImagePairDataset(Dataset):
-    """Face Landmarks dataset."""
-    def __init__(self, data_dir, resize=256, files=None):
-
-        self.data_dir = data_dir
-
-        self.resize = resize
-        self.files = files or glob.glob(f"{data_dir}/*.png") + glob.glob(f"{data_dir}/*.jpg") + glob.glob(f"{data_dir}/*.jpeg")
-        print("num files = ", len(self.files))
-
-    def __len__(self):
-        return len(self.files)
-
-    def __getitem__(self, idx):
-
-        def crop(x):
-            return transforms.CenterCrop(min(x.size[0], x.size[1]))(x)
-        transform = transforms.Compose([crop, transforms.Resize(self.resize), transforms.ToTensor()])
-
-        file = self.files[idx]
-        try:
-            with Image.open(file) as image:
-                try:
-                    image = transform(image).float()[0:3, :, :]
-                    if image.shape[0] == 1: image = image.expand(3, -1, -1)
-                except Exception as e:
-                    return self.__getitem__(random.randrange(0, len(self.files)))
-        except Exception as e:
-            return self.__getitem__(random.randrange(0, len(self.files)))
-        # print(image.shape, file)
-        return image, image
-
 
 
 

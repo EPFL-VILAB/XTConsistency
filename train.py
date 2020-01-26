@@ -24,7 +24,7 @@ import pdb
 def main(
 	loss_config="conservative_full", mode="winrate", visualize=False,
 	fast=False, batch_size=None,
-	subset_size=None, max_epochs=800, **kwargs,
+	subset_size=None, max_epochs=800, dataaug=False, **kwargs,
 ):
 
 	# CONFIG
@@ -36,10 +36,10 @@ def main(
 		energy_loss.get_tasks("train"),
 		batch_size=batch_size, fast=fast,
 		subset_size=subset_size,
+		dataaug=dataaug,
 	)
 	test_set = load_test(energy_loss.get_tasks("test"))
 	ood_set = load_ood(energy_loss.get_tasks("ood"))
-	print (train_step, val_step)
 	train_step, val_step = 2,2
 	train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
 	val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
@@ -58,29 +58,24 @@ def main(
 	logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
 	logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
 	energy_loss.logger_hooks(logger)
-	best_ood_val_loss = float('inf')
-
 	energy_loss.plot_paths(graph, logger, realities, prefix="start")
-	# ####### computing baseline results ########
+
+	# BASELINE
 	graph.eval()
-	for _ in range(0, val_step*4):
-		with torch.no_grad():
+	with torch.no_grad():
+		for _ in range(0, val_step*4):
 			val_loss, _ = energy_loss(graph, realities=[val])
 			val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
-		val.step()
-		logger.update("loss", val_loss)
+			val.step()
+			logger.update("loss", val_loss)
 
-	for _ in range(0, train_step*4):
-		with torch.no_grad():
+		for _ in range(0, train_step*4):
 			train_loss, _ = energy_loss(graph, realities=[train])
 			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-		train.step()
-		logger.update("loss", train_loss)
-
+			train.step()
+			logger.update("loss", train_loss)
 	energy_loss.logger_update(logger)
-	###########################################
 
-	mse_grad_ratio_history = []
 	# TRAINING
 	for epochs in range(0, max_epochs):
 
@@ -89,17 +84,12 @@ def main(
 		if visualize: return
 
 		graph.train()
-		mse_grad_ratio_epoch = []
 		for _ in range(0, train_step):
 			train_loss, mse_coeff = energy_loss(graph, realities=[train], compute_grad_ratio=True)
 			train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
 			graph.step(train_loss)
 			train.step()
-			mse_grad_ratio_epoch.append(mse_coeff)
 			logger.update("loss", train_loss)
-
-		mse_grad_ratio_history.append(sum(mse_grad_ratio_epoch)/len(mse_grad_ratio_epoch))
-		logger.plot(mse_grad_ratio_history, "mse_coeff")
 
 		graph.eval()
 		for _ in range(0, val_step):
@@ -110,10 +100,6 @@ def main(
 			logger.update("loss", val_loss)
 
 		energy_loss.logger_update(logger)
-
-		# if logger.data["val_mse : y^ -> n(~x)"][-1] < best_ood_val_loss:
-		# 	best_ood_val_loss = logger.data["val_mse : y^ -> n(~x)"][-1]
-		# 	energy_loss.plot_paths(graph, logger, realities, prefix="best")
 
 		logger.step()
 

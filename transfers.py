@@ -17,6 +17,7 @@ from task_configs import get_task, task_map, get_model, Task, RealityTask
 from modules.percep_nets import DenseNet, Dense1by1Net, DenseKernelsNet, DeepNet, BaseNet, WideNet, PyramidNet
 from modules.depth_nets import UNetDepth
 from modules.unet import UNet, UNetOld, UNetOld2, UNetReshade
+from modules.resnet import ResNetClass
 
 from fire import Fire
 import IPython
@@ -117,7 +118,14 @@ pretrained_transfers = {
     ('normal', 'keypoints2d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints2d_new.pth"),
     ('normal', 'edge_occlusion'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2edge_occlusion.pth"),	
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2edge_occlusion.pth"),
+
+    ('normal', 'imagenet'):
+        (lambda: ResNetClass().cuda(), None),
+    ('depth_zbuffer', 'imagenet'):
+        (lambda: ResNetClass().cuda(), None),
+    ('reshading', 'imagenet'):
+        (lambda: ResNetClass().cuda(), None),	
 
 }
 
@@ -127,7 +135,6 @@ class Transfer(nn.Module):
         checkpoint=True, name=None, model_type=None, path=None,
         pretrained=True, finetuned=False
     ):
-        print ("Transfer finetuning: ", finetuned)
         super().__init__()
         if isinstance(src_task, str) and isinstance(dest_task, str):
             src_task, dest_task = get_task(src_task), get_task(dest_task)

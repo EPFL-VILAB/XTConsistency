@@ -177,6 +177,23 @@ class ResNet(TrainableModel):
         return loss, (loss.detach(),)
 
 
+class ResNetClass(TrainableModel):
+    def __init__(self):
+        super().__init__()
+        self.resnet = models.resnet50(pretrained=True)
+
+    def forward(self, x):
+        if x.shape[1] == 1: x = x.repeat(1,3,1,1)
+        for layer in list(self.resnet._modules.values())[:-2]:
+            x = layer(x)
+        return x
+
+    ### Not in Use Right Now ###
+    def loss(self, pred, target):
+        mask = build_mask(pred, val=0.502)
+        mse = F.mse_loss(pred[mask], target[mask])
+        return mse, (mse.detach(),)
+
 
 if __name__ == "__main__":
     model = ResNet(out_channels=365)

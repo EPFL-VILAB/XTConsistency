@@ -20,7 +20,7 @@ from models import DataParallelModel
 from modules.unet import UNet, UNetOld2, UNetOld
 from modules.percep_nets import Dense1by1Net
 from modules.depth_nets import UNetDepth
-
+from modules.resnet import ResNetClass
 import IPython
 
 from PIL import ImageFilter
@@ -37,6 +37,7 @@ class GaussianBulr(object):
 
     def __repr__(self):
         return 'GaussianBulr Filter with Radius {:d}'.format(self.radius)
+
 
 """ Model definitions for launching new transfer jobs between tasks. """
 model_types = {
@@ -79,6 +80,16 @@ Includes Task, ImageTask, ClassTask, PointInfoTask, and SegmentationTask.
 """
 
 class Task(object):
+    variances = {
+        "normal": 1.0,
+        "principal_curvature": 1.0,
+        "sobel_edges": 5,
+        "depth_zbuffer": 0.1,
+        "reshading": 1.0,
+        "keypoints2d": 0.3,
+        "keypoints3d": 0.6,
+        "edge_occlusion": 0.1,
+    }
     """ General task output space"""
     def __init__(self, name,
             file_name=None, file_name_alt=None, file_ext="png", file_loader=None,
@@ -91,13 +102,16 @@ class Task(object):
         self.file_name_alt = file_name_alt or self.file_name
         self.file_loader = file_loader or self.file_loader
         self.plot_func = plot_func or self.plot_func
+        self.variance = Task.variances.get(name, 1.0)
         self.kind = name
 
-    def norm(self, pred, target, batch_mean=True):
+    def norm(self, pred, target, batch_mean=True, compute_mse=True):
         if batch_mean:
-            loss = ((pred - target)**2).mean()
+            loss = ((pred - target)**2).mean() if compute_mse else ((pred - target).abs()).mean()
         else:
-            loss = ((pred - target)**2).mean(dim=1).mean(dim=1).mean(dim=1)
+            loss = ((pred - target)**2).mean(dim=1).mean(dim=1).mean(dim=1) if compute_mse \
+                    else ((pred - target).abs()).mean(dim=1).mean(dim=1).mean(dim=1)
+
         return loss, (loss.mean().detach(),)
 
     def __call__(self, size=256):
@@ -202,9 +216,12 @@ class ImageTask(Task):
         mask = F.conv2d(mask.float(), torch.ones(1, 1, 5, 5, device=mask.device), padding=2) != 0
         return (~mask).expand_as(target)
 
-    def norm(self, pred, target, batch_mean=True):
-        mask = ImageTask.build_mask(target, val=self.mask_val)
-        return super().norm(pred*mask.float(), target*mask.float(), batch_mean=batch_mean)
+    def norm(self, pred, target, batch_mean=True, compute_mask=0, compute_mse=True):
+        if compute_mask:
+            mask = ImageTask.build_mask(target, val=self.mask_val)
+            return super().norm(pred*mask.float(), target*mask.float(), batch_mean=batch_mean, compute_mse=compute_mse)
+        else:
+            return super().norm(pred, target, batch_mean=batch_mean, compute_mse=compute_mse)
 
     def __call__(self, size=256, blur_radius=None):
         task = copy.deepcopy(self)
@@ -218,25 +235,23 @@ class ImageTask(Task):
     def plot_func(self, data, name, logger, resize=None, nrow=2):
         logger.images(data.clamp(min=0, max=1), name, nrow=nrow, resize=resize or self.resize)
 
-    def file_loader(self, path, resize=None, crop=None, seed=0):
-        image_transform = self.load_image_transform(resize=resize, crop=crop, seed=seed)
+    def file_loader(self, path, resize=None, crop=None, seed=0, jitter=False):
+        image_transform = self.load_image_transform(resize=resize, crop=crop, seed=seed, jitter=jitter)
         return image_transform(Image.open(open(path, 'rb')))[0:3]
 
-    def load_image_transform(self, resize=None, crop=None, seed=0):
-
+    def load_image_transform(self, resize=None, crop=None, seed=0, jitter=False):
         size = resize or self.resize
         random.seed(seed)
+        jitter_transform = lambda x: x
+        if jitter: jitter_transform = transforms.ColorJitter(0.4,0.4,0.4,0.1)
         crop_transform = lambda x: x
-        if crop is not None:
-            i = random.randint(0, size - crop)
-            j = random.randint(0, size - crop)
-            crop_transform = TF.crop(x, i, j, crop, crop)
-
+        if crop is not None: crop_transform = transforms.CenterCrop(crop)
         blur = [GaussianBulr(self.blur_radius)] if self.blur_radius else []
         return transforms.Compose(blur+[
-            transforms.Resize(size, interpolation=PIL.Image.NEAREST),
-            transforms.CenterCrop(size),
             crop_transform,
+            transforms.Resize(size, interpolation=PIL.Image.BILINEAR),
+            jitter_transform,
+            transforms.CenterCrop(size),
             transforms.ToTensor(),
             self.transform]
         )
@@ -265,43 +280,6 @@ class ImageClassTask(ImageTask):
         one_hot = torch.zeros((self.classes, data.shape[1], data.shape[2]))
         one_hot = one_hot.scatter_(0, data, 1)
         return one_hot
-
-
-class ClassTask(Task):
-    """ Output space for classification-style tasks """
-
-    def __init__(self, *args, **kwargs):
-
-        self.classes = kwargs.pop("classes")
-        self.classes_file = kwargs.pop("classes_file")
-        self.class_lookup = open(self.classes_file).readlines()
-
-        kwargs["file_ext"] = kwargs.get("file_ext", "npy")
-        super().__init__(*args, **kwargs)
-
-    def norm(self, pred, target):
-        # Input and target are BOTH logits
-        loss = F.kl_div(pred, torch.exp(target))
-        return loss, (loss.detach(),)
-
-    def plot_func(self, data, name, logger):
-
-        probs, idxs = torch.topk(data, 5, dim=1)
-        probs = torch.exp(probs)
-        probs, idxs = probs.cpu().data.numpy(), idxs.cpu().data.numpy()
-
-        output = ""
-        for i in range(0, probs.shape[0]):
-            output += f"Example {i}: <br>"
-            for j in range(0, probs.shape[1]):
-                output += f"{self.class_lookup[idxs[i, j]]} ({probs[i, j]:0.5f})<br>"
-            output += "<br>"
-
-        logger.window(name, logger.visdom.text, output)
-
-    def file_loader(self, path, resize=None):
-        return torch.log(torch.tensor(np.load(path)).float())
-
 
 
 class PointInfoTask(Task):
@@ -356,33 +334,13 @@ def blur_transform(x, max_val=4000.0):
         norm = norm.unsqueeze(0)
     return norm
 
-def sintel_depth_transform(x):
-    x = (1.0/ (x+1/255.0))
-    x = x / 255.0
-    return x.clamp(min=0.0, max=1.0)
-
 def get_task(task_name):
     return task_map[task_name]
-
-def smooth_resolution_file_loader(path, resize=None, crop=None, seed=0, T=0):
-    size = [128, 192, 256, 320, 384, 448, 512][T]
-    image_transform = transforms.Compose([
-        transforms.Resize(size, interpolation=PIL.Image.NEAREST),
-        transforms.ToTensor()
-    ])
-    return image_transform(Image.open(open(path, 'rb')))[0:3]
-
-def ds_us_file_loader(path, resize=None, crop=None, seed=0, T=0):
-    image_transform = transforms.Compose([
-        transforms.Resize(256, interpolation=PIL.Image.NEAREST),
-        transforms.Resize(512, interpolation=PIL.Image.NEAREST),
-        transforms.ToTensor()
-    ])
-    return image_transform(Image.open(open(path, 'rb')))[0:3]
 
 
 tasks = [
     ImageTask('rgb'),
+    ImageTask('imagenet', mask_val=0.0),
     ImageTask('normal', mask_val=0.502),
     ImageTask('principal_curvature', mask_val=0.0),
     ImageTask('depth_zbuffer',
@@ -417,12 +375,6 @@ tasks = [
 
 task_map = {task.name: task for task in tasks}
 tasks = namedtuple('TaskMap', task_map.keys())(**task_map)
-
-tasks.depth_zbuffer.sintel_depth = ImageTask('depth_sintel',
-    shape=(1, 256, 256),
-    mask_val=1.0,
-    transform=sintel_depth_transform,
-)
 
 
 if __name__ == "__main__":
