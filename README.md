@@ -32,12 +32,12 @@ demo.py             		# Demo script
 
 #### Default folder structure
 ```python
-base_dir/  						# The following paths are defined in utils.py (BASE_DIR)
-	shared/						# with the corresponding variable names in brackets
-		models/					# Pretrained models (MODELS_DIR)
-		results_[jobname]/			# Checkpoint of model being trained (RESULTS_DIR)
-		ood_standard_set/			# OOD data for visualization (OOD_DIR)
-data_dir/						# taskonomy data (DATA_DIRS)
+base_dir/  		            # The following paths are defined in utils.py (BASE_DIR)
+    shared/			    # with the corresponding variable names in brackets
+        models/			    # Pretrained models (MODELS_DIR)
+        results_[jobname]/	    # Checkpoint of model being trained (RESULTS_DIR)
+        ood_standard_set/	    # OOD data for visualization (OOD_DIR)
+data_dir/			    # taskonomy data (DATA_DIRS)
 ```
 
 #### Install requirements
