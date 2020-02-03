@@ -213,7 +213,7 @@ energy_configs = {
             "curv": [tasks.principal_curvature],
             "edge": [tasks.sobel_edges],
             "depth": [tasks.depth_zbuffer],
-            "reshading": [tasks.normal],
+            "normal": [tasks.normal],
             "keypoints2d": [tasks.keypoints2d],
             "keypoints3d": [tasks.keypoints3d],
             "edge_occlusion": [tasks.edge_occlusion],
@@ -277,7 +277,7 @@ energy_configs = {
             },
             "direct_normal": {
                 ("train", "val"): [
-                    ("d(x)", "reshading"),
+                    ("d(x)", "normal"),
                 ],
             },
             "percep_depth_zbuffer": {
@@ -373,7 +373,7 @@ energy_configs = {
             "k3(x)": [tasks.rgb, tasks.keypoints3d],
             "curv": [tasks.principal_curvature],
             "edge": [tasks.sobel_edges],
-            "depth": [tasks.normal],
+            "normal": [tasks.normal],
             "reshading": [tasks.reshading],
             "keypoints2d": [tasks.keypoints2d],
             "keypoints3d": [tasks.keypoints3d],
@@ -438,7 +438,7 @@ energy_configs = {
             },
             "direct_normal": {
                 ("train", "val"): [
-                    ("d(x)", "depth"),
+                    ("d(x)", "normal"),
                 ],
             },
             "percep_reshading": {
