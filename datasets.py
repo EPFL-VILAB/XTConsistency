@@ -25,7 +25,7 @@ import pdb
 """ Default data loading configurations for training, validation, and testing. """
 def load_train_val(train_tasks, val_tasks=None, fast=False,
         train_buildings=None, val_buildings=None, split_file="config/split.txt",
-        dataset_cls=None, batch_size=64, batch_transforms=cycle,
+        dataset_cls=None, batch_size=32, batch_transforms=cycle,
         subset=None, subset_size=None, dataaug=False,
     ):
 
@@ -33,12 +33,13 @@ def load_train_val(train_tasks, val_tasks=None, fast=False,
     train_cls = TrainTaskDataset if dataaug else dataset_cls
     train_tasks = [get_task(t) if isinstance(t, str) else t for t in train_tasks]
     if val_tasks is None: val_tasks = train_tasks
-    val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]
-    pdb.set_trace()    
+    val_tasks = [get_task(t) if isinstance(t, str) else t for t in val_tasks]  
     data = yaml.load(open(split_file))
     train_buildings = train_buildings or (["almena"] if fast else data["train_buildings"])
     val_buildings = val_buildings or (["almena"] if fast else data["val_buildings"])
+    print("number of train images:")
     train_loader = train_cls(buildings=train_buildings, tasks=train_tasks)
+    print("number of val images:")
     val_loader = dataset_cls(buildings=val_buildings, tasks=val_tasks)
 
     if subset_size is not None or subset is not None:
@@ -74,20 +75,23 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 def load_test(all_tasks, buildings=["almena", "albertville", "espanola"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
+    print(f"number of images in {buildings[0]}:")
     test_loader1 = torch.utils.data.DataLoader(
         TaskDataset(buildings=[buildings[0]], tasks=all_tasks, shuffle=False),
         batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True,
+        num_workers=0, shuffle=False, pin_memory=True,
     )
+    print(f"number of images in {buildings[1]}:")
     test_loader2 = torch.utils.data.DataLoader(
         TaskDataset(buildings=[buildings[1]], tasks=all_tasks, shuffle=False),
         batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True,
+        num_workers=0, shuffle=False, pin_memory=True,
     )
+    print(f"number of images in {buildings[2]}:")
     test_loader3 = torch.utils.data.DataLoader(
         TaskDataset(buildings=[buildings[2]], tasks=all_tasks, shuffle=False),
         batch_size=sample,
-        num_workers=sample, shuffle=False, pin_memory=True,
+        num_workers=0, shuffle=False, pin_memory=True,
     )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
@@ -133,11 +137,11 @@ class TaskDataset(Dataset):
         task_files = []
         for building in buildings:
             task_files += self.building_files(task, building)
-        print(f"{task.name} file len: {len(task_files)}")
+        print(f"    {task.name} file len: {len(task_files)}")
         self.idx_files = task_files
         if not shuffle: self.idx_files = sorted(task_files)
 
-        print ("Intersection files len: ", len(self.idx_files))
+        print ("    Intersection files len: ", len(self.idx_files))
 
     def reset_unpaired(self):
         if self.unpaired:
@@ -239,7 +243,7 @@ class ImageDataset(Dataset):
                 + glob.glob(f"{data_dir}/*.jpeg")
             )
 
-        print("num files = ", len(self.files))
+        print("number of ood images: ", len(self.files))
 
     def __len__(self):
         return len(self.files)

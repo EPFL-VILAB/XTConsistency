@@ -12,6 +12,7 @@ import visdom
 from utils import *
 from utils import elapsed
 import IPython
+import pdb
 
 class BaseLogger(object):
     """ Logger class, with hooks for data features and plotting functions. """
@@ -28,7 +29,10 @@ class BaseLogger(object):
         self.hooks.append((hook, feature, freq))
 
     def update(self, feature, x):
-        x = torch.tensor(x).data.cpu().numpy().mean()
+        if isinstance(x, torch.Tensor):
+            x = x.clone().detach().cpu().numpy().mean()
+        else:
+            x = torch.tensor(x).data.cpu().numpy().mean()
 
         self.data[feature] = self.data.get(feature, [])
         self.data[feature].append(x)

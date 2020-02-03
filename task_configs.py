@@ -153,7 +153,7 @@ class RealityTask(Task):
         self.dataset, self.shuffle, self.batch_size = dataset, shuffle, batch_size
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=24, shuffle=self.shuffle, pin_memory=True
+            num_workers=0, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
         self.step()
@@ -185,7 +185,7 @@ class RealityTask(Task):
     def reload(self):
         loader = torch.utils.data.DataLoader(
             self.dataset, batch_size=self.batch_size,
-            num_workers=24, shuffle=self.shuffle, pin_memory=True
+            num_workers=0, shuffle=self.shuffle, pin_memory=True
         )
         self.generator = cycle(loader)
 

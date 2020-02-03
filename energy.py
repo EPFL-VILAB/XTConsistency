@@ -38,7 +38,7 @@ def get_energy_loss(
 
 energy_configs = {
 
-    "multiperceptual": {
+    "multiperceptual_normal": {
         "paths": {
             "x": [tasks.rgb],
             "y^": [tasks.normal],
@@ -784,7 +784,7 @@ class WinRateEnergyLoss(EnergyLoss):
         if compute_grad_ratio:
             percep_mse_gradnorms = dict.fromkeys(chosen_percep_mse_losses, 1.0)
             for loss_name in chosen_percep_mse_losses:
-                loss_dict[loss_name].mean().backward(retain_graph=True) 
+                loss_dict[loss_name].mean().backward(retain_graph=True)
                 target_weights=list(graph.edge_map[f"('rgb', '{self.target_task}')"].model.parameters())
                 percep_mse_gradnorms[loss_name] = sum([l.grad.abs().sum().item() for l in target_weights])/sum([l.numel() for l in target_weights])
                 graph.optimizer.zero_grad()

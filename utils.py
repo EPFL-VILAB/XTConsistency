@@ -19,7 +19,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
-EXPERIMENT, RESUME_JOB, BASE_DIR = open("config/jobinfo.txt").read().strip().split(', ')
+EXPERIMENT, BASE_DIR = open("config/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/shared/models"

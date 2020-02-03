@@ -17,7 +17,7 @@ from utils import *
 class UNet_up_block(nn.Module):
     def __init__(self, prev_channel, input_channel, output_channel, up_sample=True):
         super().__init__()
-        self.up_sampling = nn.Upsample(scale_factor=2, mode='bilinear')
+        self.up_sampling = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
         self.conv1 = nn.Conv2d(prev_channel + input_channel, output_channel, 3)
         self.bn1 = nn.GroupNorm(8, output_channel)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3)
