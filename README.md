@@ -17,17 +17,17 @@ Reshading*        Surface-Normal*       RGB
 ```python
 config/  
     split.txt             	# Train, val split
-    jobinfo.txt				# Defines job name, base_dir
-modules/          			# Network definitions
-train.py					# Training script
-dataset.py					# Creates dataloader
-energy.py					# Defines path config, computes total loss, logging
-models.py					# Implements forward backward pass
-graph.py					# Computes path defined in energy.py
-task_configs.py				# Defines task specific preprocessing, masks, loss fn
-transfers.py				# Loads models
-utils.py					# Defines file paths (described below) 
-demo.py                     # Demo script
+    jobinfo.txt			# Defines job name, base_dir
+modules/          		# Network definitions
+train.py			# Training script
+dataset.py			# Creates dataloader
+energy.py			# Defines path config, computes total loss, logging
+models.py			# Implements forward backward pass
+graph.py			# Computes path defined in energy.py
+task_configs.py			# Defines task specific preprocessing, masks, loss fn
+transfers.py			# Loads models
+utils.py			# Defines file paths (described below) 
+demo.py             		# Demo script
 ```
 
 #### Default folder structure
@@ -35,8 +35,8 @@ demo.py                     # Demo script
 base_dir/  						# The following paths are defined in utils.py (BASE_DIR)
 	shared/						# with the corresponding variable names in brackets
 		models/					# Pretrained models (MODELS_DIR)
-		results_[jobname]/		# Checkpoint of model being trained (RESULTS_DIR)
-		ood_standard_set/		# OOD data for visualization (OOD_DIR)
+		results_[jobname]/			# Checkpoint of model being trained (RESULTS_DIR)
+		ood_standard_set/			# OOD data for visualization (OOD_DIR)
 data_dir/						# taskonomy data (DATA_DIRS)
 ```
 
