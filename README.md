@@ -60,12 +60,31 @@ The models should be placed in the file path defined by `MODELS_DIR` in `utils.p
 To run the trained model of a task on a specific image:
 
 ```
-python demo.py
+python demo.py --task $TASK --img_path $PATH_TO_IMAGE_OR_FOLDER --output_path $PATH_TO_SAVE_OUTPUT
 ```
 
-It outputs the original image, its baseline and consistency prediction. An example is shown below. 
+The `--task` flag specifies the target task for the input image, which should be either `normal`, `depth` or `reshading`.
 
-![](./outputs/normal_out.jpg)
+To run the script for a normal target on the [example image](./assets/abbasi-hotel-safavid-suite.png):
+
+```
+python demo.py --task normal --img_path assets/abbasi-hotel-safavid-suite.png --output_path assets/
+```
+
+It returns the output prediction from the baseline (`test_normal_baseline.jpg`) and consistency models (`test_normal_consistency.jpg`).
+
+Test image                 |  Baseline			|  Consistency
+:-------------------------:|:-------------------------: |:-------------------------:
+![](./assets/abbasi-hotel-safavid-suite.png)  |  ![](./assets/abbasi-hotel-safavid-suite_normal_baseline.jpg) |  ![](./assets/abbasi-hotel-safavid-suite_normal_consistency.jpg)
+
+
+Similarly, running for target tasks reshading and depth gives the following.
+
+  Baseline (reshading)      |  Consistency (reshading)   |  Baseline (depth)	       |  Consistency (depth)
+:-------------------------: |:-------------------------: | :-------------------------: |:-------------------------:
+![](./assets/abbasi-hotel-safavid-suite_reshading_baseline.jpg) |  ![](./assets/abbasi-hotel-safavid-suite_reshading_consistency.jpg) | ![](./assets/abbasi-hotel-safavid-suite_depth_baseline.jpg) |  ![](./assets/abbasi-hotel-safavid-suite_depth_consistency.jpg)
+
+
 
 #### Training
 
