@@ -7,7 +7,6 @@ processed
 *.pth
 *.tar
 output
-jobinfo.txt
 *.gz
 .DS_Store/*
 result
