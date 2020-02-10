@@ -10,14 +10,10 @@ import argparse
 import os.path
 from pathlib import Path
 import glob
+import sys
 
 import pdb
 
-
-####### TODO #######
-# 1. rename file paths
-# 2. remove state dict key rename after renaming those in .pth files
-# 3. merge baseline and consistency output code
 
 
 parser = argparse.ArgumentParser(description='Visualize output for a single Task')
@@ -33,7 +29,7 @@ parser.set_defaults(store_name='NONE')
 
 args = parser.parse_args()
 
-root_dir = '/scratch-data/shared/'
+root_dir = '/scratch-data/final_models/'
 trans_totensor = transforms.Compose([transforms.Resize(256, interpolation=PIL.Image.BILINEAR),
                                     transforms.CenterCrop(256),
                                     transforms.ToTensor()])
@@ -42,9 +38,12 @@ trans_topil = transforms.ToPILImage()
 
 # get target task and model
 target_tasks = ['normal','depth','reshading']
-task_index = target_tasks.index(args.task)
+try:
+    task_index = target_tasks.index(args.task)
+except:
+    print("task should be one of the following: normal, depth, reshading")
+    sys.exit()
 models = [UNet(), UNet(downsample=6, out_channels=1), UNetReshade(downsample=5)]
-target_task = args.task
 model = models[task_index]
 
 
@@ -53,22 +52,13 @@ def save_outputs(img_path, output_file_name):
     img = Image.open(img_path)
     img_tensor = trans_totensor(img)[:3].unsqueeze(0)
 
-    # compute baseline output
-    path = root_dir + 'results_CH_baseline_unet_'+args.task+'target_nosqerror_dataaug_contlr3e-5_1/model.pth'
-    model_state_dict = torch.load(path)
-    model_state_dict = {k[22:]: v for k, v in model_state_dict.items()}
-    model.load_state_dict(model_state_dict)
-    baseline_output = model(img_tensor)
-    trans_topil(baseline_output[0]).save(args.output_path+'/'+output_file_name+'_'+args.task+'_baseline'+'.png')
-
-    # compute consistency output
-    path = root_dir + 'results_CH_lbp_all_'+args.task+'target_gradnorm_unnormalizedmse_imagenet_nosqerror_nosqinitauglr_dataaug_1/graph.pth'
-    alt_name = args.task+'_zbuffer' if args.task == 'depth' else args.task
-    model_state_dict = torch.load(path)["('rgb', '"+alt_name+"')"]
-    model_state_dict = {k[28:]: v for k, v in model_state_dict.items()}
-    model.load_state_dict(model_state_dict)
-    consistency_output = model(img_tensor)
-    trans_topil(consistency_output[0]).save(args.output_path+'/'+output_file_name+'_'+args.task+'_consistency'+'.png')
+    # compute baseline and consistency output
+    for type in ['baseline','consistency']:
+        path = root_dir + 'rgb2'+args.task+'_'+type+'.pth'
+        model_state_dict = torch.load(path)
+        model.load_state_dict(model_state_dict)
+        baseline_output = model(img_tensor)
+        trans_topil(baseline_output[0]).save(args.output_path+'/'+output_file_name+'_'+args.task+'_'+type+'.png')
 
 
 img_path = Path(args.img_path)
