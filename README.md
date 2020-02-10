@@ -1,10 +1,26 @@
-# [Repo under construction!] Consistency code
+# [Repo under construction!] Cross-task Consistency
 
-This folder contains the code used in the paper.
+This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can find the download links to these networks and demo code for visualizing the results on a single image.
+
+
+Table of contents
+=================
+
+   * [Introduction](#introduction)
+   * [Installation](#install-requirements)
+   * [Running Single-Image Tasks](#run-demo-script)
+   * [Training](#training)
+	   * [Code structure](#the-code-is-structured-as-follows)
+	   * [Steps](#steps)
+   * [Citing](#citation)
+
+
+## Introduction 
+
 
 #### Dataset
 
-The following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data) were used to train the model.
+The following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data) were used to train the model. Tasks with (\*) are used as a target domain with all other tasks being used as percep losses ie. a `depth` target would have `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `normal` as percep losses.
 
 ```
 Curvature         Depth*                Edge-3D        
@@ -12,35 +28,17 @@ Edge-2D           Keypoint-2D           Keypoint-3D
 Reshading*        Surface-Normal*       RGB
 ```
 
-#### Code structure
+#### Network Atchitecture
 
-```python
-config/  
-    split.txt             	# Train, val split
-    jobinfo.txt			# Defines job name, base_dir
-modules/          		# Network definitions
-train.py			# Training script
-dataset.py			# Creates dataloader
-energy.py			# Defines path config, computes total loss, logging
-models.py			# Implements forward backward pass
-graph.py			# Computes path defined in energy.py
-task_configs.py			# Defines task specific preprocessing, masks, loss fn
-transfers.py			# Loads models
-utils.py			# Defines file paths (described below) 
-demo.py             		# Demo script
-```
+The networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) architecture. They take in an input size of 256x256, upsampling is done via bilinear interpolations instead of deconvolutions and trained with the L1 loss. See the table below for more information.
 
-#### Default folder structure
-```python
-base_dir/  		            # The following paths are defined in utils.py (BASE_DIR)
-    shared/			    # with the corresponding variable names in brackets
-        models/			    # Pretrained models (MODELS_DIR)
-        results_[jobname]/	    # Checkpoint of model being trained (RESULTS_DIR)
-        ood_standard_set/	    # OOD data for visualization (OOD_DIR)
-data_dir/			    # taskonomy data (DATA_DIRS)
-```
+| Task Name | Output Dimension | Downsample Blocks |
+|-----------|------------------|-------------------|
+| depth     | 256x256x1        | 6                 |
+| reshading | 256x256x1        | 5                 |
+| normal    | 256x256x3        | 6                 |
 
-#### Install requirements
+## Install requirements
 See `requirements.txt` for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
 
 ```
@@ -49,13 +47,13 @@ source activate testenv
 pip install -r requirements.txt
 ```
 
-#### Download pretrained networks
+## Download pretrained networks
 ```
 [add command]
 ```
 The models should be placed in the file path defined by `MODELS_DIR` in `utils.py`.
 
-#### Run demo script
+## Run demo script
 
 To run the trained model of a task on a specific image:
 
@@ -86,7 +84,37 @@ Similarly, running for target tasks reshading and depth gives the following.
 
 
 
-#### Training
+## Training
+
+#### The code is structured as follows
+
+```python
+config/  
+    split.txt             	# Train, val split
+    jobinfo.txt			# Defines job name, base_dir
+modules/          		# Network definitions
+train.py			# Training script
+dataset.py			# Creates dataloader
+energy.py			# Defines path config, computes total loss, logging
+models.py			# Implements forward backward pass
+graph.py			# Computes path defined in energy.py
+task_configs.py			# Defines task specific preprocessing, masks, loss fn
+transfers.py			# Loads models
+utils.py			# Defines file paths (described below) 
+demo.py             		# Demo script
+```
+
+#### Default folder structure
+```python
+base_dir/  		            # The following paths are defined in utils.py (BASE_DIR)
+    shared/			    # with the corresponding variable names in brackets
+        models/			    # Pretrained models (MODELS_DIR)
+        results_[jobname]/	    # Checkpoint of model being trained (RESULTS_DIR)
+        ood_standard_set/	    # OOD data for visualization (OOD_DIR)
+data_dir/			    # taskonomy data (DATA_DIRS)
+```
+
+## Steps
 
 1) Create a `jobinfo.txt` file and define the name of the job and root folder where data, models results would be stored. An example config would be,
 
@@ -117,6 +145,7 @@ If you find the code, models, or data useful, please cite this paper:
 ### TODOs
 
 - <del> Create demo code that produces target output given rgb image
+- <del> Table of contents
 - Save trained models somewhere
 	- Rename them to something reasonable
 	- Change/remove the file links in transfer.py
