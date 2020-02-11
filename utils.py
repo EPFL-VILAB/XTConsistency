@@ -30,7 +30,7 @@ OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
 os.system(f"mkdir -p {RESULTS_DIR}")
-print (DATA_DIRS)
+#print (DATA_DIRS)
 
 def elapsed(last_time=[time.time()]):
     """ Returns the time passed since elapsed() was last called. """
