@@ -2,7 +2,7 @@
 
 # [Repo under construction!] Robust Learning Through Cross-Task Consistency
 
-This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can find the download links to these networks and demo code for visualizing the results on a single image.
+This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here.
 
 For further details about consistency (the what, why and how) or for more technical details, refer to the [paper]() or [website]().
 
@@ -24,7 +24,7 @@ Table of contents
 
 #### Dataset
 
-The following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data) were used to train the model. Tasks with (\*) are used as a target domain with all other tasks being used as percep losses ie. a `depth` target would have `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `normal` as percep losses.
+The following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data) were used to train the model. Domains with (\*) are used as a target domain with all others being used for the perceptual losses ie. a `depth` target would have `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `normal` as perceptual losses.
 
 ```
 Curvature         Depth*                Edge-3D        
