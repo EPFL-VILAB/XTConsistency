@@ -1,8 +1,10 @@
 ![](./assets/intro.png)
 
-# [Repo under construction!] Cross-task Consistency
+# [Repo under construction!] Robust Learning Through Cross-Task Consistency
 
 This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can find the download links to these networks and demo code for visualizing the results on a single image.
+
+For further details about consistency (the what, why and how) or for more technical details, refer to the [paper]() or [website]().
 
 
 Table of contents
@@ -51,6 +53,14 @@ pip install -r requirements.txt
 
 ## Run demo script
 
+#### Clone the code from github
+
+```
+git clone https://github.com/amir32002/scaling.git
+cd scaling
+git checkout ch_release
+```
+
 #### Download pretrained networks
 The pretrained models for the demo can be downloaded with the following command.
 
@@ -58,7 +68,10 @@ The pretrained models for the demo can be downloaded with the following command.
 sh ./tools/download_models.sh
 ```
 
-They will be saved to a folder called `models`.
+This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.27GB). They will be saved to a folder called `models`.
+
+Individial models can be downloaded [here](https://drive.switch.ch/index.php/s/QPvImzbbdjBKI5P).
+
 #### Running single image tasks
 
 To run the trained model of a task on a specific image:
@@ -69,7 +82,7 @@ python demo.py --task $TASK --img_path $PATH_TO_IMAGE_OR_FOLDER --output_path $P
 
 The `--task` flag specifies the target task for the input image, which should be either `normal`, `depth` or `reshading`.
 
-To run the script for a normal target on the [example image](./assets/abbasi-hotel-safavid-suite.png):
+To run the script for a `normal` target on the [example image](./assets/abbasi-hotel-safavid-suite.png):
 
 ```
 python demo.py --task normal --img_path assets/test.png --output_path assets/
@@ -82,7 +95,7 @@ Test image                 |  Baseline			|  Consistency
 <img src="./assets/test.png" width="256" height="256" />|  ![](./assets/test_normal_baseline.png) |  ![](./assets/test_normal_consistency.png)
 
 
-Similarly, running for target tasks reshading and depth gives the following.
+Similarly, running for target tasks `reshading` and `depth` gives the following.
 
   Baseline (reshading)      |  Consistency (reshading)   |  Baseline (depth)	       |  Consistency (depth)
 :-------------------------: |:-------------------------: | :-------------------------: |:-------------------------:
@@ -143,7 +156,7 @@ More options can be found in the `train.py` file.
 
 3) Losses and some visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]`
 
-**Note**: this folder provides the full code and additional resources for archival and information purposes only. We dont maintain the code here.  For more details and the full methodology, please see the [main paper and website]().
+**Note**: this folder provides the full code and additional resources for archival and information purposes only. We dont maintain the code here.  For more details and the full methodology, please see the [paper]() and [website]().
 
 ## Citation
 If you find the code, models, or data useful, please cite this paper:
@@ -161,6 +174,5 @@ If you find the code, models, or data useful, please cite this paper:
 - Save trained models somewhere
 	- Rename them to something reasonable
 	- Change/remove the file links in transfer.py
-- Central config file
 
 ----
