@@ -29,7 +29,7 @@ parser.set_defaults(store_name='NONE')
 
 args = parser.parse_args()
 
-root_dir = '/scratch-data/final_models/'
+root_dir = './models/'
 trans_totensor = transforms.Compose([transforms.Resize(256, interpolation=PIL.Image.BILINEAR),
                                     transforms.CenterCrop(256),
                                     transforms.ToTensor()])

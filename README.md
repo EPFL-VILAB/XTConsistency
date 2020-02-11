@@ -1,3 +1,5 @@
+![](./assets/intro.png)
+
 # [Repo under construction!] Cross-task Consistency
 
 This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can find the download links to these networks and demo code for visualizing the results on a single image.
@@ -47,13 +49,17 @@ source activate testenv
 pip install -r requirements.txt
 ```
 
-## Download pretrained networks
-```
-[add command]
-```
-The models should be placed in the file path defined by `MODELS_DIR` in `utils.py`.
-
 ## Run demo script
+
+#### Download pretrained networks
+The pretrained models for the demo can be downloaded with the following command.
+
+```
+sh ./tools/download_models.sh
+```
+
+They will be saved to a folder called `models`.
+#### Running single image tasks
 
 To run the trained model of a task on a specific image:
 
@@ -85,6 +91,12 @@ Similarly, running for target tasks reshading and depth gives the following.
 
 
 ## Training
+
+#### Download pretrained networks
+```
+[add command]
+```
+The models should be placed in the file path defined by `MODELS_DIR` in `utils.py`.
 
 #### The code is structured as follows
 
@@ -119,7 +131,7 @@ data_dir/			    # taskonomy data (DATA_DIRS)
 1) Create a `jobinfo.txt` file and define the name of the job and root folder where data, models results would be stored. An example config would be,
 
 ```
-normaltarget_split, /scratch
+normaltarget_allperceps, /scratch
 ```
 
 2) Train the task-specific network with the command
