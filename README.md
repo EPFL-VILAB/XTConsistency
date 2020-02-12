@@ -3,7 +3,7 @@
 Visual perception entails solving a wide set of tasks (e.g. object detection, depth estimation, etc). The predictions made for each task out of a particular observation are not independent, and therefore, are expected to be **consistent**.
 
 ![](./assets/intro.png)
-A comparison of the results from consistency-based learning and learning each task individually. 
+A comparison of the results from consistency-based learning and learning each task individually. The yellow markers highlights the improvement in fine grained details.
 
 **What** Given that the underlying scene is the same, different tasks predictions should be consistent eg. the depth of one region should not be flat if normals are uneven.
 
@@ -103,7 +103,7 @@ It returns the output prediction from the baseline (`test_normal_baseline.png`) 
 
 Test image                 |  Baseline			|  Consistency
 :-------------------------:|:-------------------------: |:-------------------------:
-<img src="./assets/test.png" width="256" height="256" />|  ![](./assets/test_normal_baseline.png) |  ![](./assets/test_normal_consistency.png)
+![](./assets/test_scaled.png)|  ![](./assets/test_normal_baseline.png) |  ![](./assets/test_normal_consistency.png)
 
 
 Similarly, running for target tasks `reshading` and `depth` gives the following.
