@@ -171,15 +171,15 @@ To modify individual file paths eg. the models folder, change `MODELS_DIR` varia
 python -m train multiperceptual_{depth,normal,reshading}
 ```
 
-To run the training code for the normal target, run 
+To run the training code for the `normal` target, run 
 
 ```
 python -m train multiperceptual_normal
 ```
 
-This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We use 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
+This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
 
-There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. random (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
 
 To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
 
@@ -191,7 +191,7 @@ The full list of options can be found in the `train.py` file.
 
 3) The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
 
-An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the thrid its prediction `n(x)` from the RGB image. Thereafter, the predictions of each pair of images with the same domain are given by the path `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
+An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the thrid its prediction `n(x)` from the RGB image `x`. Thereafter, the predictions of each pair of images with the same domain are given by the paths `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
 
 ![](./assets/visdom_eg.png)
 
