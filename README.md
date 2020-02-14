@@ -17,7 +17,7 @@ This repository shares the pretrained models from several vision tasks that have
 #### Alternatively, upload your own image to compare the results or explore other visiualizations below
 | [Upload here](https://ofkar.github.io/consistency/tasks/) | [Visualizations](https://ofkar.github.io/consistency/visuals/) 
 |:----:|:----:|
-| [<img src=https://www.pngitem.com/pimgs/m/9-97793_cute-pikachu-hd-png-download.png width="400" height="250">](https://ofkar.github.io/consistency/tasks/) | [<img src=https://1eu.funnyjunk.com/thumbnails/comments/Lotengo+explain+this++_6d4a02f89eba3c145f2b0b61feda718a.png width="200" height="200">](https://ofkar.github.io/consistency/visuals/) |
+| [<img src=https://www.pngitem.com/pimgs/m/9-97793_cute-pikachu-hd-png-download.png width="400" height="250">](https://ofkar.github.io/consistency/tasks/) | [<img src=https://1eu.funnyjunk.com/thumbnails/comments/Lotengo+explain+this++_6d4a02f89eba3c145f2b0b61feda718a.png width="250" height="200">](https://ofkar.github.io/consistency/visuals/) |
 
 Table of contents
 =================
@@ -193,6 +193,7 @@ The full list of options can be found in the `train.py` file.
 
 An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the thrid its prediction `n(x)` from the RGB image. Thereafter, the predictions of each pair of images with the same domain are given by the path `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
 
+![](./assets/visdom_eg.png)
 
 #### To train on other target domains   
 Add new config in `energy.py`.
