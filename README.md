@@ -9,14 +9,15 @@ A comparison of the results from consistency-based learning and learning each ta
 
 **Why** Inconsistencies imply contradictions, which casts doubts on the validity of predictions for downstream uses. Furthermore, they can be used to better fit the data and reduce sample complexity required. It may also reduce the tendency of neural networks to learn superficial cues by enforcing constraints rooted in different geometric or physical aspects of one observation.
 
-**How** The underlying concept is that of path independence in a network of tasks. Given an endpoint X3, the path from 
-X1->X2->X3 should give the same results as X1->X3. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
+**How** The underlying concept is that of path independence in a network of tasks. Given an endpoint `X3`, the path from 
+`X1->X2->X3` should give the same results as `X1->X3`. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
 
-This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here.
+This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here. For further details about consistency, refer to the [paper]() or [website]().
 
-
-For further details about consistency, refer to the [paper]() or [website]().
-
+#### Alternatively, upload your own image to compare the results or explore other visiualizations below
+| [Upload here](https://ofkar.github.io/consistency/tasks/) | [Visualizations](https://ofkar.github.io/consistency/visuals/) 
+|:----:|:----:|
+| [<img src=https://www.pngitem.com/pimgs/m/9-97793_cute-pikachu-hd-png-download.png width="400" height="250">](https://ofkar.github.io/consistency/tasks/) | [<img src=https://1eu.funnyjunk.com/thumbnails/comments/Lotengo+explain+this++_6d4a02f89eba3c145f2b0b61feda718a.png width="200" height="200">](https://ofkar.github.io/consistency/visuals/) |
 
 Table of contents
 =================
@@ -25,8 +26,10 @@ Table of contents
    * [Installation](#install-requirements)
    * [Run the demo code](#run-demo-script)
    * [Train a consistency model](#training)
-	   * [Code structure](#the-code-is-structured-as-follows)
-	   * [Steps](#steps)
+     * [Code structure](#the-code-is-structured-as-follows)
+     * [Instructions for training with the configuration as in the paper](#steps)
+     * [For Other configurations](#to-train-on-other-target-domains)
+     * [Energy computation](#energy-computation)
    * [Citing](#citation)
 
 
@@ -43,7 +46,9 @@ Edge-2D           Keypoint-2D           Keypoint-3D
 Reshading*        Surface-Normal*       RGB
 ```
 
-#### Network Atchitecture
+Descriptions for each domain can be found in the [supplementary file](http://taskonomy.stanford.edu/taskonomy_supp_CVPR2018.pdf) of Taskonomy.
+
+#### Network Architecture
 
 The networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) architecture. They take in an input size of 256x256, upsampling is done via bilinear interpolations instead of deconvolutions and trained with the L1 loss. See the table below for more information.
 
@@ -93,7 +98,7 @@ python demo.py --task $TASK --img_path $PATH_TO_IMAGE_OR_FOLDER --output_path $P
 
 The `--task` flag specifies the target task for the input image, which should be either `normal`, `depth` or `reshading`.
 
-To run the script for a `normal` target on the [example image](./assets/abbasi-hotel-safavid-suite.png):
+To run the script for a `normal` target on the [example image](./assets/test.png):
 
 ```
 python demo.py --task normal --img_path assets/test.png --output_path assets/
@@ -147,26 +152,53 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
         models/			    # Pretrained models (MODELS_DIR)
         results_[jobname]/	    # Checkpoint of model being trained (RESULTS_DIR)
         ood_standard_set/	    # OOD data for visualization (OOD_DIR)
-data_dir/			    # taskonomy data (DATA_DIRS)
+    data_dir/			    # taskonomy data (DATA_DIRS)
 ```
 
-## Steps
+#### Steps
 
-1) Create a `jobinfo.txt` file and define the name of the job and root folder where data, models results would be stored. An example config would be,
+1) Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config would be,
 
 ```
 normaltarget_allperceps, /scratch
 ```
+
+To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in `utils.py`.
 
 2) Train the task-specific network with the command
 
 ```
 python -m train multiperceptual_{depth,normal,reshading}
 ```
-More options can be found in the `train.py` file.
 
-3) Losses and some visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]`
+To run the training code for the normal target, run 
 
+```
+python -m train multiperceptual_normal
+```
+
+This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We use 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
+
+There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. random (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+
+To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
+
+```
+python -m train multiperceptual_normal --k 2 --random-select
+```
+
+The full list of options can be found in the `train.py` file.
+
+3) The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
+
+An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the thrid its prediction `n(x)` from the RGB image. Thereafter, the predictions of each pair of images with the same domain are given by the path `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
+
+
+#### To train on other target domains   
+Add new config in `energy.py`.
+
+#### Energy computation
+coming soon
 
 ## Citation
 If you find the code, models, or data useful, please cite this paper:
@@ -179,10 +211,10 @@ If you find the code, models, or data useful, please cite this paper:
 ----
 ### TODOs
 
-- <del> Create demo code that produces target output given rgb image
-- <del> Table of contents
-- Save trained models somewhere
-	- Rename them to something reasonable
-	- Change/remove the file links in transfer.py
+- [ ] Save trained models to scratch partition
+- [ ] Rename them to something reasonable
+- [ ] Change/remove the file links in transfer.py
+- [ ] Different selection criteria for p loss
+
 
 ----
