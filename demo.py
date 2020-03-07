@@ -46,6 +46,7 @@ except:
 models = [UNet(), UNet(downsample=6, out_channels=1), UNetReshade(downsample=5)]
 model = models[task_index]
 
+map_location = (lambda storage, loc: storage.cuda()) if torch.cuda.is_available() else torch.device('cpu')
 
 def save_outputs(img_path, output_file_name):
 
@@ -55,9 +56,9 @@ def save_outputs(img_path, output_file_name):
     # compute baseline and consistency output
     for type in ['baseline','consistency']:
         path = root_dir + 'rgb2'+args.task+'_'+type+'.pth'
-        model_state_dict = torch.load(path)
+        model_state_dict = torch.load(path, map_location=map_location)
         model.load_state_dict(model_state_dict)
-        baseline_output = model(img_tensor)
+        baseline_output = model(img_tensor).clamp(min=0, max=1)
         trans_topil(baseline_output[0]).save(args.output_path+'/'+output_file_name+'_'+args.task+'_'+type+'.png')
 
 
