@@ -18,7 +18,7 @@ This repository shares the pretrained models from several vision tasks that have
 #### Alternatively, upload your own image to compare the results or explore other visiualizations below
 | [Upload here](https://consistency.epfl.ch/demo/) | [Visualizations](https://consistency.epfl.ch/visuals/) 
 |:----:|:----:|
-| [<img src=./assets/screenshot-demo.png width="400" height="250">](https://consistency.epfl.ch/demo/) | [<img src=./assets/screenshot-viz.png width="400" height="250">](https://consistency.epfl.ch/visuals/) |
+| [<img src=./assets/screenshot-demo.png width="300" height="200">](https://consistency.epfl.ch/demo/) | [<img src=./assets/screenshot-viz.png width="300" height="250">](https://consistency.epfl.ch/visuals/) |
 
 Table of contents
 =================
@@ -180,7 +180,7 @@ python -m train multiperceptual_normal
 
 This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
 
-There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
 
 To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
 
@@ -196,8 +196,23 @@ An example visualization is shown below. We plot the the outputs from the paths 
 
 ![](./assets/visdom_eg.png)
 
-#### To train on other target domains   
-Add new config in `energy.py`.
+#### To train on other target domains
+A new configuration has to be defined in the `energy_configs` dictionary in `energy.py`. A brief decription of the infomation needed:
+
+- `paths`: `X1->X2->X3`. The keys in this dictionary uses a functional form eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `rgb, normal, curv`. These functional forms do not need to be same for all configurations.
+- `freeze_list`: the models that will not be optimized,
+- `losses`: loss terms to be constructed from the paths defined above,
+- `plots`: the paths to plots in the visdom environment.
+
+
+##### Function definitions
+The RGB input is defined as `x`, ground truth as `y^`.
+
+| rgb2Z | target2Z | Z           | rgb2Z | target2Z | Z              |
+|-------|----------|-------------|-------|----------|----------------|
+| n     |  -       | target      | k2    | Nk2      | keypoints2d    |
+| RC    | f        | curvature   | k3    | Nk3      | keypoints3d    |
+| a     | s        | sobel edges | E0    | nE0      | edge occlusion |
 
 ## Energy computation
 Coming soon
