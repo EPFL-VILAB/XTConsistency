@@ -3,21 +3,22 @@
 Visual perception entails solving a wide set of tasks (e.g. object detection, depth estimation, etc). The predictions made for each task out of a particular observation are not independent, and therefore, are expected to be **consistent**.
 
 ![](./assets/intro.png)
-A comparison of the results from consistency-based learning and learning each task individually. The yellow markers highlights the improvement in fine grained details.
+*A comparison of the results from consistency-based learning and learning each task individually. The yellow markers highlights the improvement in fine grained details.*
 
-**What is consistency** Given that the underlying scene is the same, different tasks predictions should be consistent eg. the depth of one region should not be flat if normals are uneven.
 
-**Why is it important** Inconsistencies imply contradictions, which casts doubts on the validity of predictions for downstream uses. Furthermore, they can be used to better fit the data and reduce sample complexity required. It may also reduce the tendency of neural networks to learn superficial cues by enforcing constraints rooted in different geometric or physical aspects of one observation.
+**What is consistency?** Given that the underlying scene is the same, different tasks predictions should be consistent eg. the depth of one region should not be flat if normals are uneven.
 
-**How do we enforce it** The underlying concept is that of path independence in a network of tasks. Given an endpoint `X3`, the path from 
+**Why is it important?** Inconsistencies imply contradictions, which casts doubts on the validity of predictions for downstream uses. Furthermore, they can be used to better fit the data and reduce sample complexity required. It may also reduce the tendency of neural networks to learn superficial cues by enforcing constraints rooted in different geometric or physical aspects of one observation.
+
+**How do we enforce it?** The underlying concept is that of path independence in a network of tasks. Given an endpoint `X3`, the path from 
 `X1->X2->X3` should give the same results as `X1->X3`. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
 
-This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here. For further details about consistency, refer to the [paper]() or [website]().
+This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here. For further details about consistency, refer to the [paper]() or [website](https://consistency.epfl.ch/).
 
 #### Alternatively, upload your own image to compare the results or explore other visiualizations below
-| [Upload here](https://ofkar.github.io/consistency/tasks/) | [Visualizations](https://ofkar.github.io/consistency/visuals/) 
+| [Upload here](https://consistency.epfl.ch/demo/) | [Visualizations](https://consistency.epfl.ch/visuals/) 
 |:----:|:----:|
-| [<img src=https://www.pngitem.com/pimgs/m/9-97793_cute-pikachu-hd-png-download.png width="400" height="250">](https://ofkar.github.io/consistency/tasks/) | [<img src=https://1eu.funnyjunk.com/thumbnails/comments/Lotengo+explain+this++_6d4a02f89eba3c145f2b0b61feda718a.png width="250" height="200">](https://ofkar.github.io/consistency/visuals/) |
+| [<img src=./assets/screenshot-demo.png width="400" height="250">](https://consistency.epfl.ch/demo/) | [<img src=./assets/screenshot-viz.png width="400" height="250">](https://consistency.epfl.ch/visuals/) |
 
 Table of contents
 =================
