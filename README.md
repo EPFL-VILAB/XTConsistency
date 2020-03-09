@@ -13,7 +13,8 @@ Visual perception entails solving a wide set of tasks (e.g. object detection, de
 **How do we enforce it?** The underlying concept is that of path independence in a network of tasks. Given an endpoint `X3`, the path from 
 `X1->X2->X3` should give the same results as `X1->X3`. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
 
-This repository shares the pretrained models from several vision tasks that have been trained to give consistent predictions given a query (RGB) image. You can also find the demo code for visualizing the results on a single image and training code here. For further details about consistency, refer to the [paper]() or [website](https://consistency.epfl.ch/).
+
+This repository includes [training](#training) code for enforcing cross task consistency, [demo](#run-demo-script) code for visualizing results of a consistency trained model on a given image and [links](#download-consistency-trained-networks) to download these models. For further details, refer to our [paper]() or [website](https://consistency.epfl.ch/).
 
 #### Alternatively, upload your own image to compare the results or explore other visiualizations below
 | [Upload here](https://consistency.epfl.ch/demo/) | [Visualizations](https://consistency.epfl.ch/visuals/) 
@@ -78,7 +79,7 @@ cd scaling
 git checkout ch_release
 ```
 
-#### Download pretrained networks
+#### Download consistency trained networks
 The pretrained models for the demo can be downloaded with the following command.
 
 ```
@@ -180,7 +181,10 @@ python -m train multiperceptual_normal
 
 This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
 
-There is the option to train with fewer perceptual loss terms at a single time, thus lowers GPU memory requirements. The flag `--k` defines the number of perceptual losses used. There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
+Additional arugments can be specified during training, the most commonly used ones are listed below. For the full list, refer to the [training script](./train.py). 
+- The flag `--k` defines the number of perceptual losses used, thus reducing GPU memory requirements.
+- There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+- Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
 
 To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
 
