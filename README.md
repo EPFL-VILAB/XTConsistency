@@ -214,19 +214,20 @@ A new configuration has to be defined in the `energy_configs` dictionary in `ene
 - `losses`: loss terms to be constructed from the paths defined above,
 - `plots`: the paths to plots in the visdom environment.
 
-
 ##### Function definitions
-The RGB input is defined as `x`, ground truth as `y^`.
+The RGB input is defined as `x`, ground truth as `y^`. 
 
 | rgb2Z | target2Z | Z           | rgb2Z | target2Z | Z              |
 |-------|----------|-------------|-------|----------|----------------|
-| n     |  -       | target      | k2    | Nk2      | keypoints2d    |
+| n     | -        | target      | k2    | Nk2      | keypoints2d    |
 | RC    | f        | curvature   | k3    | Nk3      | keypoints3d    |
 | a     | s        | sobel edges | E0    | nE0      | edge occlusion |
+
 The functions in columns **rgb2Z** and **target2Z** correspond to the output defined column **Z** ie. the function for `rgb` to `curvature` is `RC`, for target to `curvature` its `f`.
 
 ## Energy computation
 Coming soon
+
 
 ## Citation
 If you find the code, models, or data useful, please cite this paper:
