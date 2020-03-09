@@ -86,7 +86,7 @@ The pretrained models for the demo can be downloaded with the following command.
 sh ./tools/download_models.sh
 ```
 
-This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.27GB). They will be saved to a folder called `models`.
+This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.3GB). They will be saved to a folder called `models`.
 
 Individial models can be downloaded [here](https://drive.switch.ch/index.php/s/QPvImzbbdjBKI5P).
 
@@ -123,11 +123,17 @@ Similarly, running for target tasks `reshading` and `depth` gives the following.
 
 ## Training
 
-#### Download pretrained networks
+#### Download perceptual networks
+
+The pretrained perceptual models can be downloaded with the following command.
+
 ```
-[add command]
+sh ./tools/download_percep_models.sh
 ```
-The models should be placed in the file path defined by `MODELS_DIR` in `utils.py`.
+
+This downloads the perceptual models for the `depth`, `normal` and `reshading` target (1.6GB). Each target has 7 pretrained models. They should be placed in the file path defined by `MODELS_DIR` in `utils.py`.
+
+Individual models can be downloaded [here](https://drive.switch.ch/index.php/s/aXu4EFaznqtNzsE).
 
 #### The code is structured as follows
 
