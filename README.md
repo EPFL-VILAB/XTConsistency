@@ -61,7 +61,7 @@ The networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) archi
 | normal    | 256x256x3        | 6                 |
 
 ## Install requirements
-See `requirements.txt` for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
+See [requirements.txt](./requirements.txt) for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
 
 ```
 conda create -n testenv python=3.6
@@ -214,7 +214,7 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
    - `losses`: loss terms to be constructed from the paths defined above,
    - `plots`: the paths to plots in the visdom environment.
 
-2. New models may need to be defined in the `pretrained_transfers` dictionary in [transfers.py](./transfers.py#L26-L97). For example, for a `curvature` target, and perceptual model `curvature` to `normal`, the code will look for the `principal_curvature2normal.pth` file in `MODELS_DIR` if it is not defined in `transfers.py`.
+2. New models may need to be defined in the `pretrained_transfers` dictionary in [transfers.py](./transfers.py#L26-L97). For example, for a `curvature` target, and perceptual model `curvature` to `normal`, the code will look for the `principal_curvature2normal.pth` file in `MODELS_DIR` if it is not defined in [transfers.py](./transfers.py#L26-L97).
 
 ##### Function definitions
 The RGB input is defined as `x`, ground truth as `y^`. 
