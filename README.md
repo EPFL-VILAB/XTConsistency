@@ -14,7 +14,7 @@ Visual perception entails solving a wide set of tasks (e.g. object detection, de
 `X1->X2->X3` should give the same results as `X1->X3`. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
 
 
-This repository includes [training](#training) code for enforcing cross task consistency, [demo](#run-demo-script) code for visualizing results of a consistency trained model on a given image and [links](#download-consistency-trained-networks) to download these models. For further details, refer to our [paper]() or [website](https://consistency.epfl.ch/).
+This repository includes [training](#training) code for enforcing cross task consistency, [demo](#run-demo-script) code for visualizing the results of a consistency trained model on a given image and [links](#download-consistency-trained-networks) to download these models. For further details, refer to our [paper]() or [website](https://consistency.epfl.ch/).
 
 #### Alternatively, upload your own image to compare the results or explore other visiualizations below
 | [Upload here](https://consistency.epfl.ch/demo/) | [Visualizations](https://consistency.epfl.ch/visuals/) 
@@ -30,7 +30,7 @@ Table of contents
    * [Train a consistency model](#training)
      * [Code structure](#the-code-is-structured-as-follows)
      * [Instructions for training](#steps)
-     * [For other configurations](#to-train-on-other-target-domains)
+     * [To train on other configurations](#to-train-on-other-target-domains)
    * [Energy computation](#energy-computation)
    * [Citing](#citation)
 
@@ -189,7 +189,7 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
 
    Additional arugments can be specified during training, the most commonly used ones are listed below. For the full list, refer to the [training script](./train.py).
    - The flag `--k` defines the number of perceptual losses used, thus reducing GPU memory requirements.
-   - There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+   - There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`)
    - Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
 
    To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
@@ -206,7 +206,7 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
 ![](./assets/visdom_eg.png)
 
 #### To train on other target domains
-1. A new configuration should be defined in the `energy_configs` dictionary in [energy.py](./energy.py#L39). 
+1. A new configuration should be defined in the `energy_configs` dictionary in [energy.py](./energy.py#L39-L521). 
 
    Decription of the infomation needed:
    - `paths`: `X1->X2->X3`. The keys in this dictionary uses a function notation eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `[rgb, normal, curvature]`. The `rgb` input is defined as `x`, `n(x)` returns `normal` predictions from `rgb`, and `f(n(x))` returns `curvature` from `normal`. These notations do not need to be same for all configurations. The [table](#function-definitions) below lists those that have been kept constant for all targets.
@@ -227,7 +227,7 @@ The RGB input is defined as `x`, ground truth as `y^`.
 
 The functions in columns **rgb2Z** and **target2Z** correspond to the output defined column **Z** ie. the function for `rgb` to `curvature` is `RC`, for target to `curvature` its `f`.
 
-#### Training on other datasets
+#### To train on other datasets
 The expected folder structure for the data is,
 ```
 DATA_DIRS/
@@ -250,3 +250,4 @@ If you find the code, models, or data useful, please cite this paper:
 ```
 [add ref]
 ```
+
