@@ -24,108 +24,75 @@ import IPython
 
 
 pretrained_transfers = {
+
     ('normal', 'principal_curvature'):
-        (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature_dense_1x1.pth"),
+        (lambda: Dense1by1Net(), f"{MODELS_DIR}/normal2curvature.pth"),
     ('normal', 'depth_zbuffer'):
-        (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_unet_v4.pth"),
+        (lambda: UNetDepth(), f"{MODELS_DIR}/normal2zdepth_zbuffer.pth"),
     ('normal', 'sobel_edges'):
-        (lambda: UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d_sobel_unet4.pth"),
-    ('sobel_edges', 'normal'):
-        (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
-    ('normal', 'grayscale'):
-        (lambda: UNet(out_channels=1, downsample=6).cuda(), f"{MODELS_DIR}/normals2gray_unet.pth"),
-    ('principal_curvature', 'normal'):
-        (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
-    ('principal_curvature', 'sobel_edges'):
-        (lambda: UNet(downsample=4, out_channels=1), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth"),
-    # ('depth_zbuffer', 'normal'):
-    #     (lambda: UNet(in_channels=1, downsample=4), f"{MODELS_DIR}/depth2normal_unet4.pth"),
+        (lambda: UNet(out_channels=1, downsample=4).cuda(), f"{MODELS_DIR}/normal2edges2d.pth"),
+    ('normal', 'reshading'):
+        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/normal2reshade.pth"),
+    ('normal', 'keypoints3d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
+    ('normal', 'keypoints2d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints2d_new.pth"),
+    ('normal', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2edge_occlusion.pth"),
+
     ('depth_zbuffer', 'normal'):
-        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal_unet6.pth"),
+        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal.pth"),
     ('depth_zbuffer', 'sobel_edges'):
         (lambda: UNet(downsample=4, in_channels=1, out_channels=1).cuda(), f"{MODELS_DIR}/depth_zbuffer2sobel_edges.pth"),
-    ('sobel_edges', 'principal_curvature'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2principal_curvature.pth"),
-    ('rgb', 'sobel_edges'):
-        (lambda: sobel_kernel, None),
-    ('sobel_edges', 'depth_zbuffer'):
-        (lambda: UNet(downsample=6, in_channels=1, out_channels=1), f"{MODELS_DIR}/sobel_edges2depth_zbuffer.pth"),
-    ('principal_curvature', 'depth_zbuffer'):
-        (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/principal_curvature2depth_zbuffer.pth"),
     ('depth_zbuffer', 'principal_curvature'):
         (lambda: UNet(downsample=4, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2principal_curvature.pth"),
-    ('rgb', 'normal'):
-        # (lambda: UNetOld(), f"{MODELS_DIR}/unet_baseline.pth"),
-        (lambda: UNet(), f"{MODELS_DIR}/unet_baseline_standardval.pth"),
+    ('depth_zbuffer', 'reshading'):
+        (lambda: UNetReshade(downsample=5, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2reshading.pth"),
+    ('depth_zbuffer', 'keypoints3d'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints3d.pth"),
+    ('depth_zbuffer', 'keypoints2d'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints2d.pth"),
+    ('depth_zbuffer', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2edge_occlusion.pth"),
+
+    ('reshading', 'depth_zbuffer'):
+        (lambda: UNetReshade(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2depth_zbuffer.pth"),
+    ('reshading', 'keypoints2d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2keypoints2d_new.pth"),
+    ('reshading', 'edge_occlusion'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2edge_occlusion.pth"),
+    ('reshading', 'normal'):
+        (lambda: UNet(downsample=4), f"{MODELS_DIR}/reshading2normal.pth"),
+    ('reshading', 'keypoints3d'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2keypoints3d.pth"),
+    ('reshading', 'sobel_edges'):
+        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2sobel_edges.pth"),
+    ('reshading', 'principal_curvature'):
+        (lambda: UNet(downsample=5), f"{MODELS_DIR}/reshading2principal_curvature.pth"),
+
+    ('rgb', 'sobel_edges'):
+        (lambda: sobel_kernel, None),
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
         (lambda: UNet(downsample=3, out_channels=1), f"{MODELS_DIR}/rgb2keypoints2d_new.pth"),
     ('rgb', 'keypoints3d'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2keypoints3d.pth"),
-    ('rgb', 'reshading'):
-        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshade.pth"),
-    ('rgb', 'depth_zbuffer'):
-        (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_buffer.pth"),
-
     ('rgb', 'edge_occlusion'):
         (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/rgb2edge_occlusion.pth"),
-
-    ('keypoints2d', 'principal_curvature'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2principal_curvature_new.pth"),
-
-
-    ('keypoints3d', 'principal_curvature'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2principal_curvature.pth"),
-    ('principal_curvature', 'keypoints3d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/principal_curvature2keypoints3d.pth"),
-
-    # ('normal', 'reshading'):
-    #     (lambda: UNetReshade(downsample=4), f"{MODELS_DIR}/normal2reshading_unet4.pth"),
-    ('normal', 'reshading'):
-        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/normal2reshade_unet5.pth"),
-    ('reshading', 'normal'):
-        (lambda: UNet(downsample=4), f"{MODELS_DIR}/reshading2normal.pth"),
-
-    ('sobel_edges', 'reshading'):
-        (lambda: UNetReshade(downsample=5, in_channels=1), f"{MODELS_DIR}/sobel_edges2reshading.pth"),
-
-    ('normal', 'keypoints3d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints3d.pth"),
-    ('keypoints3d', 'normal'):
-        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
-
-    ('reshading', 'depth_zbuffer'):
-        (lambda: UNetReshade(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2depth_zbuffer.pth"),
-    ('depth_zbuffer', 'reshading'):
-        (lambda: UNetReshade(downsample=5, in_channels=1), f"{MODELS_DIR}/depth_zbuffer2reshading.pth"),
-
-    ('keypoints3d', 'depth_zbuffer'):
-        (lambda: UNet(downsample=5, out_channels=1, in_channels=1), f"{MODELS_DIR}/keypoints3d2depth_zbuffer.pth"),
-    ('depth_zbuffer', 'keypoints3d'):
-        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints3d.pth"),
-
-    ('depth_zbuffer', 'keypoints2d'):
-        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2keypoints2d.pth"),
-    ('depth_zbuffer', 'edge_occlusion'):
-        (lambda: UNet(downsample=5, in_channels=1, out_channels=1), f"{MODELS_DIR}/depth_zbuffer2edge_occlusion.pth"),   
-
-    ('reshading', 'keypoints2d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2keypoints2d_new.pth"),
-    ('reshading', 'edge_occlusion'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/reshading2edge_occlusion.pth"),
-
-    ('normal', 'keypoints2d'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2keypoints2d_new.pth"),
-    ('normal', 'edge_occlusion'):
-        (lambda: UNet(downsample=5, out_channels=1), f"{MODELS_DIR}/normal2edge_occlusion.pth"),
+    ('rgb', 'normal'):
+        (lambda: UNet(), f"{MODELS_DIR}/rgb2normal_baseline.pth"),
+    ('rgb', 'reshading'):
+        (lambda: UNetReshade(downsample=5), f"{MODELS_DIR}/rgb2reshading_baseline.pth"),
+    ('rgb', 'depth_zbuffer'):
+        (lambda: UNet(downsample=6, out_channels=1), f"{MODELS_DIR}/rgb2zdepth_baseline.pth"),
 
     ('normal', 'imagenet'):
         (lambda: ResNetClass().cuda(), None),
     ('depth_zbuffer', 'imagenet'):
         (lambda: ResNetClass().cuda(), None),
     ('reshading', 'imagenet'):
-        (lambda: ResNetClass().cuda(), None),	
+        (lambda: ResNetClass().cuda(), None),
 
 }
 
