@@ -167,52 +167,55 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
 
 1) Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config would be,
 
-```
-normaltarget_allperceps, /scratch
-```
+   ```
+   normaltarget_allperceps, /scratch
+   ```
 
-To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in `utils.py`.
+   To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in `utils.py`.
 
 2) Train the task-specific network with the command
 
-```
-python -m train multiperceptual_{depth,normal,reshading}
-```
+   ```
+   python -m train multiperceptual_{depth,normal,reshading}
+   ```
 
-To run the training code for the `normal` target, run 
+   To run the training code for the `normal` target, run 
 
-```
-python -m train multiperceptual_normal
-```
+   ```
+   python -m train multiperceptual_normal
+   ```
 
-This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
+   This trains the model for the `normal` target with 8 perceptual losses ie. `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `depth` and `imagenet`. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week.
 
-Additional arugments can be specified during training, the most commonly used ones are listed below. For the full list, refer to the [training script](./train.py). 
-- The flag `--k` defines the number of perceptual losses used, thus reducing GPU memory requirements.
-- There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
-- Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
+   Additional arugments can be specified during training, the most commonly used ones are listed below. For the full list, refer to the [training script](./train.py). 
+   - The flag `--k` defines the number of perceptual losses used, thus reducing GPU memory requirements.
+   - There are several options for choosing how this subset is chosen 1. randomly (`--random-select`) 2. winrate (`--winrate`) 3. gradnorm (default). 
+   - Data augmentation is not done by default, it can be added to the training data with the flag `--dataaug`. The transformations applied are 1. random crop with probability 0.5 2. [color jitter](https://pytorch.org/docs/stable/torchvision/transforms.html?highlight=color%20jitter#torchvision.transforms.ColorJitter) with probability 0.5.
 
-To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
+   To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
 
-```
-python -m train multiperceptual_normal --k 2 --random-select
-```
+   ```
+   python -m train multiperceptual_normal --k 2 --random-select
+   ```
 
-The full list of options can be found in the `train.py` file.
+   The full list of options can be found in the `train.py` file.
 
 3) The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
 
-An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the third its prediction `n(x)` from the RGB image `x`. Thereafter, the predictions of each pair of images with the same domain are given by the paths `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
+   An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the third its prediction `n(x)` from the RGB image `x`. Thereafter, the predictions of each pair of images with the same domain are given by the paths `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
 
 ![](./assets/visdom_eg.png)
 
 #### To train on other target domains
-A new configuration has to be defined in the `energy_configs` dictionary in `energy.py`. A brief decription of the infomation needed:
+1. A new configuration has to be defined in the `energy_configs` dictionary in `energy.py`. 
 
-- `paths`: `X1->X2->X3`. The keys in this dictionary uses a function notation eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `[rgb, normal, curvature]`. The `rgb` input is defined as `x`, `n(x)` returns `normal` predictions from `rgb`, and `f(n(x))` returns `curvature` from `normal`. These notations do not need to be same for all configurations. The [table](#function-definitions) below lists those that have been kept constant for all targets.
-- `freeze_list`: the models that will not be optimized,
-- `losses`: loss terms to be constructed from the paths defined above,
-- `plots`: the paths to plots in the visdom environment.
+   A brief decription of the infomation needed:
+   - `paths`: `X1->X2->X3`. The keys in this dictionary uses a function notation eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `[rgb, normal, curvature]`. The `rgb` input is defined as `x`, `n(x)` returns `normal` predictions from `rgb`, and `f(n(x))` returns `curvature` from `normal`. These notations do not need to be same for all configurations. The [table](#function-definitions) below lists those that have been kept constant for all targets.
+   - `freeze_list`: the models that will not be optimized,
+   - `losses`: loss terms to be constructed from the paths defined above,
+   - `plots`: the paths to plots in the visdom environment.
+
+2. New models may need be defined in the `pretrained_transfers` dictionary in `transfers.py`. For example, for a `curvature` target, and perceptual model `curvature` to `normal`, the code will look for the `principal_curvature2normal.pth` file in `MODELS_DIR` if it is not defined in `transfers.py`.
 
 ##### Function definitions
 The RGB input is defined as `x`, ground truth as `y^`. 
@@ -224,6 +227,7 @@ The RGB input is defined as `x`, ground truth as `y^`.
 | a     | s        | sobel edges | E0    | nE0      | edge occlusion |
 
 The functions in columns **rgb2Z** and **target2Z** correspond to the output defined column **Z** ie. the function for `rgb` to `curvature` is `RC`, for target to `curvature` its `f`.
+
 
 ## Energy computation
 Coming soon
