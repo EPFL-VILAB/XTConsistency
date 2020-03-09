@@ -209,7 +209,7 @@ An example visualization is shown below. We plot the the outputs from the paths 
 #### To train on other target domains
 A new configuration has to be defined in the `energy_configs` dictionary in `energy.py`. A brief decription of the infomation needed:
 
-- `paths`: `X1->X2->X3`. The keys in this dictionary uses a functional form eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `rgb, normal, curv`. These functional forms do not need to be same for all configurations.
+- `paths`: `X1->X2->X3`. The keys in this dictionary uses a function notation eg. `f(n(x))`, with its corresponding value being a list of task objects that defines the domains being transfered eg. `[rgb, normal, curvature]`. The `rgb` input is defined as `x`, `n(x)` returns `normal` predictions from `rgb`, and `f(n(x))` returns `curvature` from `normal`. These notations do not need to be same for all configurations. The [table](#function-definitions) below lists those that have been kept constant for all targets.
 - `freeze_list`: the models that will not be optimized,
 - `losses`: loss terms to be constructed from the paths defined above,
 - `plots`: the paths to plots in the visdom environment.
@@ -223,6 +223,7 @@ The RGB input is defined as `x`, ground truth as `y^`.
 | n     |  -       | target      | k2    | Nk2      | keypoints2d    |
 | RC    | f        | curvature   | k3    | Nk3      | keypoints3d    |
 | a     | s        | sobel edges | E0    | nE0      | edge occlusion |
+The functions in columns **rgb2Z** and **target2Z** correspond to the output defined column **Z** ie. the function for `rgb` to `curvature` is `RC`, for target to `curvature` its `f`.
 
 ## Energy computation
 Coming soon
@@ -233,15 +234,3 @@ If you find the code, models, or data useful, please cite this paper:
 ```
 [add ref]
 ```
-
-
-----
-### TODOs
-
-- [ ] Save trained models to scratch partition
-- [ ] Rename them to something reasonable
-- [ ] Change/remove the file links in transfer.py
-- [ ] Different selection criteria for p loss
-
-
-----
