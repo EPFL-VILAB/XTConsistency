@@ -241,7 +241,12 @@ Pytorch's dataloader _\_\_getitem\_\__ method has been overwritten to return a t
 For task specific configs, like transformations and masks, are defined in [task_configs.py](./task_configs.py#L341-L373).
 
 ## Energy computation
-Coming soon
+To compute the energy of a trained consistency model, run the following command,
+
+```
+python -m scripts.energy_calc energy_calc --data-dir=DATA_DIR --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES_FROM_DATA_DIR  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+```
+
 
 
 ## Citation

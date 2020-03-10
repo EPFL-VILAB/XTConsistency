@@ -35,6 +35,60 @@ def get_energy_loss(
         pretrained=pretrained, finetuned=finetuned, **kwargs
     )
 
+ALL_PERCEPTUAL_TASKS = [tasks.principal_curvature,
+             tasks.sobel_edges,
+             tasks.depth_zbuffer,
+             tasks.edge_occlusion,
+             tasks.reshading,
+             tasks.keypoints3d,
+             tasks.keypoints2d]
+
+def generate_config(perceptual_tasks, target_task=tasks.normal, tree_structure=False, has_gt=True):
+
+    # If we have GT, measure error
+    base_keys = {
+                    "x": [tasks.rgb],
+                    "n((x))": [tasks.rgb, target_task]
+    }
+    direct_losses = {}
+    if has_gt:
+        base_keys["y^"] = [target_task]
+        direct_losses["direct_normal"] = { ("train", "val", "train_subset"): [ ("n((x))", "y^"), ] }
+
+    # Add in losses for consistency energy
+    perceptual_losses = []
+    if tree_structure:
+        perceptual_losses = [('', t2) for t2 in perceptual_tasks]
+    else:
+        perceptual_losses = list(itertools.combinations(perceptual_tasks + [''], r=2))
+        perceptual_losses = [(t2, t1) if str(t2) == '' else (t1, t2) for t1, t2 in perceptual_losses]
+
+    return {
+        "paths": both( base_keys,
+                {
+                    f"n({intermediate_task}(x))": [tasks.rgb, intermediate_task, target_task]
+                    for intermediate_task in perceptual_tasks
+                }
+        ),
+        "freeze_list" : [(t, target_task) for t in perceptual_tasks] +
+                        [(tasks.rgb, t) for t in perceptual_tasks],
+        "losses": both( direct_losses,
+                {
+                    f'percep_{t1}_{t2}': { ("train", "val", "train_subset"): [ (f"n({t1}(x))", f"n({t2}(x))"), ], }
+                    for t1, t2 in perceptual_losses
+                }
+        ),
+        "plots": {
+            "ID": dict(
+                size=256,
+                realities=("test",),
+                paths=[
+                    "x",
+                    "n((x))",
+                ]
+            ),
+        },
+    }
 
 energy_configs = {
 
@@ -518,6 +572,8 @@ energy_configs = {
             ),
         },
     },
+
+    "energy_calc": generate_config(ALL_PERCEPTUAL_TASKS, has_gt=False),
 }
 
 
