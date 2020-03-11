@@ -29,8 +29,36 @@ SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
-os.system(f"mkdir -p {RESULTS_DIR}")
-#print (DATA_DIRS)
+if BASE_DIR == "/":
+    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
+    RESULTS_DIR = "/result"
+    MODELS_DIR = "/models"
+elif BASE_DIR == "locals":
+    DATA_DIRS = ["local/small_data"]
+    RESULTS_DIR = "local/result"
+    MODELS_DIR = "local/models"
+elif BASE_DIR == "cvgl":
+    DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
+    RESULTS_DIR = "local/result"
+    MODELS_DIR = "local/models"
+elif BASE_DIR == "raid":
+    USE_RAID = True
+    BASE_DIR = "/raid/scratch/rsuri2"
+    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
+    RESULTS_DIR = f"results/results_{EXPERIMENT}"
+    MODELS_DIR = "/raid/scratch/rsuri2/models"
+    OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
+    os.system(f"mkdir -p {RESULTS_DIR}")
+else:
+    os.system(f"mkdir -p {RESULTS_DIR}")
+
+print (DATA_DIRS)
+
+
+def both(x, y):
+    x = dict(x.items())
+    x.update(y)
+    return x
 
 def elapsed(last_time=[time.time()]):
     """ Returns the time passed since elapsed() was last called. """
@@ -155,3 +183,17 @@ def sobel_kernel(x):
 
     x = torch.stack([sobel_transform(y) for y in x], dim=0)
     return x.to(DEVICE).requires_grad_()
+
+
+class SobelKernel(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, x):
+        return sobel_kernel(x)
+    
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed) # cpu  vars
+    torch.cuda.manual_seed_all(seed) # gpu vars

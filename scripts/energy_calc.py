@@ -16,11 +16,10 @@ import torch.nn.functional as F
 from utils import *
 from plotting import *
 from energy import get_energy_loss
-from graph import TaskGraph, Discriminator
+from graph import TaskGraph
 from logger import Logger, VisdomLogger
-from datasets import TaskDataset, load_train_val, load_test, load_ood, load_generic, ImageDataset
+from datasets import TaskDataset, load_train_val, load_test, load_ood, ImageDataset
 from task_configs import tasks, RealityTask
-from evaluation import run_eval_suite
 
 from modules.resnet import ResNet
 from modules.unet import UNet, UNetOld

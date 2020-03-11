@@ -94,6 +94,24 @@ pretrained_transfers = {
     ('reshading', 'imagenet'):
         (lambda: ResNetClass().cuda(), None),
 
+    ('principal_curvature', 'sobel_edges'): 
+        (lambda: UNet(downsample=4, out_channels=1), f"{MODELS_DIR}/principal_curvature2sobel_edges.pth"),
+    ('sobel_edges', 'depth_zbuffer'):
+        (lambda: UNet(downsample=6, in_channels=1, out_channels=1), f"{MODELS_DIR}/sobel_edges2depth_zbuffer.pth"),
+
+    ('depth_zbuffer', 'normal'): 
+        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal_unet6.pth"),
+    ('keypoints2d', 'normal'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2normal_new.pth"),
+    ('keypoints3d', 'normal'):
+        (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
+    ('principal_curvature', 'normal'): 
+        (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
+    ('sobel_edges', 'normal'): 
+        (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
+    ('edge_occlusion', 'normal'):
+        (lambda: UNet(in_channels=1, downsample=5), f"{MODELS_DIR}/edge_occlusion2normal.pth"),
+
 }
 
 class Transfer(nn.Module):

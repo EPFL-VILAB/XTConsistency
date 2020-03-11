@@ -36,8 +36,10 @@ class AbstractModel(nn.Module):
         if optimizer is not None:
             self.optimizer_class = optimizer
             self.optimizer_kwargs = kwargs
+            self.optimizer = self.optimizer_class(self.parameters(), **self.optimizer_kwargs)
+        else:
+            self.optimizer = None
 
-        self.optimizer = self.optimizer_class(self.parameters(), **self.optimizer_kwargs)
         self.compiled = True
         self.to(DEVICE)
 

@@ -94,10 +94,12 @@ class Logger(BaseLogger):
 class VisdomLogger(BaseLogger):
 
     def __init__(self, *args, **kwargs):
-        self.port = kwargs.pop('port', 7000)
-        self.server = kwargs.pop('server', '35.229.22.191')
-        # self.server = kwargs.pop('server', 'localhost')
         self.env = kwargs.pop('env', 'CH')
+        self.port = kwargs.pop('port', 8097)
+        self.server = kwargs.pop('server', '127.0.0.1')
+        self.delete = kwargs.pop('delete', True)
+        print ("No deletion")
+        print ("In (git) scaling-reset")
         print (f"Logging to environment {self.env}")
         self.visdom = visdom.Visdom(server="http://" + self.server, port=self.port, env=self.env)
         self.visdom.delete_env(self.env)

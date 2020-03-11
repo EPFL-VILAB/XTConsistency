@@ -26,7 +26,7 @@ class TaskGraph(TrainableModel):
         self, tasks=tasks, edges=None, edges_exclude=None,
         pretrained=True, finetuned=False,
         reality=[], task_filter=[tasks.segment_semantic],
-        freeze_list=[],
+        freeze_list=[], lazy=False, initialize_from_transfer=True,
     ):
 
         super().__init__()
@@ -36,6 +36,7 @@ class TaskGraph(TrainableModel):
         self.pretrained, self.finetuned = pretrained, finetuned
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map, self.reality = {}, reality
+        self.initialize_from_transfer = initialize_from_transfer
         print('graph tasks', self.tasks)
         self.params = {}
 
@@ -56,6 +57,8 @@ class TaskGraph(TrainableModel):
                     pretrained=pretrained, finetuned=finetuned
                 )
                 transfer.name = get_transfer_name(transfer)
+                if not self.initialize_from_transfer:
+                    transfer.path = None
             if transfer.model_type is None:
                 continue
             print ("Added transfer", transfer)
@@ -69,7 +72,7 @@ class TaskGraph(TrainableModel):
                 else:
                     print("freezing " + str((src_task.name, dest_task.name)))
                 try:
-                    transfer.load_model()
+                    if not lazy: transfer.load_model()
                 except:
                     IPython.embed()
 
@@ -117,9 +120,19 @@ class TaskGraph(TrainableModel):
             torch.save(self.optimizer, f"{weights_dir}/optimizer.pth")
 
 
+#    def load_weights(self, weights_file=None):
+#        for key, state_dict in torch.load(weights_file).items():
+#            if key in self.edge_map:
+#                self.edge_map[key].load_state_dict(state_dict)
+
     def load_weights(self, weights_file=None):
+        loaded_something = False
         for key, state_dict in torch.load(weights_file).items():
+            #print(f'loading {key} from {weights_file}')
             if key in self.edge_map:
+                print(key)
+                loaded_something = True
+                self.edge_map[key].load_model()
                 self.edge_map[key].load_state_dict(state_dict)
-
-
+        if not loaded_something:
+            raise RuntimeError(f"No edges loaded from file: {weights_file}")
