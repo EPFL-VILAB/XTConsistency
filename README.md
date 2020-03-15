@@ -255,6 +255,9 @@ Instructions for downloading the trained consistency models can be found [here](
 If you find the code, models, or data useful, please cite this paper:
 
 ```
-[add ref]
+@article{zamir2020consistency,
+  title={Robust Learning Through Cross-Task Consistency},
+  author={Zamir, Amir R and Sax, Alexander and Yeo, Teresa and Kar, Oğuzhan and Cheerla, Nikhil and Suri, Rohan and Cao, Zhangjie and Malik, Jitendra and Savarese, Silvio},
+}
 ```
 
