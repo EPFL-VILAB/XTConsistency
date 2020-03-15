@@ -28,10 +28,10 @@ Table of contents
    * [Installation](#install-requirements)
    * [Run the demo code](#run-demo-script)
    * [Train a consistency model](#training)
-     * [Code structure](#the-code-is-structured-as-follows)
      * [Instructions for training](#steps)
      * [To train on other configurations](#to-train-on-other-target-domains)
    * [Energy computation](#energy-computation)
+   * [Download all models](#download-all-models)
    * [Citing](#citation)
 
 
@@ -247,7 +247,9 @@ To compute the energy of a trained consistency model, run the following command,
 python -m scripts.energy_calc energy_calc --data-dir=DATA_DIR --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES_FROM_DATA_DIR  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
 ```
 
+## Download all models
 
+Instructions for downloading the trained consistency models can be found [here](#download-consistency-trained-networks) and for downloading the perceptual models [here](#download-perceptual-networks). We also provide the models for other baselines used in the paper, namely, those from [Taskonomy](https://arxiv.org/pdf/1804.08328.pdf), [GeoNet](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8578135_) and a multitask model that we trained. They can be found [here](https://drive.switch.ch/index.php/s/gdom4FpiiYo1Qay). Note that we will not be providing support for them. 
 
 ## Citation
 If you find the code, models, or data useful, please cite this paper:
