@@ -6,9 +6,6 @@ from tqdm import tqdm
 import pickle as pkl
 import pandas as pd
 
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,7 +14,7 @@ from utils import *
 from plotting import *
 from energy import get_energy_loss
 from graph import TaskGraph
-from logger import Logger, VisdomLogger
+#from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood, ImageDataset
 from task_configs import tasks, RealityTask
 
@@ -89,7 +86,7 @@ def main(
                       )
         rgb2reshading_graph.load_weights(f'{SHARED_DIR}/results_CH_lbp_all_reshadingtarget_gradnorm_unnormalizedmse_imagenet_nosqerror_nosqinitauglr_dataaug_1/graph.pth')
         rgb2reshading_graph.compile(optimizer=None)
-        print(rgb2reshading_graph.edge_map.keys())
+        # print(rgb2reshading_graph.edge_map.keys())
         graph.edge_map[f"('{tasks.rgb}', '{tasks.reshading}')"] = rgb2reshading_graph.edge_map[f"('{tasks.rgb}', '{tasks.reshading}')"]
         del rgb2reshading_graph
 
@@ -116,11 +113,6 @@ def main(
     del rgb2normal_graph
 
 
-    # LOGGING
-    logger = VisdomLogger("train", env='rebuttal-energy')
-    logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
-    energy_loss.logger_hooks(logger)
-
     best_ood_val_loss = float('inf')
     energy_losses = []
     mse_losses = []
@@ -134,83 +126,69 @@ def main(
     error_std_by_blur = []
 
 
-    for blur_size in [100, 50, 25, 15, 10, 5, 1]:
-
-        train_subset.reload()
-        tasks.rgb.jpeg_quality = blur_size
-
-
-        energy_losses = []
-        error_losses = []
-
-        energy_losses_all = []
-        energy_losses_headings = []
-
-        fnames = []
-        # Compute energies
-        for epochs in tqdm(range(subset_size // batch_size)):
-            with torch.no_grad():
-                losses = energy_loss(graph, realities=[train_subset], reduce=False, use_l1=use_l1)
-
-                if len(energy_losses_headings) == 0:
-                    energy_losses_headings = sorted([loss_name for loss_name in losses if 'percep' in loss_name])
-
-                all_perceps = [losses[loss_name].cpu().numpy() for loss_name in energy_losses_headings]
-                direct_losses = [losses[loss_name].cpu().numpy() for loss_name in losses if 'direct' in loss_name]
-
-                if len(all_perceps) > 0:
-                    energy_losses_all += [all_perceps]
-                    all_perceps = np.stack(all_perceps)
-                    energy_losses += list(all_perceps.mean(0))
-
-                if len(direct_losses) > 0:
-                    direct_losses = np.stack(direct_losses)
-                    error_losses += list(direct_losses.mean(0))
-
-                if False:
-                    fnames += train_subset.task_data[tasks.filename]
-            train_subset.step()
+    blur_size = 0
+    train_subset.reload()
+    tasks.rgb.jpeg_quality = blur_size
 
 
-        # Log losses
-        if len(energy_losses) > 0:
-            energy_losses = np.array(energy_losses)
-            logger.text(f'blur_radius = {blur_size}, energy = {energy_losses.mean()}')
+    energy_losses = []
+    error_losses = []
 
-            energy_mean_by_blur += [energy_losses.mean()]
-            energy_std_by_blur += [np.std(energy_losses)]
+    energy_losses_all = []
+    energy_losses_headings = []
 
-        if len(error_losses) > 0:
-            error_losses = np.array(error_losses)
-            logger.text(f'blur_radius = {blur_size}, error = {error_losses.mean()}')
+    fnames = []
+    # Compute energies
+    for epochs in tqdm(range(subset_size // batch_size)):
+        with torch.no_grad():
+            losses = energy_loss(graph, realities=[train_subset], reduce=False, use_l1=use_l1)
 
-            error_mean_by_blur += [error_losses.mean()]
-            error_std_by_blur += [np.std(error_losses)]
+            if len(energy_losses_headings) == 0:
+                energy_losses_headings = sorted([loss_name for loss_name in losses if 'percep' in loss_name])
 
-        # save to csv
-        print(len(error_losses), len(energy_losses), "\n")
-        save_error_losses = error_losses if len(error_losses) > 0 else [0] * subset_size
-        save_energy_losses = energy_losses if len(energy_losses) > 0 else [0] * subset_size
+            all_perceps = [losses[loss_name].cpu().numpy() for loss_name in energy_losses_headings]
+            direct_losses = [losses[loss_name].cpu().numpy() for loss_name in losses if 'direct' in loss_name]
+
+            if len(all_perceps) > 0:
+                energy_losses_all += [all_perceps]
+                all_perceps = np.stack(all_perceps)
+                energy_losses += list(all_perceps.mean(0))
+
+            if len(direct_losses) > 0:
+                direct_losses = np.stack(direct_losses)
+                error_losses += list(direct_losses.mean(0))
+
+            if False:
+                fnames += train_subset.task_data[tasks.filename]
+        train_subset.step()
 
 
-        print(np.concatenate(energy_losses_all, axis=-1))
-        percep_losses = { k: v for k, v in zip(energy_losses_headings, np.concatenate(energy_losses_all, axis=-1))}
-        for loss_name, arr in percep_losses.items():
-            print(loss_name, arr.shape)
-        df = pd.DataFrame(both(
-                        {'energy': save_energy_losses, 'error': save_error_losses },
-                        percep_losses
-        ))
-        df.to_csv(f"{save_dir}/blur_{blur_size}_{data_dir}.csv", mode='w', header=True)
-
-
+    # Log losses
     if len(energy_losses) > 0:
-        logger.plot(energy_mean_by_blur, f'energy_mean_by_blur')
-        logger.plot(energy_std_by_blur, f'energy_std_by_blur')
+        energy_losses = np.array(energy_losses)
+        print(f'energy = {energy_losses.mean()}')
+
+        energy_mean_by_blur += [energy_losses.mean()]
+        energy_std_by_blur += [np.std(energy_losses)]
 
     if len(error_losses) > 0:
-        logger.plot(error_mean_by_blur, f'error_mean_by_blur')
-        logger.plot(error_std_by_blur, f'error_std_by_blur')
+        error_losses = np.array(error_losses)
+        print(f'error = {error_losses.mean()}')
+
+        error_mean_by_blur += [error_losses.mean()]
+        error_std_by_blur += [np.std(error_losses)]
+
+    # save to csv
+    save_error_losses = error_losses if len(error_losses) > 0 else [0] * subset_size
+    save_energy_losses = energy_losses if len(energy_losses) > 0 else [0] * subset_size
+
+    percep_losses = { k: v for k, v in zip(energy_losses_headings, np.concatenate(energy_losses_all, axis=-1))}
+    df = pd.DataFrame(both(
+                    {'energy': save_energy_losses, 'error': save_error_losses },
+                    percep_losses
+    ))
+    df.to_csv(f"{save_dir}/{data_dir}.csv", mode='w', header=True)
+
 
 
 

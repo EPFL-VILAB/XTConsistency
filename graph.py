@@ -130,7 +130,6 @@ class TaskGraph(TrainableModel):
         for key, state_dict in torch.load(weights_file).items():
             #print(f'loading {key} from {weights_file}')
             if key in self.edge_map:
-                print(key)
                 loaded_something = True
                 self.edge_map[key].load_model()
                 self.edge_map[key].load_state_dict(state_dict)

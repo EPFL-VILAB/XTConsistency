@@ -29,30 +29,7 @@ SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
-if BASE_DIR == "/":
-    DATA_DIRS = ["/data", "/edge_1", "/edges_1", "/edges_2", "/edges_3", "/reshade", "/semantic5", "/keypoints", "/keypoints2d", "/class"]
-    RESULTS_DIR = "/result"
-    MODELS_DIR = "/models"
-elif BASE_DIR == "locals":
-    DATA_DIRS = ["local/small_data"]
-    RESULTS_DIR = "local/result"
-    MODELS_DIR = "local/models"
-elif BASE_DIR == "cvgl":
-    DATA_DIRS = ["/cvgl/group/taskonomy/processed"]
-    RESULTS_DIR = "local/result"
-    MODELS_DIR = "local/models"
-elif BASE_DIR == "raid":
-    USE_RAID = True
-    BASE_DIR = "/raid/scratch/rsuri2"
-    DATA_DIRS = ["/raid/scratch/tstand/taskonomy/"]
-    RESULTS_DIR = f"results/results_{EXPERIMENT}"
-    MODELS_DIR = "/raid/scratch/rsuri2/models"
-    OOD_DIR = "/cvgl/group/taskonomy/taskconsistency/ood_standard_set"
-    os.system(f"mkdir -p {RESULTS_DIR}")
-else:
-    os.system(f"mkdir -p {RESULTS_DIR}")
-
-print (DATA_DIRS)
+os.system(f"mkdir -p {RESULTS_DIR}")
 
 
 def both(x, y):
