@@ -666,34 +666,22 @@ class EnergyLoss(object):
                 for path1, path2 in losses:
                     output_task = self.paths[path1][-1]
                     compute_mask = 'imagenet(n(x))' != path1
-                    if "direct" in loss_type:
-                        with torch.no_grad():
-                            path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=batch_mean, compute_mask=compute_mask, compute_mse=False)
-                if loss_type != 'gan':
-                    #print(loss, loss_type, losses)
                     if loss_type not in loss:
                         loss[loss_type] = 0
                     for path1, path2 in losses:
                         output_task = self.paths[path1][-1]
                         if "direct" in loss_type:
                             with torch.no_grad():
-                                #pdb.set_trace()
-                                path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce)
-                                #print(loss_type, path1, path2)
+                                path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=batch_mean, compute_mask=compute_mask, compute_mse=False)
                                 loss[loss_type] += path_loss
                         else:
-                            #pdb.set_trace()
-                            path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce)
-                            #print(loss_type, path1, path2)
+                            path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=False)
                             loss[loss_type] += path_loss
-                    else:
-                        path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=False)
-                        loss[loss_type] += path_loss
-                        loss_name = "mae" if "mae" in loss_type else loss_type+"_mae"
-                        self.metrics[reality.name][loss_name +" : "+path1 + " -> " + path2] += [path_loss.mean().detach().cpu()]
-                        path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=True)
-                        loss_name = "mse" if "mae" in loss_type else loss_type + "_mse"
-                        self.metrics[reality.name][loss_name +" : "+path1 + " -> " + path2] += [path_loss.mean().detach().cpu()]
+                            loss_name = "mae" if "mae" in loss_type else loss_type+"_mae"
+                            self.metrics[reality.name][loss_name +" : "+path1 + " -> " + path2] += [path_loss.mean().detach().cpu()]
+                            path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=True)
+                            loss_name = "mse" if "mae" in loss_type else loss_type + "_mse"
+                            self.metrics[reality.name][loss_name +" : "+path1 + " -> " + path2] += [path_loss.mean().detach().cpu()]
 
         return loss
 
