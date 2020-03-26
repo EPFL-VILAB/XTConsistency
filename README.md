@@ -241,11 +241,21 @@ Pytorch's dataloader _\_\_getitem\_\__ method has been overwritten to return a t
 For task specific configs, like transformations and masks, are defined in [task_configs.py](./task_configs.py#L341-L373).
 
 ## Energy computation
-To compute the energy of a trained consistency model, run the following command,
+To see how consistency energy, defined as the sum of pairwise inconsistencies, correlates with error run the following command,
 
 ```
-python -m scripts.energy_calc energy_calc --data-dir=DATA_DIR --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES_FROM_DATA_DIR  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+python -m scripts.energy_calc energy_calc --data-dir=DATA_DIR --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES_FROM_DATA_DIR  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
 ```
+
+It computes the energy and error for all points in the directory specified by `DATA_DIR` using the graph of models defined by `PATH_TO_MODELS`. The plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
+
+To compute the consistency energy of a single query image, run,
+
+```
+python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=1  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+```
+
+It will append a dashed horizontal line to the plot above where the energy of the query image is. This plot is saved to `energy_queryimage.pdf` in `RESULTS_DIR`.
 
 ## Download all models
 
