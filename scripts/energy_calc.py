@@ -28,23 +28,27 @@ from fire import Fire
 import IPython
 import pdb
 
-MAX_BLUR_SIGMA = 10
 
 def main(
     loss_config="conservative_full",
-    mode="standard", visualize=False,
-    pretrained=True, finetuned=False, fast=False, batch_size=None,
+    mode="standard",
+    pretrained=True, finetuned=False, batch_size=16,
     ood_batch_size=None, subset_size=None,
     cont=None,
-    cont_gan=None, pre_gan=None, max_epochs=800, use_baseline=False, use_l1=False, num_workers=32, data_dir=None, save_dir='mount/shared/', **kwargs,
+    use_l1=False, num_workers=32, data_dir=None, save_dir='mount/shared/', **kwargs,
 ):
 
     # CONFIG
-    batch_size = batch_size or (4 if fast else 64)
     energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
-    buildings = ["almena", "albertville"]
-    train_subset_dataset = TaskDataset(buildings, tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature])
+    isImage =  data_dir is not None
+
+    if isImage:
+        train_subset_dataset = ImageDataset(data_dir=data_dir)
+    else:
+        buildings = ["almena", "albertville"]
+        train_subset_dataset = TaskDataset(buildings, tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature])
+
     train_subset = RealityTask("train_subset", train_subset_dataset, batch_size=batch_size, shuffle=False)
 
     if subset_size is None:
@@ -65,7 +69,7 @@ def main(
                       freeze_list=energy_loss.freeze_list, lazy=True,
                       initialize_from_transfer=False,
                       )
-    # print('tasks:', energy_loss.tasks + realities)
+
     print('file', cont)
     graph.load_weights(cont)
     graph.compile(optimizer=None)
@@ -131,14 +135,6 @@ def main(
     save_error_losses = error_losses if len(error_losses) > 0 else [0] * subset_size
     save_energy_losses = energy_losses if len(energy_losses) > 0 else [0] * subset_size
 
-    percep_losses = { k: v for k, v in zip(energy_losses_headings, np.concatenate(energy_losses_all, axis=-1))}
-    df = pd.DataFrame(both(
-                    {'energy': save_energy_losses, 'error': save_error_losses },
-                    percep_losses
-    ))
-    df.to_csv(f"{save_dir}/{data_dir}.csv", mode='w', header=True)
-
-    # compuate correlation
     z_score = lambda x: (x - x.mean()) / x.std()
     def get_standardized_energy(df, use_std=False, compare_to_in_domain=False):
         percepts = [c for c in df.columns if 'percep' in c]
@@ -149,19 +145,36 @@ def main(
         energies = np.stack([v for k, v in stdized.items() if k[-1] == '_' or '__' in k]).mean(0)
         return energies
 
+    if isImage:
+        eng_curr = save_energy_losses[0]
+        df = pd.read_csv(os.path.join(save_dir, 'data.csv'))
+    else:
+        percep_losses = { k: v for k, v in zip(energy_losses_headings, np.concatenate(energy_losses_all, axis=-1))}
+        df = pd.DataFrame(both(
+                        {'energy': save_energy_losses, 'error': save_error_losses },
+                        percep_losses
+        ))
+        df.to_csv(f"{save_dir}/data.csv", mode='w', header=True)
+
+    # compuate correlation
     df['normalized_energy'] = get_standardized_energy(df, use_std=False)
     df = df[df['normalized_energy'] > -50]
     df['normalized_error'] = z_score(df['error'])
+    print(scipy.stats.spearmanr(z_score(df['error']), df['normalized_energy']))
+    print("Pearson r:", scipy.stats.pearsonr(df['error'], df['normalized_energy']))
 
     # plot correlation
     plt.figure(figsize=(4,4))
-    sns.regplot(df['normalized_error'], df['normalized_energy'])
+    g = sns.regplot(df['normalized_error'], df['normalized_energy'])
+    if isImage:
+        # plt.legend()
+        ax1 = g.axes
+        ax1.axhline(eng_curr, ls='--', color='red')
+        ax1.text(0.5, 25, "Query Image Energy Line")
     plt.xlabel('Error (z-score)')
     plt.ylabel('Energy (z-score)')
     plt.title('')
     plt.savefig(f'./energy.pdf')
-    print(scipy.stats.spearmanr(z_score(df['error']), df['normalized_energy']))
-    print("Pearson r:", scipy.stats.pearsonr(df['error'], df['normalized_energy']))
 
 
 if __name__ == "__main__":

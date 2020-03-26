@@ -575,6 +575,7 @@ energy_configs = {
     },
 
     "energy_calc": generate_config(ALL_PERCEPTUAL_TASKS),
+    "energy_calc_nogt": generate_config(ALL_PERCEPTUAL_TASKS, has_gt=False),
 }
 
 
