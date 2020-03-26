@@ -5,6 +5,8 @@ from collections import defaultdict
 from tqdm import tqdm
 import pickle as pkl
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import torch
 import torch.nn as nn
@@ -41,19 +43,8 @@ def main(
     batch_size = batch_size or (4 if fast else 64)
     energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
-    # Setting up OOD
-    if data_dir is None or data_dir == 'TASKONOMY_TEST':
-        buildings = ["almena", "albertville"]
-        train_subset_dataset = TaskDataset(buildings, tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature])
-    elif data_dir == 'APOLLOSCAPE':
-        train_subset_dataset = ImageDataset(data_dir=f"{BASE_DIR}/apolloscape/ResizeImage/Record*/")
-    elif data_dir == 'COCODOOM':
-        train_subset_dataset = ImageDataset(data_dir=f"{BASE_DIR}/cocodoom/run*/map*/rgb")
-    elif data_dir == 'PR_VIDEO':
-        train_subset_dataset = ImageDataset(data_dir=f"{BASE_DIR}/shared/assets/input_frames", tasks=[tasks.rgb, tasks.filename])
-    else:
-        train_subset_dataset = ImageDataset(data_dir=data_dir)
-        data_dir = 'CUSTOM'
+    buildings = ["almena", "albertville"]
+    train_subset_dataset = TaskDataset(buildings, tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature])
     train_subset = RealityTask("train_subset", train_subset_dataset, batch_size=batch_size, shuffle=False)
 
     if subset_size is None:
@@ -61,7 +52,7 @@ def main(
     subset_size = min(subset_size, len(train_subset_dataset))
 
     # GRAPH
-    realities = [train_subset] #train_subset [ood]
+    realities = [train_subset]
     edges = []
     for t in energy_loss.tasks:
         if t != tasks.rgb:
@@ -74,70 +65,28 @@ def main(
                       freeze_list=energy_loss.freeze_list, lazy=True,
                       initialize_from_transfer=False,
                       )
-    print('tasks:', energy_loss.tasks + realities)
+    # print('tasks:', energy_loss.tasks + realities)
     print('file', cont)
     graph.load_weights(cont)
     graph.compile(optimizer=None)
 
     # Add consistency links
-    if tasks.reshading in energy_loss.tasks:
-        rgb2reshading_graph = TaskGraph(tasks=[tasks.rgb, tasks.reshading, tasks.normal], lazy=True,
-                      initialize_from_transfer=False, edges=[(tasks.rgb, tasks.reshading), (tasks.reshading, tasks.normal)]
-                      )
-        rgb2reshading_graph.load_weights(f'{SHARED_DIR}/results_CH_lbp_all_reshadingtarget_gradnorm_unnormalizedmse_imagenet_nosqerror_nosqinitauglr_dataaug_1/graph.pth')
-        rgb2reshading_graph.compile(optimizer=None)
-        # print(rgb2reshading_graph.edge_map.keys())
-        graph.edge_map[f"('{tasks.rgb}', '{tasks.reshading}')"] = rgb2reshading_graph.edge_map[f"('{tasks.rgb}', '{tasks.reshading}')"]
-        del rgb2reshading_graph
+    graph.edge_map[str(('rgb', 'reshading'))].model.load_weights('./models/rgb2reshading_consistency.pth',backward_compatible=True)
+    graph.edge_map[str(('rgb', 'depth_zbuffer'))].model.load_weights('./models/rgb2depth_consistency.pth',backward_compatible=True)
+    graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
 
-
-    if tasks.depth_zbuffer in energy_loss.tasks:
-        rgb2depth_graph = TaskGraph(tasks=[tasks.rgb, tasks.depth_zbuffer, tasks.normal], lazy=True,
-                      initialize_from_transfer=False, edges=[(tasks.rgb, tasks.depth_zbuffer), (tasks.depth_zbuffer, tasks.normal)]
-                      )
-        rgb2depth_graph.load_weights(f'{SHARED_DIR}/results_CH_lbp_all_depthtarget_gradnorm_unnormalizedmse_imagenet_nosqerror_nosqinitauglr_dataaug_1/graph.pth')
-        rgb2depth_graph.compile(optimizer=None)
-        print(rgb2depth_graph.edge_map.keys())
-        graph.edge_map[f"('{tasks.rgb}', '{tasks.depth_zbuffer}')"] = rgb2depth_graph.edge_map[f"('{tasks.rgb}', '{tasks.depth_zbuffer}')"]
-        del rgb2depth_graph
-
-
-    rgb2normal_graph = TaskGraph(tasks=[tasks.rgb, tasks.normal], lazy=True,
-                      initialize_from_transfer=False, edges=[(tasks.rgb, tasks.normal)]
-                      )
-
-    rgb2normal_graph.load_weights(f'{SHARED_DIR}/results_CH_lbp_all_normaltarget_gradnorm_unnormalizedmse_imagenet_nosqerror_nosqinitauglr_dataaug_1/graph.pth')
-    rgb2normal_graph.compile(optimizer=None)
-    print(rgb2normal_graph.edge_map.keys())
-    graph.edge_map[f"('{tasks.rgb}', '{tasks.normal}')"] = rgb2normal_graph.edge_map[f"('{tasks.rgb}', '{tasks.normal}')"]
-    del rgb2normal_graph
-
-
-    best_ood_val_loss = float('inf')
-    energy_losses = []
-    mse_losses = []
-    pearsonr_vals = []
+    energy_losses, mse_losses = [], []
     percep_losses = defaultdict(list)
-    pearson_percep = defaultdict(list)
 
-    energy_mean_by_blur = []
-    energy_std_by_blur = []
-    error_mean_by_blur = []
-    error_std_by_blur = []
+    energy_mean_by_blur, energy_std_by_blur = [], []
+    error_mean_by_blur, error_std_by_blur = [], []
 
+    energy_losses, error_losses = [], []
 
-    blur_size = 0
-    train_subset.reload()
-    tasks.rgb.jpeg_quality = blur_size
-
-
-    energy_losses = []
-    error_losses = []
-
-    energy_losses_all = []
-    energy_losses_headings = []
+    energy_losses_all, energy_losses_headings = [], []
 
     fnames = []
+    train_subset.reload()
     # Compute energies
     for epochs in tqdm(range(subset_size // batch_size)):
         with torch.no_grad():
@@ -189,7 +138,30 @@ def main(
     ))
     df.to_csv(f"{save_dir}/{data_dir}.csv", mode='w', header=True)
 
+    # compuate correlation
+    z_score = lambda x: (x - x.mean()) / x.std()
+    def get_standardized_energy(df, use_std=False, compare_to_in_domain=False):
+        percepts = [c for c in df.columns if 'percep' in c]
+        stdize = lambda x: (x - x.mean()).abs().mean()
+        means = {k: df[k].mean() for k in percepts}
+        stds = {k: stdize(df[k]) for k in percepts}
+        stdized = {k: (df[k] - means[k])/stds[k] for k in percepts}
+        energies = np.stack([v for k, v in stdized.items() if k[-1] == '_' or '__' in k]).mean(0)
+        return energies
 
+    df['normalized_energy'] = get_standardized_energy(df, use_std=False)
+    df = df[df['normalized_energy'] > -50]
+    df['normalized_error'] = z_score(df['error'])
+
+    # plot correlation
+    plt.figure(figsize=(4,4))
+    sns.regplot(df['normalized_error'], df['normalized_energy'])
+    plt.xlabel('Error (z-score)')
+    plt.ylabel('Energy (z-score)')
+    plt.title('')
+    plt.savefig(f'./energy.pdf')
+    print(scipy.stats.spearmanr(z_score(df['error']), df['normalized_energy']))
+    print("Pearson r:", scipy.stats.pearsonr(df['error'], df['normalized_energy']))
 
 
 if __name__ == "__main__":

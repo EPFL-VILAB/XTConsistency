@@ -103,8 +103,10 @@ class AbstractModel(nn.Module):
             model.load_state_dict(data)
         return model
 
-    def load_weights(self, weights_file):
+    def load_weights(self, weights_file, backward_compatible=False):
         data = torch.load(weights_file)
+        if backward_compatible:
+            data = {'parallel_apply.module.'+k:v for k,v in data.items()}
         self.load_state_dict(data)
 
     def save(self, weights_file):

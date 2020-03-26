@@ -574,7 +574,7 @@ energy_configs = {
         },
     },
 
-    "energy_calc": generate_config(ALL_PERCEPTUAL_TASKS, has_gt=False),
+    "energy_calc": generate_config(ALL_PERCEPTUAL_TASKS),
 }
 
 
@@ -672,7 +672,7 @@ class EnergyLoss(object):
                         output_task = self.paths[path1][-1]
                         if "direct" in loss_type:
                             with torch.no_grad():
-                                path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=batch_mean, compute_mask=compute_mask, compute_mse=False)
+                                path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=False)
                                 loss[loss_type] += path_loss
                         else:
                             path_loss, _ = output_task.norm(path_values[path1], path_values[path2], batch_mean=reduce, compute_mask=compute_mask, compute_mse=False)
