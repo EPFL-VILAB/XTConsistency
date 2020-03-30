@@ -3,7 +3,6 @@ import numpy as np
 import scipy
 from collections import defaultdict
 from tqdm import tqdm
-import pickle as pkl
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -16,12 +15,9 @@ from utils import *
 from plotting import *
 from energy import get_energy_loss
 from graph import TaskGraph
-#from logger import Logger, VisdomLogger
 from datasets import TaskDataset, load_train_val, load_test, load_ood, ImageDataset
 from task_configs import tasks, RealityTask
 
-from modules.resnet import ResNet
-from modules.unet import UNet, UNetOld
 from functools import partial
 from fire import Fire
 
@@ -41,13 +37,12 @@ def main(
     # CONFIG
     energy_loss = get_energy_loss(config=loss_config, mode=mode, **kwargs)
 
-    isImage =  data_dir is not None
-
-    if isImage:
-        train_subset_dataset = ImageDataset(data_dir=data_dir)
-    else:
+    if data_dir is None:
         buildings = ["almena", "albertville"]
         train_subset_dataset = TaskDataset(buildings, tasks=[tasks.rgb, tasks.normal, tasks.principal_curvature])
+    else:
+        train_subset_dataset = ImageDataset(data_dir=data_dir)
+        data_dir = 'CUSTOM'
 
     train_subset = RealityTask("train_subset", train_subset_dataset, batch_size=batch_size, shuffle=False)
 
@@ -78,6 +73,7 @@ def main(
     graph.edge_map[str(('rgb', 'reshading'))].model.load_weights('./models/rgb2reshading_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'depth_zbuffer'))].model.load_weights('./models/rgb2depth_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
+
 
     energy_losses, mse_losses = [], []
     percep_losses = defaultdict(list)
@@ -116,7 +112,7 @@ def main(
         train_subset.step()
 
 
-    # Log losses
+    # log losses
     if len(energy_losses) > 0:
         energy_losses = np.array(energy_losses)
         print(f'energy = {energy_losses.mean()}')
@@ -145,8 +141,9 @@ def main(
         energies = np.stack([v for k, v in stdized.items() if k[-1] == '_' or '__' in k]).mean(0)
         return energies
 
-    if isImage:
-        eng_curr = save_energy_losses[0]
+
+    if data_dir is 'CUSTOM':
+        eng_curr = np.array(energy_losses).mean()
         df = pd.read_csv(os.path.join(save_dir, 'data.csv'))
     else:
         percep_losses = { k: v for k, v in zip(energy_losses_headings, np.concatenate(energy_losses_all, axis=-1))}
@@ -165,9 +162,9 @@ def main(
 
     # plot correlation
     plt.figure(figsize=(4,4))
-    g = sns.regplot(df['normalized_error'], df['normalized_energy'])
-    if isImage:
-        # plt.legend()
+    g = sns.regplot(df['normalized_error'], df['normalized_energy'],robust=False)
+    pdb.set_trace()
+    if data_dir is 'CUSTOM':
         ax1 = g.axes
         ax1.axhline(eng_curr, ls='--', color='red')
         ax1.text(0.5, 25, "Query Image Energy Line")
