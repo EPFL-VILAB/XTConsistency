@@ -244,18 +244,18 @@ For task specific configs, like transformations and masks, are defined in [task_
 To see how consistency energy, defined as the sum of pairwise inconsistencies, correlates with error run the following command,
 
 ```
-python -m scripts.energy_calc energy_calc --data-dir=DATA_DIR --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES_FROM_DATA_DIR  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
+python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
 ```
 
-It computes the energy and error for all points in the directory specified by `DATA_DIR` using the graph of models defined by `PATH_TO_MODELS`. The plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
+By default, it computes the energy and error of the `subset_size` number of points on the Taskonomy buildings `almena` and `albertville`. The error is computed for the `normal` target. The resulting plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
 
-To compute the consistency energy of a single query image, run,
+To compute the energy for query images in a given directory,
 
 ```
-python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=1  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
 ```
 
-It will append a dashed horizontal line to the plot above where the energy of the query image is. This plot is saved to `energy_queryimage.pdf` in `RESULTS_DIR`.
+It will append a dashed horizontal line to the plot above where the energy of the query image(s) are. This plot is saved to `energy.pdf` in `RESULTS_DIR`.
 
 ## Download all models
 
