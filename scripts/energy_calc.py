@@ -5,6 +5,8 @@ from collections import defaultdict
 from tqdm import tqdm
 import pickle as pkl
 import pandas as pd
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
