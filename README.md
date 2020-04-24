@@ -1,10 +1,60 @@
-# [Repo under construction!] Robust Learning Through Cross-Task Consistency
+# Robust Learning Through Cross-Task Consistency <br>[Repo under construction!] 
+
+[![](./assets/intro.png)](https://consistency.epfl.ch)
+
+<table>
+      <tr><td><em>Above: A comparison of the results from consistency-based learning and learning each task individually. The yellow markers highlight the improvement in fine grained details.</em></td></tr>
+</table>
+
+<br>
+This repository contains tools for training and evaluating models using consistency:
+
+- [Pretrained models](#download-consistency-trained-networks)
+- [Demo code](#run-demo-script) and an [online live demo](https://consistency.epfl.ch/demo/)
+- [_Uncertainty energy_ estimation code](#Energy-computation)
+- [Training scripts](#training)
+- [Docker and installation instructions](#training)
+
+for the following paper:<br><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral).<br>
+Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas 
+
+<!-- <div style="text-align:center">
+<h4><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral)</h4>
+Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas 
+</div>
+<br> -->
+
+For further details, a [live demo](https://consistency.epfl.ch/demo/), and [video evaluations](https://consistency.epfl.ch/visuals/), refer to our [project website](https://consistency.epfl.ch/).
+
+#### PROJECT WEBSITE:
+<div style="text-align:center">
+
+| [LIVE DEMO](https://consistency.epfl.ch/demo/) | [VIDEO EVALUATION](https://consistency.epfl.ch/visuals/) 
+|:----:|:----:|
+| Upload your own images and see the results of different consistency-based models vs. various baselines.<br><br>[<img src=./assets/screenshot-demo2.png width="400">](https://consistency.epfl.ch/demo/) | Visualize models with and without consistency, evaluated on a (non-cherry picked) YouTube video.<br><br><br>[<img src=./assets/output_video.gif width="400">](https://consistency.epfl.ch/visuals/) |
+
+</div>
+
+---
+
+Table of contents
+=================
+
+   * [Introduction](#introduction)
+   * [Installation](#installation)
+   * [Quickstart (demo code)](#quickstart-(run-demo-locally))
+   * [Energy computation](#energy-computation)
+   * [Download all pretrained models](pretrained-models)
+   * [Train a consistency model](#training)
+     * [Instructions for training](#steps)
+     * [To train on other configurations](#to-train-on-other-target-domains)
+   * [Citing](#citation)
+
+<br>
+
+## Introduction 
 
 Visual perception entails solving a wide set of tasks (e.g. object detection, depth estimation, etc). The predictions made for each task out of a particular observation are not independent, and therefore, are expected to be **consistent**.
-
-![](./assets/intro.png)
-*A comparison of the results from consistency-based learning and learning each task individually. The yellow markers highlights the improvement in fine grained details.*
-
 
 **What is consistency?** Given that the underlying scene is the same, different tasks predictions should be consistent eg. the depth of one region should not be flat if normals are uneven.
 
@@ -13,84 +63,85 @@ Visual perception entails solving a wide set of tasks (e.g. object detection, de
 **How do we enforce it?** The underlying concept is that of path independence in a network of tasks. Given an endpoint `X3`, the path from 
 `X1->X2->X3` should give the same results as `X1->X3`. This can be generalized to a larger system, with paths of arbitrary lengths. In this case, the nodes of the graph are our prediction domains (eg. depth, normal) and the edges are neural networks mapping these domains.
 
-
-This repository includes [training](#training) code for enforcing cross task consistency, [demo](#run-demo-script) code for visualizing the results of a consistency trained model on a given image and [links](#download-consistency-trained-networks) to download these models. For further details, refer to our [paper]() or [website](https://consistency.epfl.ch/).
-
-#### Alternatively, upload your own image to compare the results or explore other visiualizations below
-| [Upload here](https://consistency.epfl.ch/demo/) | [Visualizations](https://consistency.epfl.ch/visuals/) 
-|:----:|:----:|
-| [<img src=./assets/screenshot-demo.png width="300" height="200">](https://consistency.epfl.ch/demo/) | [<img src=./assets/screenshot-viz.png width="300" height="250">](https://consistency.epfl.ch/visuals/) |
-
-Table of contents
-=================
-
-   * [Introduction](#introduction)
-   * [Installation](#install-requirements)
-   * [Run the demo code](#run-demo-script)
-   * [Train a consistency model](#training)
-     * [Instructions for training](#steps)
-     * [To train on other configurations](#to-train-on-other-target-domains)
-   * [Energy computation](#energy-computation)
-   * [Download all models](#download-all-models)
-   * [Citing](#citation)
+This repository includes [training](#training) code for enforcing cross task consistency, [demo](#run-demo-script) code for visualizing the results of a consistency trained model on a given image and [links](#pretrained-models) to download these models. For further details, refer to our [paper]() or [website](https://consistency.epfl.ch/).
 
 
-## Introduction 
+#### Consistency Domains
 
-
-#### Dataset
-
-The following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data) were used to train the model. Domains with (\*) are used as a target domain with all others being used for the perceptual losses ie. a `depth` target would have `curvature`, `edge2d`, `edge3d`, `keypoint2d`, `keypoint3d`, `reshading`, `normal` as perceptual losses.
-
+Consistency constraints can be used for virtually any set of domains. This repository considers transferring between image domains, and our networks were trained for transferring between the following domains from the [Taskonomy dataset](https://github.com/StanfordVL/taskonomy/tree/master/data).
 ```
-Curvature         Depth*                Edge-3D        
-Edge-2D           Keypoint-2D           Keypoint-3D     
-Reshading*        Surface-Normal*       RGB
+Curvature         Edge-3D            Reshading
+Depth-ZBuffer     Keypoint-2D        RGB       
+Edge-2D           Keypoint-3D        Surface-Normal 
 ```
-
 Descriptions for each domain can be found in the [supplementary file](http://taskonomy.stanford.edu/taskonomy_supp_CVPR2018.pdf) of Taskonomy.
+
+The repo contains consistency-trained models for the following transfers (the remaining 7 domains are used as consistency constraints in each transfer):
+```
+RGB -> Surface-Normals
+RGB -> Depth-ZBuffer
+RGB -> Reshading
+```
 
 #### Network Architecture
 
-The networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) architecture. They take in an input size of 256x256, upsampling is done via bilinear interpolations instead of deconvolutions and trained with the L1 loss. See the table below for more information.
+All networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) architecture. They take in an input size of 256x256, upsampling is done via bilinear interpolations instead of deconvolutions and trained with the L1 loss. See the table below for more information.
 
-| Task Name | Output Dimension | Downsample Blocks |
-|-----------|------------------|-------------------|
-| depth     | 256x256x1        | 6                 |
-| reshading | 256x256x1        | 5                 |
-| normal    | 256x256x3        | 6                 |
+|        Task Name        | Output Dimension | Downsample Blocks |
+|-------------------------|------------------|-------------------|
+| `RGB -> Depth-ZBuffer`  | 256x256x1        | 6                 |
+| `RGB -> Reshading`      | 256x256x1        | 5                 |
+| `RGB -> Surface-Normal` | 256x256x3        | 6                 |
 
-## Install requirements
-See [requirements.txt](./requirements.txt) for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
+Other networks (e.g. `Curvature -> Surface-Normal`) use a UNet, their architecture hyperparameters are detailed in [transfers.py](./transfers.py).
 
+More information on the models, including download links, can be found [here](#pretrained-models) and in the [supplementary material](https://consistency.epfl.ch/supplementary_material).
+
+<br>
+<br>
+
+## Installation
+
+There are two convenient ways to run the code. Either using Docker (recommended) or using a Python-specific tool such as pip, conda, or virtualenv.
+
+#### Installation via Docker [Recommended]
+
+We provide a docker that contains the code and all the necessary libraries. It's simple to install and run. Simply run:
 ```
-conda create -n testenv python=3.6
-source activate testenv
-pip install -r requirements.txt
+docker pull EPFLVL/xtc:latest
 ```
 
-## Run demo script
-
-#### Clone the code from github
-
+#### Installation via Pip/Conda/Virtualenv
+The code can also be run using a Python environment manager such as Conda. See [requirements.txt](./requirements.txt) for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
+1.  Clone the repo:
 ```
 git clone https://github.com/amir32002/scaling.git
 cd scaling
 git checkout ch_release
 ```
 
-#### Download consistency trained networks
-The pretrained models for the demo can be downloaded with the following command.
+2. Create a new environment and install the libraries:
+```
+conda create -n testenv python=3.6
+source activate testenv
+pip install -r requirements.txt
+```
 
+
+<br>
+<br>
+
+## Quickstart (Run Demo Locally)
+
+#### Download the consistency trained networks
+If you haven't yet, then download the [pretrained models](#Download-consistency-trained-models). Models used for the demo can be downloaded with the following command:
 ```
 sh ./tools/download_models.sh
 ```
 
-This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.3GB). They will be saved to a folder called `models`.
+This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.3GB) to a folder called `./models/`. Individial models can be downloaded [here](https://drive.switch.ch/index.php/s/QPvImzbbdjBKI5P).
 
-Individial models can be downloaded [here](https://drive.switch.ch/index.php/s/QPvImzbbdjBKI5P).
-
-#### Running single image tasks
+#### Run a model on your own image
 
 To run the trained model of a task on a specific image:
 
@@ -121,11 +172,104 @@ Similarly, running for target tasks `reshading` and `depth` gives the following.
 
 
 
-## Training
+<br>
+<br>
+
+## Energy Computation
+
+Training with consistency involves several paths that each predict the target domain, but using different cues to do so. The disagreement between these predictions yields an unsupervised quantity, _consistency cnergy_, that our CVPR 2020 paper found correlates with prediciton error. You can view the pixel-wise _consistency energy_ using our [live demo](https://consistency.epfl.ch/demo/).
+
+
+To compute energy locally, over many images, and/or to plot energy vs error, you can use the following `energy_calc.py` script. The following command generates a scatter plot of _consistency energy_ vs. prediction error:
+
+```
+python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
+```
+
+|             Energy vs. Error             |
+|:----------------------------------------:|
+| ![](./assets/energy_vs_error.jpg)        |
+| _Result from running the above command._ | 
+
+By default, it computes the energy and error of the `subset_size` number of points on the Taskonomy buildings `almena` and `albertville`. The error is computed for the `normal` target. The resulting plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
+
+#### Compute energy on arbitrary images
+_Consistency energy_ is an unsupervised quantity and as such, no ground-truth labels are necessary. To compute the energy for all query images in a directory, run:
+
+```
+python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+```
+
+It will append a dashed horizontal line to the plot above where the energy of the query image(s) are. This plot is saved to `energy.pdf` in `RESULTS_DIR`.
+
+
+<br>
+<br>
+
+## Pretrained Models
+
+We are providing all of our pretrained models for download. These models are the same ones used in the [live demo](https://consistency.epfl.ch/demo/) and [video evaluations](https://consistency.epfl.ch/visuals/).
+
+
+#### Network Architecture
+All networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) architecture. They take in an input size of 256x256, upsampling is done via bilinear interpolations instead of deconvolutions. All models were trained with the L1 loss.
+
+
+#### Download consistency-trained models
+Instructions for downloading the trained consistency models can be found [here](#download-consistency-trained-networks)
+```
+sh ./tools/download_models.sh
+```
+
+This downloads the `baseline`, `consistency` trained models for `depth`, `normal` and `reshading` target (1.3GB) to a folder called `./models/`. See the table below for specifics:
+
+|        Task Name        | Output Dimension | Downsample Blocks |
+|-------------------------|------------------|-------------------|
+| `RGB -> Depth-ZBuffer`  | 256x256x1        | 6                 |
+| `RGB -> Reshading`      | 256x256x1        | 5                 |
+| `RGB -> Surface-Normal` | 256x256x3        | 6                 |
+
+Individual consistency models can be downloaded [here](https://drive.switch.ch/index.php/s/QPvImzbbdjBKI5P).
+
+
 
 #### Download perceptual networks
-
 The pretrained perceptual models can be downloaded with the following command.
+
+```
+sh ./tools/download_percep_models.sh
+```
+
+This downloads the perceptual models for the `depth`, `normal` and `reshading` target (1.6GB). Each target has 7 pretrained models (from the other sources below).
+
+```
+Curvature         Edge-3D            Reshading
+Depth-ZBuffer     Keypoint-2D        RGB       
+Edge-2D           Keypoint-3D        Surface-Normal 
+```
+
+Perceptual model architectural hyperparameters are detailed in [transfers.py](./transfers.py), and some of the pretrained models were trained using L2 loss. For using these models with the provided training code, the pretrained models should be placed in the file path defined by `MODELS_DIR` in [utils.py](./utils.py#L25).
+
+Individual perceptual models can be downloaded [here](https://drive.switch.ch/index.php/s/aXu4EFaznqtNzsE).
+
+
+
+#### Download baselines
+We also provide the models for other baselines used in the paper, namely, those from [Taskonomy](https://arxiv.org/pdf/1804.08328.pdf), [GeoNet](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8578135_) and a multitask model that we trained. They can be found [here](https://drive.switch.ch/index.php/s/gdom4FpiiYo1Qay). Note that we will not be providing support for them. 
+
+
+
+
+
+
+<br>
+<br>
+
+## Training
+
+#### Download the perceptual networks
+
+The [pretrained perceptual models](#Download-perceptual-networks) can be downloaded with the following command.
 
 ```
 sh ./tools/download_percep_models.sh
@@ -240,26 +384,8 @@ Pytorch's dataloader _\_\_getitem\_\__ method has been overwritten to return a t
 
 For task specific configs, like transformations and masks, are defined in [task_configs.py](./task_configs.py#L341-L373).
 
-## Energy computation
-To see how consistency energy, defined as the sum of pairwise inconsistencies, correlates with error run the following command,
-
-```
-python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
-```
-
-By default, it computes the energy and error of the `subset_size` number of points on the Taskonomy buildings `almena` and `albertville`. The error is computed for the `normal` target. The resulting plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
-
-To compute the energy for query images in a given directory,
-
-```
-python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
-```
-
-It will append a dashed horizontal line to the plot above where the energy of the query image(s) are. This plot is saved to `energy.pdf` in `RESULTS_DIR`.
-
-## Download all models
-
-Instructions for downloading the trained consistency models can be found [here](#download-consistency-trained-networks) and for downloading the perceptual models [here](#download-perceptual-networks). We also provide the models for other baselines used in the paper, namely, those from [Taskonomy](https://arxiv.org/pdf/1804.08328.pdf), [GeoNet](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8578135_) and a multitask model that we trained. They can be found [here](https://drive.switch.ch/index.php/s/gdom4FpiiYo1Qay). Note that we will not be providing support for them. 
+<br>
+<br>
 
 ## Citation
 If you find the code, models, or data useful, please cite this paper:
@@ -267,7 +393,7 @@ If you find the code, models, or data useful, please cite this paper:
 ```
 @article{zamir2020consistency,
   title={Robust Learning Through Cross-Task Consistency},
-  author={Zamir, Amir R and Sax, Alexander and Yeo, Teresa and Kar, Oğuzhan and Cheerla, Nikhil and Suri, Rohan and Cao, Zhangjie and Malik, Jitendra and Savarese, Silvio},
+  author={Zamir*, Amir R and Sax*, Alexander and Yeo, Teresa and Kar, Oğuzhan and Cheerla, Nikhil and Suri, Rohan and Cao, Zhangjie and Malik, Jitendra and Guibas, Leonidas},
 }
 ```
 
