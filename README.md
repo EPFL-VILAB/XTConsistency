@@ -15,14 +15,15 @@ This repository contains tools for training and evaluating models using consiste
 - [Training scripts](#training)
 - [Docker and installation instructions](#training)
 
-for the following paper:<br><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral).<br>
-Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas 
+for the following paper:
+<!-- <br><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral).<br> -->
+<!-- Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas  -->
 
-<!-- <div style="text-align:center">
+<div style="text-align:center">
 <h4><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral)</h4>
 Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas 
 </div>
-<br> -->
+<br>
 
 For further details, a [live demo](https://consistency.epfl.ch/demo/), and [video evaluations](https://consistency.epfl.ch/visuals/), refer to our [project website](https://consistency.epfl.ch/).
 
@@ -31,7 +32,7 @@ For further details, a [live demo](https://consistency.epfl.ch/demo/), and [vide
 
 | [LIVE DEMO](https://consistency.epfl.ch/demo/) | [VIDEO EVALUATION](https://consistency.epfl.ch/visuals/) 
 |:----:|:----:|
-| Upload your own images and see the results of different consistency-based models vs. various baselines.<br><br>[<img src=./assets/screenshot-demo2.png width="400">](https://consistency.epfl.ch/demo/) | Visualize models with and without consistency, evaluated on a (non-cherry picked) YouTube video.<br><br><br>[<img src=./assets/output_video.gif width="400">](https://consistency.epfl.ch/visuals/) |
+| Upload your own images and see the results of different consistency-based models vs. various baselines.<br><br>[<img src=./assets/screenshot-demo.png width="400">](https://consistency.epfl.ch/demo/) | Visualize models with and without consistency, evaluated on a (non-cherry picked) YouTube video.<br><br><br>[<img src=./assets/output_video.gif width="400">](https://consistency.epfl.ch/visuals/) |
 
 </div>
 
