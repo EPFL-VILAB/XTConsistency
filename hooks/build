@@ -1,0 +1,4 @@
+#!/bin/bash
+
+docker build . -t $IMAGE_NAME --build-arg GITHUB_DEPLOY_KEY="$GITHUB_DEPLOY_KEY" --build-arg GITHUB_DEPLOY_KEY_PUBLIC="$GITHUB_DEPLOY_KEY_PUBLIC"
+
