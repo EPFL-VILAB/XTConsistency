@@ -24,7 +24,7 @@ JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
 MODELS_DIR = f"{BASE_DIR}/percep_models"
 DATA_DIRS = [f"/taskonomy-data/taskonomydata", 'data']
-RESULTS_DIR = f"/workspace/shared/results_{EXPERIMENT}"
+RESULTS_DIR = f"{BASE_DIR}/results/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False

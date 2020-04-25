@@ -33,7 +33,7 @@ def main(
     pretrained=True, finetuned=False, batch_size=16,
     ood_batch_size=None, subset_size=None,
     cont=None,
-    use_l1=False, num_workers=32, data_dir=None, save_dir='mount/shared/', **kwargs,
+    use_l1=True, num_workers=32, data_dir=None, save_dir='mount/shared/', **kwargs,
 ):
 
     # CONFIG
