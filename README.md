@@ -45,7 +45,7 @@ Table of contents
    * [Installation](#installation)
    * [Quickstart (demo code)](#quickstart-(run-demo-locally))
    * [Energy computation](#energy-computation)
-   * [Download all pretrained models](pretrained-models)
+   * [Download all pretrained models](#pretrained-models)
    * [Train a consistency model](#training)
      * [Instructions for training](#steps)
      * [To train on other configurations](#to-train-on-other-target-domains)
@@ -110,6 +110,8 @@ There are two convenient ways to run the code. Either using Docker (recommended)
 We provide a docker that contains the code and all the necessary libraries. It's simple to install and run. Simply run:
 ```
 docker pull EPFLVL/xtc:latest
+
+docker run --runtime=nvidia -ti --rm epflvil/xtconsistency:latest
 ```
 
 #### Installation via Pip/Conda/Virtualenv
@@ -178,19 +180,25 @@ Similarly, running for target tasks `reshading` and `depth` gives the following.
 
 ## Energy Computation
 
-Training with consistency involves several paths that each predict the target domain, but using different cues to do so. The disagreement between these predictions yields an unsupervised quantity, _consistency cnergy_, that our CVPR 2020 paper found correlates with prediciton error. You can view the pixel-wise _consistency energy_ using our [live demo](https://consistency.epfl.ch/demo/).
+Training with consistency involves several paths that each predict the target domain, but using different cues to do so. The disagreement between these predictions yields an unsupervised quantity, _consistency energy_, that our CVPR 2020 paper found correlates with prediciton error. You can view the pixel-wise _consistency energy_ using our [live demo](https://consistency.epfl.ch/demo/).
 
 
-To compute energy locally, over many images, and/or to plot energy vs error, you can use the following `energy_calc.py` script. The following command generates a scatter plot of _consistency energy_ vs. prediction error:
-
-```
-python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
-```
+To compute energy locally, over many images, and/or to plot energy vs error, you can use the following `energy_calc.py` script. For example, to reproduce the following scatterplot using `energy_calc.py`:
 
 |             Energy vs. Error             |
 |:----------------------------------------:|
 | ![](./assets/energy_vs_error.jpg)        |
 | _Result from running the above command._ | 
+
+
+First download a subset of images from the Taskonomy buildings `almena` and `albertville` (512 images):
+
+Second, the following command generates a scatter plot of _consistency energy_ vs. prediction error:
+
+```
+python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
+```
+
 
 By default, it computes the energy and error of the `subset_size` number of points on the Taskonomy buildings `almena` and `albertville`. The error is computed for the `normal` target. The resulting plot is saved to `energy.pdf` in `RESULTS_DIR` and the corresponding data to `data.csv`. 
 

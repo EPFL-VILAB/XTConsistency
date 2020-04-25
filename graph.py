@@ -37,7 +37,7 @@ class TaskGraph(TrainableModel):
         self.edges, self.adj, self.in_adj = [], defaultdict(list), defaultdict(list)
         self.edge_map, self.reality = {}, reality
         self.initialize_from_transfer = initialize_from_transfer
-        print('graph tasks', self.tasks)
+        print('Creating graph with tasks:', self.tasks)
         self.params = {}
 
         # construct transfer graph
@@ -47,7 +47,7 @@ class TaskGraph(TrainableModel):
             if edges_exclude is not None and key in edges_exclude: continue
             if src_task == dest_task: continue
             if isinstance(dest_task, RealityTask): continue
-            print (src_task, dest_task)
+            # print (src_task, dest_task)
             transfer = None
             if isinstance(src_task, RealityTask):
                 if dest_task not in src_task.tasks: continue
@@ -61,7 +61,7 @@ class TaskGraph(TrainableModel):
                     transfer.path = None
             if transfer.model_type is None:
                 continue
-            print ("Added transfer", transfer)
+            # print ("Added transfer", transfer)
             self.edges += [transfer]
             self.adj[src_task.name] += [transfer]
             self.in_adj[dest_task.name] += [transfer]
@@ -70,10 +70,11 @@ class TaskGraph(TrainableModel):
                 if str((src_task.name, dest_task.name)) not in freeze_list:
                     self.params[str((src_task.name, dest_task.name))] = transfer
                 else:
-                    print("freezing " + str((src_task.name, dest_task.name)))
+                    print("Setting link: " + str((src_task.name, dest_task.name)) + " not trainable.")
                 try:
                     if not lazy: transfer.load_model()
-                except:
+                except Exception as e:
+                    print(e)
                     IPython.embed()
 
         self.params = nn.ModuleDict(self.params)
@@ -97,6 +98,7 @@ class TaskGraph(TrainableModel):
             except KeyError:
                 return None
             except Exception as e:
+                print(e)
                 IPython.embed()
 
             if use_cache: cache[tuple(path[0:(i+1)])] = x

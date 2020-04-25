@@ -35,6 +35,7 @@ trans_totensor = transforms.Compose([transforms.Resize(256, interpolation=PIL.Im
                                     transforms.ToTensor()])
 trans_topil = transforms.ToPILImage()
 
+os.system(f"mkdir -p {args.output_path}")
 
 # get target task and model
 target_tasks = ['normal','depth','reshading']

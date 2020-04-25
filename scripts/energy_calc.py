@@ -25,7 +25,7 @@ from fire import Fire
 
 import IPython
 import pdb
-
+from modules.unet import UNet
 
 def main(
     loss_config="conservative_full",
@@ -64,17 +64,22 @@ def main(
     graph = TaskGraph(tasks=energy_loss.tasks + [train_subset],
                       finetuned=finetuned,
                       freeze_list=energy_loss.freeze_list, lazy=True,
-                      initialize_from_transfer=False,
+                      initialize_from_transfer=True,
                       )
 
-    print('file', cont)
-    graph.load_weights(cont)
+    # print('file', cont)
+    #graph.load_weights(cont)
     graph.compile(optimizer=None)
 
     # Add consistency links
+    for target in ['reshading', 'depth_zbuffer', 'normal']:
+        graph.edge_map[str(('rgb', target))].path = None
+        graph.edge_map[str(('rgb', target))].load_model()
     graph.edge_map[str(('rgb', 'reshading'))].model.load_weights('./models/rgb2reshading_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'depth_zbuffer'))].model.load_weights('./models/rgb2depth_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
+    #graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
+    #graph.edge_map[str(('rgb', 'normal'))].model = UNet(downsample=6, out_channels=3)
 
 
     energy_losses, mse_losses = [], []

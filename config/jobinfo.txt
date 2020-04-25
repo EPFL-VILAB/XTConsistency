@@ -1,1 +1,1 @@
-normaltarget_allperceps, /scratch-data
+normaltarget_allperceps, .

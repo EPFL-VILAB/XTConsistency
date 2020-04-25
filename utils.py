@@ -15,22 +15,21 @@ from scipy import ndimage
 
 import IPython
 
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
 EXPERIMENT, BASE_DIR = open("config/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
-MODELS_DIR = f"{BASE_DIR}/shared/models"
-DATA_DIRS = [f"/taskonomy-data/taskonomydata"]
+MODELS_DIR = f"{BASE_DIR}/percep_models"
+DATA_DIRS = [f"/taskonomy-data/taskonomydata", 'data']
 RESULTS_DIR = f"/workspace/shared/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
 OOD_DIR = f"{SHARED_DIR}/ood_standard_set"
 USE_RAID = False
 
-os.system(f"mkdir -p {RESULTS_DIR}")
-
+# os.system(f"mkdir -p {RESULTS_DIR}")
 
 def both(x, y):
     x = dict(x.items())

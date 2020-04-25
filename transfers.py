@@ -172,7 +172,7 @@ class Transfer(nn.Module):
                 # if optimizer:
                 #     self.model.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
             else:
-                self.model = self.model_type()
+                self.model = self.model_type().to(DEVICE)
                 if isinstance(self.model, nn.Module):
                     self.model = DataParallelModel(self.model)
         return self.model
