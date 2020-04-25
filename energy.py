@@ -839,7 +839,7 @@ class WinRateEnergyLoss(EnergyLoss):
 
         loss_types = ["mae"] + [("percep_" + loss) for loss in self.percep_losses] + [("direct_" + loss) for loss in self.percep_losses]
         print (self.chosen_losses)
-        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, batch_mean=False)
+        loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, reduce=False)
 
         chosen_percep_mse_losses = [k for k in loss_dict.keys() if 'direct' not in k]
         percep_mse_coeffs = dict.fromkeys(chosen_percep_mse_losses, 1.0)
