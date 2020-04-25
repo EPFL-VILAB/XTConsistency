@@ -108,23 +108,22 @@ There are two convenient ways to run the code. Either using Docker (recommended)
 #### Installation via Docker [Recommended]
 
 We provide a docker that contains the code and all the necessary libraries. It's simple to install and run. Simply run:
-```
-docker pull EPFLVL/xtc:latest
-
+<!-- docker pull EPFLVL/xtc:latest -->
+```bash
 docker run --runtime=nvidia -ti --rm epflvil/xtconsistency:latest
 ```
 
 #### Installation via Pip/Conda/Virtualenv
 The code can also be run using a Python environment manager such as Conda. See [requirements.txt](./requirements.txt) for complete list of packages. We recommend doing a clean installation of requirements using virtualenv:
 1.  Clone the repo:
-```
+```bash
 git clone https://github.com/amir32002/scaling.git
 cd scaling
 git checkout ch_release
 ```
 
 2. Create a new environment and install the libraries:
-```
+```bash
 conda create -n testenv python=3.6
 source activate testenv
 pip install -r requirements.txt
@@ -138,7 +137,7 @@ pip install -r requirements.txt
 
 #### Download the consistency trained networks
 If you haven't yet, then download the [pretrained models](#Download-consistency-trained-models). Models used for the demo can be downloaded with the following command:
-```
+```bash
 sh ./tools/download_models.sh
 ```
 
@@ -148,7 +147,7 @@ This downloads the `baseline`, `consistency` trained models for `depth`, `normal
 
 To run the trained model of a task on a specific image:
 
-```
+```bash
 python demo.py --task $TASK --img_path $PATH_TO_IMAGE_OR_FOLDER --output_path $PATH_TO_SAVE_OUTPUT
 ```
 
@@ -156,7 +155,7 @@ The `--task` flag specifies the target task for the input image, which should be
 
 To run the script for a `normal` target on the [example image](./assets/test.png):
 
-```
+```bash
 python demo.py --task normal --img_path assets/test.png --output_path assets/
 ```
 
@@ -192,10 +191,13 @@ To compute energy locally, over many images, and/or to plot energy vs error, you
 
 
 First download a subset of images from the Taskonomy buildings `almena` and `albertville` (512 images):
+```bash
+sh ./tools/download_data.sh
+```
 
 Second, the following command generates a scatter plot of _consistency energy_ vs. prediction error:
 
-```
+```bash
 python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
 ```
 
@@ -205,7 +207,7 @@ By default, it computes the energy and error of the `subset_size` number of poin
 #### Compute energy on arbitrary images
 _Consistency energy_ is an unsupervised quantity and as such, no ground-truth labels are necessary. To compute the energy for all query images in a directory, run:
 
-```
+```bash
 python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
 ```
 
@@ -226,7 +228,7 @@ All networks are based on the [UNet](https://arxiv.org/pdf/1505.04597.pdf) archi
 
 #### Download consistency-trained models
 Instructions for downloading the trained consistency models can be found [here](#download-consistency-trained-networks)
-```
+```bash
 sh ./tools/download_models.sh
 ```
 
@@ -245,7 +247,7 @@ Individual consistency models can be downloaded [here](https://drive.switch.ch/i
 #### Download perceptual networks
 The pretrained perceptual models can be downloaded with the following command.
 
-```
+```bash
 sh ./tools/download_percep_models.sh
 ```
 
@@ -280,7 +282,7 @@ We also provide the models for other baselines used in the paper, namely, those 
 
 The [pretrained perceptual models](#Download-perceptual-networks) can be downloaded with the following command.
 
-```
+```bash
 sh ./tools/download_percep_models.sh
 ```
 
@@ -328,13 +330,13 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
 
 2) Train the task-specific network with the command
 
-   ```
+   ```bash
    python -m train multiperceptual_{depth,normal,reshading}
    ```
 
    To run the training code for the `normal` target, run 
 
-   ```
+   ```bash
    python -m train multiperceptual_normal
    ```
 
@@ -347,7 +349,7 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
 
    To train a `normal` target domain with 2 perceptual losses selected randomly each epoch, run the following command.
 
-   ```
+   ```bash
    python -m train multiperceptual_normal --k 2 --random-select
    ```
 
