@@ -13,7 +13,7 @@ This repository contains tools for training and evaluating models using consiste
 - [Demo code](#run-demo-script) and an [online live demo](https://consistency.epfl.ch/demo/)
 - [_Uncertainty energy_ estimation code](#Energy-computation)
 - [Training scripts](#training)
-- [Docker and installation instructions](#training)
+- [Docker and installation instructions](#installation)
 
 for the following paper:
 <!-- <br><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral).<br> -->
@@ -198,7 +198,7 @@ sh ./tools/download_data.sh
 Second, the following command generates a scatter plot of _consistency energy_ vs. prediction error:
 
 ```bash
-python -m scripts.energy_calc energy_calc --batch_size BATCH_SIZE --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_MODELS --use-l1=True --save_dir=RESULTS_DIR
+python -m scripts.energy_calc energy_calc --batch_size 2 --subset_size=128 --save_dir=results
 ```
 
 
@@ -208,7 +208,9 @@ By default, it computes the energy and error of the `subset_size` number of poin
 _Consistency energy_ is an unsupervised quantity and as such, no ground-truth labels are necessary. To compute the energy for all query images in a directory, run:
 
 ```bash
-python -m scripts.energy_calc energy_calc_nogt --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --mode standard --subset_size=NUMBER_OF_IMAGES  --cont=PATH_TO_TRAINED_MODEL --use-l1=True --save_dir=RESULTS_DIR
+python -m scripts.energy_calc energy_calc_nogt 
+    --data-dir=PATH_TO_QUERY_IMAGE --batch_size 1 --save_dir=RESULTS_DIR \
+    --subset_size=NUMBER_OF_IMAGES --cont=PATH_TO_TRAINED_MODEL
 ```
 
 It will append a dashed horizontal line to the plot above where the energy of the query image(s) are. This plot is saved to `energy.pdf` in `RESULTS_DIR`.
@@ -278,57 +280,46 @@ We also provide the models for other baselines used in the paper, namely, those 
 
 ## Training
 
-#### Download the perceptual networks
-
-The [pretrained perceptual models](#Download-perceptual-networks) can be downloaded with the following command.
-
-```bash
-sh ./tools/download_percep_models.sh
-```
-
-This downloads the perceptual models for the `depth`, `normal` and `reshading` target (1.6GB). Each target has 7 pretrained models. They should be placed in the file path defined by `MODELS_DIR` in [utils.py](./utils.py#L25).
-
-Individual models can be downloaded [here](https://drive.switch.ch/index.php/s/aXu4EFaznqtNzsE).
 
 #### The code is structured as follows
-
 ```python
-config/  
-    split.txt             	# Train, val split
-    jobinfo.txt			# Defines job name, base_dir
-modules/          		# Network definitions
-train.py			# Training script
-dataset.py			# Creates dataloader
-energy.py			# Defines path config, computes total loss, logging
-models.py			# Implements forward backward pass
-graph.py			# Computes path defined in energy.py
-task_configs.py			# Defines task specific preprocessing, masks, loss fn
-transfers.py			# Loads models
-utils.py			# Defines file paths (described below) 
-demo.py             		# Demo script
+config/             # Configuration parameters: where to save results, etc.
+    split.txt           # Train, val split
+    jobinfo.txt         # Defines job name, base_dir
+modules/            # Network definitions
+train.py            # Training script
+dataset.py          # Creates dataloader
+energy.py           # Defines path config, computes total loss, logging
+models.py           # Implements forward backward pass
+graph.py            # Computes path defined in energy.py
+task_configs.py     # Defines task specific preprocessing, masks, loss fn
+transfers.py        # Loads models
+utils.py            # Defines file paths (described below) 
+demo.py             # Demo script
 ```
 
-#### Default folder structure
+#### Expected folder structure
+The code expects folders structured as follows. These can be modified by changing values in `utils.py`
 ```python
-base_dir/  		            # The following paths are defined in utils.py (BASE_DIR)
-    shared/			    # with the corresponding variable names in brackets
-        models/			    # Pretrained models (MODELS_DIR)
-        results_[jobname]/	    # Checkpoint of model being trained (RESULTS_DIR)
-        ood_standard_set/	    # OOD data for visualization (OOD_DIR)
-    data_dir/			    # taskonomy data (DATA_DIRS)
+base_dir/                   # The following paths are defined in utils.py (BASE_DIR)
+    shared/                 # with the corresponding variable names in brackets
+        models/             # Pretrained models (MODELS_DIR)
+        results_[jobname]/  # Checkpoint of model being trained (RESULTS_DIR)
+        ood_standard_set/   # OOD data for visualization (OOD_DIR)
+    data_dir/               # taskonomy data (DATA_DIRS)
 ```
 
-#### Steps
+#### Training with consistency
 
-1) Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config would be,
+1) **Define locations for data, models, etc.:** Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config is provided in the starter code (`configs/jobinfo.txt`). To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in [utils.py](./utils.py#L25).
 
-   ```
-   normaltarget_allperceps, /scratch
-   ```
+2) **Download perceptual networks:** If you haven't already, then download our [pretrained perceptual models](#Download-perceptual-networks) with the following command (1.6GB): 
+    ```bash
+    sh ./tools/download_percep_models.sh
+    ```
+    More info about the networks is available [here](#Download-perceptual-networks).
 
-   To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in [utils.py](./utils.py#L25).
-
-2) Train the task-specific network with the command
+3) **Train with consistency** using the command:
 
    ```bash
    python -m train multiperceptual_{depth,normal,reshading}
@@ -354,7 +345,7 @@ base_dir/  		            # The following paths are defined in utils.py (BASE_DIR
    ```
 
 
-3) The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
+4) **Logging:** The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
 
    An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the third its prediction `n(x)` from the RGB image `x`. Thereafter, the predictions of each pair of images with the same domain are given by the paths `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
 
