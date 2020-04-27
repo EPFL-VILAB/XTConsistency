@@ -9,8 +9,8 @@
 <br>
 This repository contains tools for training and evaluating models using consistency:
 
-- [Pretrained models](#download-consistency-trained-networks)
-- [Demo code](#run-demo-script) and an [online live demo](https://consistency.epfl.ch/demo/)
+- [Pretrained models](#pretrained-models)
+- [Demo code](#quickstart-run-demo-locally) and an [online live demo](https://consistency.epfl.ch/demo/)
 - [_Uncertainty energy_ estimation code](#Energy-computation)
 - [Training scripts](#training)
 - [Docker and installation instructions](#installation)
@@ -38,12 +38,12 @@ For further details, a [live demo](https://consistency.epfl.ch/demo/), and [vide
 
 ---
 
-Table of contents
+Table of Contents
 =================
 
    * [Introduction](#introduction)
    * [Installation](#installation)
-   * [Quickstart (demo code)](#quickstart-(run-demo-locally))
+   * [Quickstart (demo code)](#quickstart-run-demo-locally)
    * [Energy computation](#energy-computation)
    * [Download all pretrained models](#pretrained-models)
    * [Train a consistency model](#training)
