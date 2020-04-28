@@ -156,14 +156,15 @@ def main(
                         {'energy': save_energy_losses, 'error': save_error_losses },
                         percep_losses
         ))
-        df.to_csv(f"{save_dir}/data.csv", mode='w', header=True)
 
     # compuate correlation
     df['normalized_energy'] = get_standardized_energy(df, use_std=False)
-    df = df[df['normalized_energy'] > -50]
     df['normalized_error'] = z_score(df['error'])
     print(scipy.stats.spearmanr(z_score(df['error']), df['normalized_energy']))
     print("Pearson r:", scipy.stats.pearsonr(df['error'], df['normalized_energy']))
+
+    if data_dir is not 'CUSTOM':
+        df.to_csv(f"{save_dir}/data.csv", mode='w', header=True)
 
     # plot correlation
     plt.figure(figsize=(4,4))
@@ -176,6 +177,7 @@ def main(
     plt.ylabel('Energy (z-score)')
     plt.title('')
     plt.savefig(f'{save_dir}/energy.pdf')
+
 
 
 if __name__ == "__main__":
