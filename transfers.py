@@ -71,7 +71,7 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/reshading2principal_curvature.pth"),
 
     ('rgb', 'sobel_edges'):
-        (lambda: sobel_kernel, None),
+        (lambda: SobelKernel, None),
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
@@ -100,13 +100,13 @@ pretrained_transfers = {
         (lambda: UNet(downsample=6, in_channels=1, out_channels=1), f"{MODELS_DIR}/sobel_edges2depth_zbuffer.pth"),
 
     ('depth_zbuffer', 'normal'): 
-        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal_unet6.pth"),
+        (lambda: UNet(in_channels=1, downsample=6), f"{MODELS_DIR}/depth2normal.pth"),
     ('keypoints2d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints2d2normal_new.pth"),
     ('keypoints3d', 'normal'):
         (lambda: UNet(downsample=5, in_channels=1), f"{MODELS_DIR}/keypoints3d2normal.pth"),
     ('principal_curvature', 'normal'): 
-        (lambda: UNetOld2(), f"{MODELS_DIR}/results_inverse_cycle_unet1x1model.pth"),
+        (lambda: UNetOld2(), f"{MODELS_DIR}/principal_curvature2normal.pth"),
     ('sobel_edges', 'normal'): 
         (lambda: UNet(in_channels=1, downsample=5).cuda(), f"{MODELS_DIR}/sobel_edges2normal.pth"),
     ('edge_occlusion', 'normal'):

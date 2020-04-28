@@ -187,15 +187,22 @@ To compute energy locally, over many images, and/or to plot energy vs error, you
 |             Energy vs. Error             |
 |:----------------------------------------:|
 | ![](./assets/energy_vs_error.jpg)        |
-| _Result from running the above command._ | 
+| _Result from running the command below._ | 
 
 
-First download a subset of images from the Taskonomy buildings `almena` and `albertville` (512 images):
+First download a subset of images from the Taskonomy buildings `almena` and `albertville` (512 images per domain, 388MB):
 ```bash
 sh ./tools/download_data.sh
 ```
 
-Second, the following command generates a scatter plot of _consistency energy_ vs. prediction error:
+
+Second, download all the networks necessary to compute the consistency energy. The following script will download them for you (skipping previously downloaded models) (0.8GB - 4.0GB):
+```bash
+sh ./tools/download_energy_graph_edges.sh
+```
+
+
+Now we are ready to compute energy. The following command generates a scatter plot of _consistency energy_ vs. prediction error:
 
 ```bash
 python -m scripts.energy_calc energy_calc --batch_size 2 --subset_size=128 --save_dir=results

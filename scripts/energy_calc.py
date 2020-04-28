@@ -78,9 +78,6 @@ def main(
     graph.edge_map[str(('rgb', 'reshading'))].model.load_weights('./models/rgb2reshading_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'depth_zbuffer'))].model.load_weights('./models/rgb2depth_consistency.pth',backward_compatible=True)
     graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
-    #graph.edge_map[str(('rgb', 'normal'))].model.load_weights('./models/rgb2normal_consistency.pth',backward_compatible=True)
-    #graph.edge_map[str(('rgb', 'normal'))].model = UNet(downsample=6, out_channels=3)
-
 
     energy_losses, mse_losses = [], []
     percep_losses = defaultdict(list)
@@ -149,6 +146,7 @@ def main(
         return energies
 
 
+     os.makedirs(save_dir, exist_ok=True)
     if data_dir is 'CUSTOM':
         eng_curr = np.array(energy_losses).mean()
         df = pd.read_csv(os.path.join(save_dir, 'data.csv'))
