@@ -287,7 +287,23 @@ We also provide the models for other baselines used in the paper, namely, those 
 
 ## Training
 
+We used the provided training code to train our consistency models on the Taskonomy dataset. We used 3 V100 (32GB) GPUs to train our models, running them for 500 epochs takes about a week. 
 
+> **Runnable Example:** 
+   You'll find that the code in the rest of this section expects about 12TB of data (9 single-image tasks from Taskonomy). For a quick runnable example that gives the gist, try the following:  
+>     
+>  First download the data and then start a visdom (logging) server:
+>  ```bash
+>  sh ./tools/download_data.sh # Starter data (388MB)
+>  visdom &                    # To view the telemetry
+>  ```
+>  
+>  Then, start the training using the following command, which trains a `normal` model using `curvature` and `2D edge` consistency on a training set of 512 images.  
+>   ```bash
+>   python -m train example_normal --k 2 --fast
+>   ```
+>   
+Assuming that you want to train on the full dataset or [on your own dataset], read on.
 #### The code is structured as follows
 ```python
 config/             # Configuration parameters: where to save results, etc.
@@ -318,9 +334,12 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
 
 #### Training with consistency
 
-1) **Define locations for data, models, etc.:** Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config is provided in the starter code (`configs/jobinfo.txt`). To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in [utils.py](./utils.py#L25).
+   
+1) **Define locations for data, models, etc.:** Create a `jobinfo.txt` file and define the name of the job and the absolute path to `BASE_DIR` where data, models results would be stored, as shown in the folder structure above. An example config is provided in the starter code (`configs/jobinfo.txt`). To modify individual file paths eg. the models folder, change `MODELS_DIR` variable name in [utils.py](./utils.py#L25).  
+  
+   We won't cover downloading the Taskonomy dataset, which can be downloaded following the instructions [here](https://github.com/StanfordVL/taskonomy/tree/master/data)
 
-2) **Download perceptual networks:** If you haven't already, then download our [pretrained perceptual models](#Download-perceptual-networks) with the following command (1.6GB): 
+2) **Download perceptual networks:** If you want to initialize from our pretrained models, then then [download them](#Download-perceptual-networks) with the following command (1.6GB): 
     ```bash
     sh ./tools/download_percep_models.sh
     ```
@@ -350,15 +369,6 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
    ```bash
    python -m train multiperceptual_normal --k 2 --random-select
    ```
-
-   **Runnable Example:** 
-   Running the above code, you'll find that it requires data for the the Taskonomy dataset and our 9 single-image tasks. For a quick runnable example that shows how the code works, try the following:
-   ```bash
-   sh ./tools/download_data.sh # Starter data (388MB)
-   python -m train example_normal --k 2 --fast
-   ```
-   which trains a `normal` model using `curvature` and `2D edge` consistency on a training set of 512 images.  
-
 
 4) **Logging:** The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 
 
