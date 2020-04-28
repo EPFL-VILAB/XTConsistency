@@ -70,17 +70,23 @@ def main(
         subset_size=subset_size,
         dataaug=dataaug,
     )
-    #test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
-    #ood_set = load_ood(energy_loss.get_tasks("ood"))
+
+    if fast:
+        train_dataset = val_dataset
+
     train_step, val_step = 2,2
     train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
     val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
-    # test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
-    # ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
+    realities = [train, val]
+
+    if not fast:
+        test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
+        ood_set = load_ood(energy_loss.get_tasks("ood"))
+        test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
+        ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
+        realities = [train, val, test, ood]
 
     # GRAPH
-    # realities = [train, val, test, ood]
-    realities = [train, val]
     graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False,
         freeze_list=energy_loss.freeze_list,
         initialize_from_transfer=True,
@@ -96,20 +102,20 @@ def main(
     # energy_loss.plot_paths(graph, logger, realities, prefix="start")
 
     # BASELINE
-    # graph.eval()
-    # with torch.no_grad():
-    #     for _ in range(0, val_step*4):
-    #         val_loss, _ = energy_loss(graph, realities=[val])
-    #         val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
-    #         val.step()
-    #         logger.update("loss", val_loss)
+    graph.eval()
+    with torch.no_grad():
+        for _ in range(0, val_step*4):
+            val_loss, _ = energy_loss(graph, realities=[val])
+            val_loss = sum([val_loss[loss_name] for loss_name in val_loss])
+            val.step()
+            logger.update("loss", val_loss)
 
-    #     for _ in range(0, train_step*4):
-    #         train_loss, _ = energy_loss(graph, realities=[train])
-    #         train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
-    #         train.step()
-    #         logger.update("loss", train_loss)
-    # energy_loss.logger_update(logger)
+        for _ in range(0, train_step*4):
+            train_loss, _ = energy_loss(graph, realities=[train])
+            train_loss = sum([train_loss[loss_name] for loss_name in train_loss])
+            train.step()
+            logger.update("loss", train_loss)
+    energy_loss.logger_update(logger)
 
     # TRAINING
     for epochs in range(0, max_epochs):

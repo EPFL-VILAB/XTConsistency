@@ -98,8 +98,12 @@ energy_configs = {
             "x": [tasks.rgb],
             "y^": [tasks.normal],
             "n(x)": [tasks.rgb, tasks.normal],
+            "a(x)": [tasks.rgb, tasks.sobel_edges],
             "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "edge": [tasks.sobel_edges],
             "curv": [tasks.principal_curvature],
+            "s(y^)": [tasks.normal, tasks.sobel_edges],
+            "s(n(x))": [tasks.rgb, tasks.normal, tasks.sobel_edges],
             "f(y^)": [tasks.normal, tasks.principal_curvature],
             "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
         },
@@ -115,6 +119,21 @@ energy_configs = {
             "percep_curv": {
                 ("train", "val"): [
                     ("f(n(x))", "f(y^)"),
+                ],
+            },
+            "direct_curv": {
+                ("train", "val"): [
+                    ("RC(x)", "curv"),
+                ],
+            },
+            "percep_edge": {
+                ("train", "val"): [
+                    ("s(n(x))", "s(y^)"),
+                ],
+            },
+            "direct_edge": {
+                ("train", "val"): [
+                    ("a(x)", "s(y^)"),
                 ],
             },
         },
