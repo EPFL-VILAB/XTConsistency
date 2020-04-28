@@ -168,7 +168,6 @@ def main(
     # plot correlation
     plt.figure(figsize=(4,4))
     g = sns.regplot(df['normalized_error'], df['normalized_energy'],robust=False)
-    pdb.set_trace()
     if data_dir is 'CUSTOM':
         ax1 = g.axes
         ax1.axhline(eng_curr, ls='--', color='red')
@@ -176,7 +175,7 @@ def main(
     plt.xlabel('Error (z-score)')
     plt.ylabel('Energy (z-score)')
     plt.title('')
-    plt.savefig(f'./energy.pdf')
+    plt.savefig(f'{save_dir}/energy.pdf')
 
 
 if __name__ == "__main__":
