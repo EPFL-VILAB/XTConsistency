@@ -146,7 +146,7 @@ def main(
         return energies
 
 
-     os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(save_dir, exist_ok=True)
     if data_dir is 'CUSTOM':
         eng_curr = np.array(energy_losses).mean()
         df = pd.read_csv(os.path.join(save_dir, 'data.csv'))
