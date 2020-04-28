@@ -352,7 +352,7 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
    ```
 
    **Runnable Example:** 
-   Running the above code, you'll find that it requires data for the the Taskonomy dataset and our 9 single-image tasks. For a quick runnable example that shows how the code works try the following:
+   Running the above code, you'll find that it requires data for the the Taskonomy dataset and our 9 single-image tasks. For a quick runnable example that shows how the code works, try the following:
    ```bash
    sh ./tools/download_data.sh # Starter data (388MB)
    python -m train example_normal --k 2 --fast
@@ -364,7 +364,19 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
 
    An example visualization is shown below. We plot the the outputs from the paths defined in the energy configuration used. Two windows are shown, one shows the predictions before training starts, the other updates them after each epoch. The labels for each column can be found at the top of the window. The second column has the target's ground truth `y^`, the third its prediction `n(x)` from the RGB image `x`. Thereafter, the predictions of each pair of images with the same domain are given by the paths `f(y^),f(n(x))`, where `f` is from the target domain to another domain eg. `curvature`.
 
-![](./assets/visdom_eg.png)
+   ![](./assets/visdom_eg.png)
+
+   **Logging conventions:** For uninteresting historical reasons, the columns in the logging during training might have strange names. You can define your own names instead of using these by changing the config file in `energy.py`.
+   
+   Here's a quick guide to the current convention. For example, when training with a `normal` model using consistency:
+    - The RGB input is denoted as `x` and the `target` domain is denoted as `y`. The ground truth label for a domain is marked with a `^`(e.g. `y^` for the for `target` domain). 
+    - The direct (`RGB -> Z`) and perceptual (`target [Y] -> Z`) transfer functions are named as follows:<br>(i.e. the function for `rgb` to `curvature` is `RC`; for `normal` to `curvature` it's `f`)
+
+   |  Domain (Z) | `rgb -> Z`<br>(Direct) | `Y -> Z`<br>(Perceptual) |    Domain (Z)   | `rgb -> Z`<br>(Direct) | `Y -> Z`<br>(Perceptual) |
+   |-------------|------------------------|--------------------------|-----------------|------------------------|---------------------------|
+   | target      | n                      | -                        | keypoints2d     | k2                     | Nk2                       |
+   | curvature   | RC                     | f                        | keypoints3d     | k3                     | Nk3                       |
+   | sobel edges | a                      | s                        | edge occlusion  | E0                     | nE0                       |
 
 #### To train on other target domains
 1. A new configuration should be defined in the `energy_configs` dictionary in [energy.py](./energy.py#L39-L521). 
@@ -377,16 +389,7 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
 
 2. New models may need to be defined in the `pretrained_transfers` dictionary in [transfers.py](./transfers.py#L26-L97). For example, for a `curvature` target, and perceptual model `curvature` to `normal`, the code will look for the `principal_curvature2normal.pth` file in `MODELS_DIR` if it is not defined in [transfers.py](./transfers.py#L26-L97).
 
-##### Function definitions
-The RGB input is defined as `x`, ground truth as `y^`. 
 
-| rgb2Z | target2Z | Z           | rgb2Z | target2Z | Z              |
-|-------|----------|-------------|-------|----------|----------------|
-| n     | -        | target      | k2    | Nk2      | keypoints2d    |
-| RC    | f        | curvature   | k3    | Nk3      | keypoints3d    |
-| a     | s        | sobel edges | E0    | nE0      | edge occlusion |
-
-The functions in columns **rgb2Z** and **target2Z** correspond to the output defined column **Z** ie. the function for `rgb` to `curvature` is `RC`, for target to `curvature` its `f`.
 
 #### To train on other datasets
 The expected folder structure for the data is,
