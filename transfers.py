@@ -71,7 +71,7 @@ pretrained_transfers = {
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/reshading2principal_curvature.pth"),
 
     ('rgb', 'sobel_edges'):
-        (lambda: SobelKernel, None),
+        (lambda: SobelKernel(), None),
     ('rgb', 'principal_curvature'):
         (lambda: UNet(downsample=5), f"{MODELS_DIR}/rgb2principal_curvature.pth"),
     ('rgb', 'keypoints2d'):
