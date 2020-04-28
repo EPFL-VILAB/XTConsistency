@@ -93,7 +93,7 @@ def generate_config(perceptual_tasks, target_task=tasks.normal, tree_structure=F
 
 energy_configs = {
 
-    "sample_normal": {
+    "example_normal": {
         "paths": {
             "x": [tasks.rgb],
             "y^": [tasks.normal],
@@ -109,6 +109,7 @@ energy_configs = {
         },
         "freeze_list": [
             [tasks.normal, tasks.principal_curvature],
+            [tasks.normal, tasks.sobel_edges],
         ],
         "losses": {
             "mae": {
@@ -140,13 +141,15 @@ energy_configs = {
         "plots": {
             "": dict(
                 size=256,
-                realities=("val"),
+                realities=('train', 'val'),
                 paths=[
                     "x",
                     "y^",
                     "n(x)",
                     "f(y^)",
                     "f(n(x))",
+                    "s(y^)":,
+                    "s(n(x))",
                 ]
             ),
         },

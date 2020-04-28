@@ -332,7 +332,7 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
    python -m train multiperceptual_{depth,normal,reshading}
    ```
 
-   To run the training code for the `normal` target, run 
+   For example, to run the training code for the `normal` target, run 
 
    ```bash
    python -m train multiperceptual_normal
@@ -350,6 +350,14 @@ base_dir/                   # The following paths are defined in utils.py (BASE_
    ```bash
    python -m train multiperceptual_normal --k 2 --random-select
    ```
+
+   **Runnable Example:** 
+   Running the above code, you'll find that it requires data for the the Taskonomy dataset and our 9 single-image tasks. For a quick runnable example that shows how the code works try the following:
+   ```bash
+   sh ./tools/download_data.sh # Starter data (388MB)
+   python -m train example_normal --k 2 --fast
+   ```
+   which trains a `normal` model using `curvature` and `2D edge` consistency on a training set of 512 images.  
 
 
 4) **Logging:** The losses and visualizations are logged in Visdom. This can be accessed via `[server name]/env/[job name]` eg. `localhost:8888/env/normaltarget_allperceps`. 

@@ -89,7 +89,7 @@ def main(
     # GRAPH
     graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False,
         freeze_list=energy_loss.freeze_list,
-        initialize_from_transfer=True,
+        initialize_from_transfer=False,
     )
     graph.compile(torch.optim.Adam, lr=3e-5, weight_decay=2e-6, amsgrad=True)
 
@@ -99,7 +99,7 @@ def main(
     logger.add_hook(lambda logger, data: logger.step(), feature="loss", freq=20)
     logger.add_hook(lambda _, __: graph.save(f"{RESULTS_DIR}/graph.pth"), feature="epoch", freq=1)
     energy_loss.logger_hooks(logger)
-    # energy_loss.plot_paths(graph, logger, realities, prefix="start")
+    energy_loss.plot_paths(graph, logger, realities, prefix="start")
 
     # BASELINE
     graph.eval()
@@ -121,7 +121,7 @@ def main(
     for epochs in range(0, max_epochs):
 
         logger.update("epoch", epochs)
-        # energy_loss.plot_paths(graph, logger, realities, prefix="")
+        energy_loss.plot_paths(graph, logger, realities, prefix="")
         if visualize: return
 
         graph.train()
