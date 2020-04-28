@@ -22,7 +22,7 @@ dtype = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 EXPERIMENT, BASE_DIR = open("config/jobinfo.txt").read().strip().split(', ')
 JOB = "_".join(EXPERIMENT.split("_")[0:-1])
 
-MODELS_DIR = f"{BASE_DIR}/percep_models"
+MODELS_DIR = f"{BASE_DIR}/models"
 DATA_DIRS = [f"/taskonomy-data/taskonomydata", 'data']
 RESULTS_DIR = f"{BASE_DIR}/results/results_{EXPERIMENT}"
 SHARED_DIR = f"{BASE_DIR}/shared"
