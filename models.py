@@ -210,7 +210,13 @@ class DataParallelModel(TrainableModel):
             data = torch.load(weights_file, map_location=lambda storage, loc: storage)
             # hack for models saved with optimizers
             if "optimizer" in data: data = data["state_dict"]
-            model.load_state_dict(data)
+            try:
+                model.load_state_dict(data)
+            except RuntimeError:
+                parallel_module_data = {
+                    'parallel_apply.module.' + k: v for k, v in data.items()
+                }
+                model.load_state_dict(parallel_module_data)
         return model
 
 class WrapperModel(TrainableModel):
