@@ -93,6 +93,47 @@ def generate_config(perceptual_tasks, target_task=tasks.normal, tree_structure=F
 
 energy_configs = {
 
+    "sample_normal": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "n(x)": [tasks.rgb, tasks.normal],
+            "RC(x)": [tasks.rgb, tasks.principal_curvature],
+            "curv": [tasks.principal_curvature],
+            "f(y^)": [tasks.normal, tasks.principal_curvature],
+            "f(n(x))": [tasks.rgb, tasks.normal, tasks.principal_curvature],
+        },
+        "freeze_list": [
+            [tasks.normal, tasks.principal_curvature],
+        ],
+        "losses": {
+            "mae": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                ],
+            },
+            "percep_curv": {
+                ("train", "val"): [
+                    ("f(n(x))", "f(y^)"),
+                ],
+            },
+        },
+        "plots": {
+            "": dict(
+                size=256,
+                realities=("val"),
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                    "f(y^)",
+                    "f(n(x))",
+                ]
+            ),
+        },
+    },
+
+
     "multiperceptual_normal": {
         "paths": {
             "x": [tasks.rgb],
@@ -838,7 +879,7 @@ class WinRateEnergyLoss(EnergyLoss):
     def __call__(self, graph, discriminator=None, realities=[], loss_types=None, compute_grad_ratio=False):
 
         loss_types = ["mae"] + [("percep_" + loss) for loss in self.percep_losses] + [("direct_" + loss) for loss in self.percep_losses]
-        print (self.chosen_losses)
+        # print (self.chosen_losses)
         loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, reduce=False)
 
         chosen_percep_mse_losses = [k for k in loss_dict.keys() if 'direct' not in k]
@@ -868,7 +909,7 @@ class WinRateEnergyLoss(EnergyLoss):
             loss_dict[f"percep_{key}"] = loss_dict[f"percep_{key}"].mean() * percep_mse_coeffs[f"percep_{key}"]
             loss_dict.pop(f"direct_{key}")
 
-        print (self.running_stats)
+        # print (self.running_stats)
         loss_dict["mae"] = loss_dict["mae"].mean() * percep_mse_coeffs["mae"]
 
         return loss_dict, percep_mse_coeffs["mae"]
