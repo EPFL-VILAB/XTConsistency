@@ -1,4 +1,4 @@
-# Robust Learning Through Cross-Task Consistency <br>[Repo under construction!] 
+# Robust Learning Through Cross-Task Consistency <br> 
 
 [![](./assets/intro.jpg)](https://consistency.epfl.ch)
 
@@ -21,11 +21,13 @@ for the following paper:
 
 <div style="text-align:center">
 <h4><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral)</h4>
-Amir Zamir*, Alexander Sax*, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas 
 </div>
 <br>
 
-For further details, a [live demo](https://consistency.epfl.ch/demo/), and [video visualization](https://consistency.epfl.ch/visuals/), refer to our [project website](https://consistency.epfl.ch/).
+[![Cross-Task Consistency Results](./assets/vid_thumbnail_600_gif2.gif)](https://youtu.be/6CSmmrBNX9M "Click to watch results of applying the networks trained with cross-task consisntency frame-by-frame on sample YouTube videos.")
+
+
+For further details, a [live demo](https://consistency.epfl.ch/demo/), [video visualizations](https://consistency.epfl.ch/visuals/), and an [overview talk](https://consistency.epfl.ch/#paper), refer to our [project website](https://consistency.epfl.ch/).
 
 #### PROJECT WEBSITE:
 <div style="text-align:center">
@@ -444,7 +446,9 @@ If you find the code, models, or data useful, please cite this paper:
 ```
 @article{zamir2020consistency,
   title={Robust Learning Through Cross-Task Consistency},
-  author={Zamir, Amir R and Sax, Alexander and Yeo, Teresa and Kar, Oğuzhan and Cheerla, Nikhil and Suri, Rohan and Cao, Zhangjie and Malik, Jitendra and Guibas, Leonidas},
+  author={Zamir, Amir and Sax, Alexander and Yeo, Teresa and Kar, Oğuzhan and Cheerla, Nikhil and Suri, Rohan and Cao, Zhangjie and Malik, Jitendra and Guibas, Leonidas},
+  journal={arXiv},
+  year={2020}
 }
 ```
 
