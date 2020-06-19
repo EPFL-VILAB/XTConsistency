@@ -20,7 +20,7 @@ for the following paper:
 <!-- Amir Zamir, Alexander Sax, Teresa Yeo, Oğuzhan Kar, Nikhil Cheerla, Rohan Suri, Zhangjie Cao, Jitendra Malik, Leonidas Guibas  -->
 
 <div style="text-align:center">
-<h4><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Oral)</h4>
+<h4><a href=https://consistency.epfl.ch>Robust Learing Through Cross-Task Consistency</a> (CVPR 2020, Best Paper Awar Nomination, Oral)</h4>
 </div>
 <br>
 
