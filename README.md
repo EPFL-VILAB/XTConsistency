@@ -157,7 +157,7 @@ The `--task` flag specifies the target task for the input image, which should be
 To run the script for a `normal` target on the [example image](./assets/test.png):
 
 ```bash
-python demo.py --task normal --img_path assets/test.jpg --output_path assets/
+python demo.py --task normal --img_path assets/test.png --output_path assets/
 ```
 
 It returns the output prediction from the baseline (`test_normal_baseline.png`) and consistency models (`test_normal_consistency.png`).
