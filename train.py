@@ -73,18 +73,17 @@ def main(
 
     if fast:
         train_dataset = val_dataset
+        train_step, val_step = 2,2
 
-    train_step, val_step = 2,2
     train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
     val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
-    realities = [train, val]
-
-    if not fast:
-        test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
-        ood_set = load_ood(energy_loss.get_tasks("ood"))
-        test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
-        ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
-        realities = [train, val, test, ood]
+   
+   
+    test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville','espanola'])
+    ood_set = load_ood(energy_loss.get_tasks("ood"))
+    test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
+    ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
+    realities = [train, val, test, ood]
 
     # GRAPH
     graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False,
