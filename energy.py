@@ -202,7 +202,34 @@ energy_configs = {
         },
     },
 
-
+    "example_normal_direct": {
+        "paths": {
+            "x": [tasks.rgb],
+            "y^": [tasks.normal],
+            "n(x)": [tasks.rgb, tasks.normal],
+        },
+        "freeze_list": [
+        ],
+        "losses": {
+            "mae": {
+                ("train", "val"): [
+                    ("n(x)", "y^"),
+                ],
+            },
+        },
+        "plots": {
+            "": dict(
+                size=256,
+                realities=('train', 'val'),
+                paths=[
+                    "x",
+                    "y^",
+                    "n(x)",
+                ]
+            ),
+        },
+    },
+    
     "multiperceptual_normal": {
         "paths": {
             "x": [tasks.rgb],
