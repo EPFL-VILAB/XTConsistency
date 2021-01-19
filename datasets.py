@@ -72,7 +72,7 @@ def load_all(tasks, buildings=None, batch_size=64, split_file="data/split.txt", 
 
 
 
-def load_test(all_tasks, buildings=["almena", "albertville", "espanola"], sample=4):
+def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
 
     all_tasks = [get_task(t) if isinstance(t, str) else t for t in all_tasks]
     print(f"number of images in {buildings[0]}:")
