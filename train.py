@@ -79,7 +79,7 @@ def main(
     val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
    
    
-    test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville','espanola'])
+    test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
     ood_set = load_ood(energy_loss.get_tasks("ood"))
     test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
     ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
