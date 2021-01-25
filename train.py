@@ -77,13 +77,19 @@ def main(
 
     train = RealityTask("train", train_dataset, batch_size=batch_size, shuffle=True)
     val = RealityTask("val", val_dataset, batch_size=batch_size, shuffle=True)
-   
-   
-    test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
-    ood_set = load_ood(energy_loss.get_tasks("ood"))
-    test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
-    ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
-    realities = [train, val, test, ood]
+
+    if fast:
+        train_dataset = val_dataset
+        train_step, val_step = 2,2
+        realities = [train, val]
+    else:
+        test_set = load_test(energy_loss.get_tasks("test"), buildings=['almena', 'albertville'])
+        test = RealityTask.from_static("test", test_set, energy_loss.get_tasks("test"))
+        realities = [train, val, test]
+        # If you wanted to just do some qualitative predictions on inputs w/o labels, you could do:
+        # ood_set = load_ood(energy_loss.get_tasks("ood"))
+        # ood = RealityTask.from_static("ood", ood_set, [tasks.rgb,])
+        # realities.append(ood)
 
     # GRAPH
     graph = TaskGraph(tasks=energy_loss.tasks + realities, pretrained=True, finetuned=False,

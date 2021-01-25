@@ -127,7 +127,7 @@ energy_configs = {
         "plots": {
             "": dict(
                 size=256,
-                realities=('test', 'ood'),
+                realities=('train', 'val'),
                 paths=[
                     "x",
                     "y^",
@@ -188,7 +188,7 @@ energy_configs = {
         "plots": {
             "": dict(
                 size=256,
-                realities=('test', 'ood'),
+                realities=('train', 'val'),
                 paths=[
                     "x",
                     "y^",
@@ -974,7 +974,7 @@ class WinRateEnergyLoss(EnergyLoss):
 
     def __call__(self, graph, discriminator=None, realities=[], loss_types=None, compute_grad_ratio=False):
 
-        loss_types = ["mae"] + [("percep_" + loss) for loss in self.chosen_losses] + [("direct_" + loss) for loss in self.chosen_losses]
+        loss_types = ["mae"] + [("percep_" + loss) for loss in self.percep_losses] + [("direct_" + loss) for loss in self.percep_losses]
         # print (self.chosen_losses)
         loss_dict = super().__call__(graph, discriminator=discriminator, realities=realities, loss_types=loss_types, reduce=False)
 

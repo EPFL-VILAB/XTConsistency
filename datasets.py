@@ -87,16 +87,9 @@ def load_test(all_tasks, buildings=["almena", "albertville"], sample=4):
         batch_size=sample,
         num_workers=0, shuffle=False, pin_memory=True,
     )
-    print(f"number of images in {buildings[2]}:")
-    test_loader3 = torch.utils.data.DataLoader(
-        TaskDataset(buildings=[buildings[2]], tasks=all_tasks, shuffle=False),
-        batch_size=sample,
-        num_workers=0, shuffle=False, pin_memory=True,
-    )
     set1 = list(itertools.islice(test_loader1, 1))[0]
     set2 = list(itertools.islice(test_loader2, 1))[0]
-    set3 = list(itertools.islice(test_loader3, 1))[0]
-    test_set = tuple(torch.cat([x, y, z], dim=0) for x, y, z in zip(set1, set2, set3))
+    test_set = tuple(torch.cat([x, y], dim=0) for x, y in zip(set1, set2))
     return test_set
 
 
@@ -133,6 +126,8 @@ class TaskDataset(Dataset):
                 self.file_map[file[len(data_dir)+1:]] = data_dir
 
         filtered_files = None
+
+        assert (len(tasks) > 0), "Building dataset for tasks, but no tasks specified!"
         task = tasks[0]
         task_files = []
         for building in buildings:
