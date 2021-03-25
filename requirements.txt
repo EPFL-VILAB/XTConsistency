@@ -14,7 +14,7 @@ torchvision==0.4.0
 tqdm==4.36.1
 visdom==0.1.8.9
 pathlib==1.0.1
-pyyaml==5.3.1
+pyyaml==5.4
 pandas
 seaborn
 statsmodels
