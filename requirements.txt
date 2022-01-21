@@ -1,5 +1,5 @@
 fire==0.2.1
-ipython==6.5.0
+ipython==7.16.3
 matplotlib==3.0.3
 numpy==1.17.2
 parse==1.12.1
