@@ -1,6 +1,6 @@
 ##!/usr/bin/env bash
 
-wget https://drive.switch.ch/index.php/s/UG0ZlZXY47LKSaW/download
+wget https://drive.switch.ch/index.php/s/0Fqr6t6cZsI0cp9/download
 unzip download
 rm download
 cd data 
