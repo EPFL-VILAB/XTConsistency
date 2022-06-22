@@ -1,7 +1,7 @@
 fire==0.2.1
 ipython==6.5.0
 matplotlib==3.0.3
-numpy==1.17.2
+numpy==1.22.0
 parse==1.12.1
 pip==19.3.1
 plac==0.9.6
